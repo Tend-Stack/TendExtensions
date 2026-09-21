@@ -1,0 +1,141 @@
+name: TendExtensions registry CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and validate the registry
+    runs-on: tend-ci
+    env:
+      CORE_COMMIT: 4d1cfb3fb9243f6bfa3a12c0473f8ba39a86d6df
+      WORKSPACE: ${{ gitea.workspace }}
+    steps:
+      - uses: https://gitea.com/actions/checkout@v7
+
+      - uses: https://gitea.com/actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+
+      - name: Install registry tooling dependencies
+        run: pip install -r tools/requirements.txt
+
+      - name: Build every extension into dist/
+        run: python tools/build.py
+
+      - name: Check out the pinned panel core
+        uses: https://gitea.com/actions/checkout@v7
+        with:
+          repository: Rubirosa/tend.host
+          ref: ${{ env.CORE_COMMIT }}
+          path: public-core
+          fetch-depth: 0
+          token: ${{ secrets.CORE_REPOSITORY_TOKEN }}
+          persist-credentials: false
+
+      - name: Verify the pinned core checkout
+        run: test "$(git -C public-core rev-parse HEAD)" = "$CORE_COMMIT"
+
+      - name: Install the pinned panel core's own dependencies
+        run: pip install -r public-core/backend/requirements.txt
+
+      - name: Validate every built package against the real panel
+        env:
+          TEND_CORE_CHECKOUT: ${{ env.WORKSPACE }}/public-core
+        run: python tools/validate_with_panel.py
+
+      - name: Prove the signer round-trips (throwaway key, never the real one)
+        run: |
+          python - <<'PY'
+          import base64
+          import os
+          import subprocess
+          import sys
+
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+          key = Ed25519PrivateKey.generate()
+          seed_b64 = base64.b64encode(key.private_bytes_raw()).decode()
+          pub_b64 = base64.b64encode(key.public_key().public_bytes_raw()).decode()
+
+          env = dict(os.environ, TEND_REGISTRY_SIGNING_KEY=seed_b64)
+          subprocess.run([sys.executable, "tools/sign.py", "sign"], check=True, env=env)
+          subprocess.run(
+              [
+                  sys.executable, "tools/sign.py", "--verify",
+                  "dist/tend-extension-registry-v1.json",
+                  "--public-key", pub_b64,
+              ],
+              check=True,
+          )
+          print("signer round-trip OK (throwaway key)")
+          PY
+
+      - uses: https://gitea.com/actions/upload-artifact@v4
+        with:
+          name: registry-dist
+          path: dist/
+
+  publish_github:
+    name: Publish verified main to GitHub
+    runs-on: tend-ci
+    needs: [build]
+    if: gitea.event_name == 'push' && gitea.ref == 'refs/heads/main'
+    steps:
+      - uses: https://gitea.com/actions/checkout@v7
+        with:
+          ref: ${{ gitea.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: https://gitea.com/actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Publish the exact verified commit
+        env:
+          GH_PUBLISH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+          VERIFIED_SHA: ${{ gitea.sha }}
+          GITEA_EVENT_NAME: ${{ gitea.event_name }}
+          GITEA_REF: ${{ gitea.ref }}
+        run: python scripts/publish-verified-main.py
+
+  release:
+    name: Sign and release the registry
+    runs-on: tend-ci
+    needs: [publish_github]
+    if: gitea.event_name == 'push' && gitea.ref == 'refs/heads/main'
+    steps:
+      - uses: https://gitea.com/actions/checkout@v7
+
+      - uses: https://gitea.com/actions/download-artifact@v4
+        with:
+          name: registry-dist
+          path: dist
+
+      - uses: https://gitea.com/actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+
+      - name: Install registry tooling dependencies
+        run: pip install -r tools/requirements.txt
+
+      - name: Sign the registry with the production key
+        env:
+          TEND_REGISTRY_SIGNING_KEY: ${{ secrets.TEND_REGISTRY_SIGNING_KEY }}
+        run: python tools/sign.py sign
+
+      - name: Create or update the GitHub release
+        env:
+          GH_PUBLISH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+        run: python tools/release.py
