@@ -26,9 +26,9 @@
     "storage"
   ],
   "integrity": {
-    "index.js": "sha256-L7T6DKnCRiFpwN1A6EU9nz9RntYxCTKxA20m2GysMw4=",
     "arcade-kit.js": "sha256-B01xqfcvz3Ca9TfySL44tXedVhP5TOYrszYfysPDxc4=",
-    "icon.svg": "sha256-luJSDzRgWDBsQBpkbO10uZA+qvbazzOvFDJebyEiaj4="
+    "icon.svg": "sha256-luJSDzRgWDBsQBpkbO10uZA+qvbazzOvFDJebyEiaj4=",
+    "index.js": "sha256-L7T6DKnCRiFpwN1A6EU9nz9RntYxCTKxA20m2GysMw4="
   },
   "runtime": {
     "api": 1,

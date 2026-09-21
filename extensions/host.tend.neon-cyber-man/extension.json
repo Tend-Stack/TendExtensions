@@ -27,6 +27,10 @@
     "storage"
   ],
   "integrity": {
+    "CHANGELOG.md": "sha256-pCcrIBE+zFG91dFBKkWsAsyjl8qKJqXXAKbIgi0QdcY=",
+    "HOST-PHASER4-INTEGRATION.md": "sha256-AExBR/IXO5qbOqQmiBqlsX5Y3uohNSsCcFvlmas2was=",
+    "README.md": "sha256-2SWFV3ZMQtPrga1FMNdoPSwn+Jle2oWHuQ6sCOsszxk=",
+    "icon.svg": "sha256-ijvyqGh+HJfS0ONuk3Zks3j0vE8kEX9Sy++83KKnA4Q=",
     "index.js": "sha256-CtzHoEo3ple7/BoPeM0ImIBCh0/Ssa3fKzLCiiPfGIo=",
     "src/AudioManager.js": "sha256-1LPY4b6BbwM5QnTw1etsnpr9Wwelo481ZV9Xa8A29UA=",
     "src/ChallengeManager.js": "sha256-JBdlRC/EBt0kwz76rQsrFfpp7zGb+9OpV6CgxUwQEKs=",

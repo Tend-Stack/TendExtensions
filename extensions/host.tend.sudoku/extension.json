@@ -33,6 +33,7 @@
     "targetFps": 60
   },
   "integrity": {
-    "index.js": "sha256-8VcQkvsBJuNSQ5+UMAXqThLF8JD+VRM+XHkX+jVXATg="
+    "icon.svg": "sha256-yCwUjCVt4+bhJhl9X4w8VjolptP0LyQOO11Zyo5AP0E=",
+    "index.js": "sha256-yreB8yhuQ4lwXCTRcryK+7AyFO79o5CWkbJnTImM7Lw="
   }
 }

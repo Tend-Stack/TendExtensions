@@ -33,9 +33,9 @@
     "targetFps": 60
   },
   "integrity": {
+    "README.md": "sha256-Qvz2r9p3lZI2w4nVQ6J52oClx9Fo3MDSsh+wYVabH88=",
     "arcade-kit.js": "sha256-ZepqG9r5SjYmyXrMGaa5rYAIfnRUtIfbx7N1BOId8l8=",
     "icon.svg": "sha256-/luwvKvGetGAhaAi3UjVujbpxZ26EfVB6y5naFsG1Ss=",
-    "index.js": "sha256-ykSdomHItbh0Md/EFbrbJg7v1ahuRX6FRS3+n1m48eM=",
-    "README.md": "sha256-Qvz2r9p3lZI2w4nVQ6J52oClx9Fo3MDSsh+wYVabH88="
+    "index.js": "sha256-ykSdomHItbh0Md/EFbrbJg7v1ahuRX6FRS3+n1m48eM="
   }
 }

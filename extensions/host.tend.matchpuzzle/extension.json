@@ -33,8 +33,8 @@
     "storage"
   ],
   "integrity": {
-    "index.js": "sha256-Z6ocFWy+3C2qza6SBo7Aq0agAfJ3oMxMqJGr13OyutE=",
+    "README.md": "sha256-DCuh1lN1JgAF+3iYBYbx2B5a5X8vGmWB9t7dc8kbGck=",
     "icon.svg": "sha256-VdHCeaUafe33PAI5olG2mN24bablXypzT/MEZ85kZOk=",
-    "README.md": "sha256-DCuh1lN1JgAF+3iYBYbx2B5a5X8vGmWB9t7dc8kbGck="
+    "index.js": "sha256-Z6ocFWy+3C2qza6SBo7Aq0agAfJ3oMxMqJGr13OyutE="
   }
 }

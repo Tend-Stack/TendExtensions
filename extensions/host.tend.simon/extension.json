@@ -26,10 +26,10 @@
     "storage"
   ],
   "integrity": {
-    "index.js": "sha256-gG5mAkTrUTJiFVq34KIl4h77SuYu3/siami9cSyDiqg=",
+    "README.md": "sha256-su5GS+DhmZ1aylZPz49R+WslOyPUOwSEmK486zcq/xA=",
     "arcade-kit.js": "sha256-KgTfMRpypcGEqpcX7zX1EPQujuPAGPKTQsR8XthSBxQ=",
     "icon.svg": "sha256-ykforHocQRrD4kVg/mijL3LzQ3GG1E1+rIsTjzcIMLY=",
-    "README.md": "sha256-su5GS+DhmZ1aylZPz49R+WslOyPUOwSEmK486zcq/xA="
+    "index.js": "sha256-gG5mAkTrUTJiFVq34KIl4h77SuYu3/siami9cSyDiqg="
   },
   "runtime": {
     "api": 1,

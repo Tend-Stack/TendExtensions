@@ -22,6 +22,7 @@
     "storage"
   ],
   "integrity": {
+    "README.md": "sha256-aE/c1yEjbRoTGN2YbylPC3vWUEpPfGC0UxIvLApiNes=",
     "converters/currency.js": "sha256-/0MMQbOTwmkzWxL8PMrFfyjoSQOnb5IgDOxdnGsBixY=",
     "converters/units.js": "sha256-lC7M2kRCxweBtScpToua+9f3jD6gJ3t/kSbceecVAHc=",
     "engine/evaluate.js": "sha256-sIIC4eN5l8y9QWl+2ZrsZnPh1+HVi2vVkjWpkh8T1VU=",
@@ -31,6 +32,7 @@
     "engine/programmer.js": "sha256-R3Id527BvMeaVAb5QOKKXQt3P1NQ1y3X+/rKCT9IuoI=",
     "engine/statistics.js": "sha256-40Ai9NBrUKB+Kzl9ej5zXKxe6V2Gfctl/3pyRx0oOVo=",
     "engine/tokenize.js": "sha256-vl6UQcjy1JFEj2Fe4CVtmLiGqEJK8oQNgLk5RwQrxFE=",
+    "icon.svg": "sha256-Ze73Up5MNvpgWhIw9b+W8KYi3X/TeHdgwRq+5jDqeIg=",
     "index.js": "sha256-Huog60gL286a2XkdRRPP5sCm4/yCfEhLxQCqJM7hLkU=",
     "modes/converters.js": "sha256-ZnSQs90//xKhekYLbesE9sph02Aum1eaVj7c5npDFUo=",
     "modes/expression-mode.js": "sha256-0qC++TvAs5/vX2OLV64SxpcQmWnwX5csv/7TcB1seiQ=",
