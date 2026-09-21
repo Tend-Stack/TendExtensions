@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "id": "host.tend.memory",
+  "name": "Memory Match Odyssey",
+  "version": "2.2.0",
+  "author": "tend.host",
+  "description": "A responsive 50-stage memory campaign with working difficulty, stage, hint, mode, and perk controls. Uses tend.host Runtime API 1 and host-owned mobile fullscreen.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 460,
+      "h": 640
+    },
+    "minSize": {
+      "w": 460,
+      "h": 640
+    },
+    "maxSize": {
+      "w": 460,
+      "h": 640
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "index.js": "sha256-OEDY1tFDIS2FzeykjQleHkHEQ6bfhfM4LmDluVM8Un0=",
+    "arcade-kit.js": "sha256-B01xqfcvz3Ca9TfySL44tXedVhP5TOYrszYfysPDxc4=",
+    "icon.svg": "sha256-KUxrLeWYVFzwQxGTAQQAah6lDBBg3gem/kmgTf9v3L4="
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Eight evolving worlds across four difficulty classes",
+    "Nine unlockable pilots with distinct handling",
+    "Dynamic routes and power cores on every run",
+    "Contracts and precision-reward progression",
+    "Phaser 4 runtime with Runtime API 1 lifecycle management"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1 with the phaser@4 runtime module",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

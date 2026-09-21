@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Match puzzle adventure with Flow Pressure play styles",
+    "Objective levels and special-gem combinations",
+    "Perks and charged boosters",
+    "Runtime API 1 lifecycle management, immersive mobile play"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

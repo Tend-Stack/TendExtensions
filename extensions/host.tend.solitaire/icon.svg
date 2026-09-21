@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Solitaire Odyssey Starlight Circuit icon">
+  <defs>
+    <linearGradient id="bg" x1="14" y1="8" x2="114" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset=".5" stop-color="#4F8CF7"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="card" x1="38" y1="29" x2="91" y2="102" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E8EEF9"/>
+    </linearGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="190%">
+      <feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#071426" flood-opacity=".38"/>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="31" fill="url(#bg)"/>
+  <circle cx="99" cy="27" r="18" fill="#FFFFFF" opacity=".1"/>
+  <path d="M94 15l2.5 6.2L103 24l-6.5 2.7L94 33l-2.7-6.3L85 24l6.3-2.8L94 15z" fill="#FEF3C7" opacity=".95"/>
+  <g filter="url(#shadow)">
+    <g transform="translate(19 25) rotate(-14 27 41)">
+      <rect width="54" height="78" rx="10" fill="#172554" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="2"/>
+      <rect x="5" y="5" width="44" height="68" rx="7" fill="none" stroke="#67E8F9" stroke-opacity=".45"/>
+      <path d="M27 19l8 9-8 9-8-9 8-9zm0 20l8 9-8 9-8-9 8-9z" fill="#67E8F9" opacity=".28"/>
+    </g>
+    <g transform="translate(55 24) rotate(13 27 41)">
+      <rect width="54" height="78" rx="10" fill="#312E81" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="2"/>
+      <rect x="5" y="5" width="44" height="68" rx="7" fill="none" stroke="#C4B5FD" stroke-opacity=".48"/>
+      <path d="M27 17l9 11-9 11-9-11 9-11zm0 23l9 11-9 11-9-11 9-11z" fill="#C4B5FD" opacity=".3"/>
+    </g>
+    <g transform="translate(38 17)">
+      <rect width="54" height="84" rx="11" fill="url(#card)" stroke="#FFFFFF" stroke-width="2"/>
+      <path d="M27 29c-10-12-23 3-14 13l14 15 14-15c9-10-4-25-14-13z" fill="#EF4444"/>
+      <text x="9" y="19" font-family="Arial, sans-serif" font-size="15" font-weight="800" fill="#DC2626">A</text>
+      <path d="M11 24c-4-5-9 1-5 5l5 6 5-6c4-4-1-10-5-5z" fill="#EF4444"/>
+      <path d="M43 67c-4-5-9 1-5 5l5 6 5-6c4-4-1-10-5-5z" fill="#EF4444"/>
+    </g>
+  </g>
+  <path d="M24 104c22 8 56 10 80-1" fill="none" stroke="#FFFFFF" stroke-opacity=".32" stroke-width="3" stroke-linecap="round"/>
+</svg>

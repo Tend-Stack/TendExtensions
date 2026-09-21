@@ -1,0 +1,38 @@
+{
+  "schema": 2,
+  "id": "host.tend.sudoku",
+  "name": "Sudoku",
+  "version": "1.1.0",
+  "author": "tend.host",
+  "description": "Classic Sudoku \u2014 fill the 9\u00d79 grid so each row, column, and 3\u00d73 box contains digits 1-9. Pure logic, pure flow.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 480,
+      "h": 700
+    },
+    "minSize": {
+      "w": 380,
+      "h": 580
+    },
+    "maxSize": {
+      "w": 800,
+      "h": 960
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  },
+  "integrity": {
+    "index.js": "sha256-8VcQkvsBJuNSQ5+UMAXqThLF8JD+VRM+XHkX+jVXATg="
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Responsive keyboard and touch controls",
+    "Neon graphics, full-screen play",
+    "Marathon, Sprint, Blitz, Rift, and Zen modes"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1 with the phaser@4 runtime module",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

@@ -1,0 +1,41 @@
+{
+  "schema": 2,
+  "id": "host.tend.snake",
+  "name": "Snake Odyssey: Neon Wilds",
+  "version": "3.1.1",
+  "author": "tend.host",
+  "description": "A modern Snake arcade game with default endless Classic Growth, clear mode-selection cards, rotating challenges, milestone rewards, perks, evolving hazards, and a separate 60-mission Expedition campaign.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 500,
+      "h": 720
+    },
+    "minSize": {
+      "w": 500,
+      "h": 720
+    },
+    "maxSize": {
+      "w": 500,
+      "h": 720
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "arcade-kit.js": "sha256-KgTfMRpypcGEqpcX7zX1EPQujuPAGPKTQsR8XthSBxQ=",
+    "icon.svg": "sha256-3q6cPkHDzSMbWiQaZW7F6N5zHosIyRwB/S1A2BdHXiY=",
+    "index.js": "sha256-r3wve9CR9Xn4XOfuxff2EWTWjdg5yQwELs/HG7Y+tZA=",
+    "README.md": "sha256-6maA/SfRsepvRi6DvrnkU1nZ/aO6eP1AlHS1R27y4GA="
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  }
+}

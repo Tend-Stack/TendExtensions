@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Modern arcade ricochet action",
+    "Fever shots and burst pegs",
+    "Star-rated stages",
+    "Responsive desktop and mobile layouts"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

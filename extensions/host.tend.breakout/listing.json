@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Campaign Breakout with live fullscreen relayout",
+    "Boss walls and fever chains",
+    "Power-ups and perks",
+    "Host-owned mobile fullscreen"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

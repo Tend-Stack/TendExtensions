@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Klondike with fluid physical card dragging",
+    "36 Odyssey missions and Pulse Rush",
+    "Daily seeded deals and Momentum combos",
+    "Hidden Starlight cards, rank progression, tactical perks"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

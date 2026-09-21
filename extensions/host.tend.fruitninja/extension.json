@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "id": "host.tend.fruitninja",
+  "name": "Fruit Slash Odyssey",
+  "version": "2.2.0",
+  "author": "tend.host",
+  "description": "Responsive fruit-slicing arcade action with illustrated fruit, denser waves, bosses, modes, perks, and missions. Uses tend.host Runtime API 1 and host-owned mobile fullscreen.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 480,
+      "h": 680
+    },
+    "minSize": {
+      "w": 480,
+      "h": 680
+    },
+    "maxSize": {
+      "w": 480,
+      "h": 680
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "index.js": "sha256-xeUPpgMJGCd2fWJZT+AXlOqPhl5I7R3Q5IDjIExoHJU=",
+    "arcade-kit.js": "sha256-B01xqfcvz3Ca9TfySL44tXedVhP5TOYrszYfysPDxc4=",
+    "icon.svg": "sha256-2t6noDze5TQ3ymBt45ozA5kwHsaOBSus2iiqJH+rl4A="
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  }
+}

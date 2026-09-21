@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Endless target ladder beyond the classic 2048 tile",
+    "Persistent arcade progression across sessions",
+    "Host-owned mobile fullscreen",
+    "Runtime API 1 challenge system"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

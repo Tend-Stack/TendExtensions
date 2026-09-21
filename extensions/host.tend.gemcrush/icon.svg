@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="12" y1="8" x2="116" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="0.35" stop-color="#6366F1"/>
+      <stop offset="0.68" stop-color="#A855F7"/>
+      <stop offset="1" stop-color="#EC4899"/>
+    </linearGradient>
+    <linearGradient id="gem" x1="42" y1="32" x2="88" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.22" stop-color="#C4B5FD"/>
+      <stop offset="0.56" stop-color="#818CF8"/>
+      <stop offset="1" stop-color="#312E81"/>
+    </linearGradient>
+    <filter id="glow" x="18" y="18" width="92" height="96" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="#07101F"/>
+  <rect x="6" y="6" width="116" height="116" rx="28" fill="url(#bg)" opacity=".93"/>
+  <circle cx="64" cy="65" r="34" fill="#8B5CF6" opacity=".62" filter="url(#glow)"/>
+  <path d="M64 22 100 49 88 94 64 110 40 94 28 49 64 22Z" fill="url(#gem)" stroke="white" stroke-opacity=".46" stroke-width="2"/>
+  <path d="M64 22 76 49 64 64 52 49 64 22ZM28 49h24l12 15-24 30-12-45ZM100 49H76L64 64l24 30 12-45ZM40 94l24-30 24 30-24 16-24-16Z" fill="white" fill-opacity=".2"/>
+  <circle cx="64" cy="63" r="13" fill="#0F172A" stroke="white" stroke-opacity=".58" stroke-width="2"/>
+  <path d="m64 48 4.2 10.8L79 63l-10.8 4.2L64 78l-4.2-10.8L49 63l10.8-4.2L64 48Z" fill="white"/>
+</svg>

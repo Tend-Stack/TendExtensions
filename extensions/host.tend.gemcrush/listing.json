@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Riftfall Edition: 80-stage match-three campaign",
+    "Objective contracts and power fusion",
+    "Charged boosters and a five-star mastery system",
+    "Persistent arcade progression, responsive fullscreen"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

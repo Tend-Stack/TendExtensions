@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="12" y1="8" x2="118" y2="122" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071a1a"/>
+      <stop offset=".52" stop-color="#083344"/>
+      <stop offset="1" stop-color="#172554"/>
+    </linearGradient>
+    <linearGradient id="body" x1="22" y1="26" x2="103" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d1fae5"/>
+      <stop offset=".32" stop-color="#6ee7b7"/>
+      <stop offset=".7" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="head" x1="78" y1="24" x2="111" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ecfdf5"/>
+      <stop offset=".48" stop-color="#6ee7b7"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="128" height="128" rx="29" fill="url(#bg)"/>
+  <circle cx="28" cy="27" r="21" fill="#22d3ee" opacity=".08"/>
+  <circle cx="106" cy="102" r="27" fill="#8b5cf6" opacity=".08"/>
+  <path d="M31 85c-14-12-13-31-1-42 13-12 33-9 40 3 7 13-3 25-14 27-10 2-18-6-14-14 3-6 12-7 17-2" fill="none" stroke="#022c22" stroke-opacity=".72" stroke-width="19" stroke-linecap="round"/>
+  <path d="M31 82c-12-10-11-26-1-35 11-10 28-8 34 2 6 10-2 20-12 22-8 1-14-5-11-11 2-5 9-6 13-2" fill="none" stroke="url(#body)" stroke-width="15" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M31 82c-12-10-11-26-1-35 11-10 28-8 34 2" fill="none" stroke="#ecfdf5" stroke-opacity=".42" stroke-width="4" stroke-linecap="round"/>
+  <path d="M67 43c7-12 22-18 34-12 9 4 15 13 13 22-7 7-17 11-28 8-10-3-18-10-19-18Z" fill="url(#head)" stroke="#d1fae5" stroke-opacity=".55" stroke-width="1.5" filter="url(#glow)"/>
+  <path d="M72 43c8-8 19-10 28-5" fill="none" stroke="#ecfdf5" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="99" cy="42" rx="4.2" ry="5.1" fill="#ecfdf5"/>
+  <ellipse cx="100.5" cy="43" rx="1.8" ry="2.8" fill="#052e2b"/>
+  <circle cx="101.2" cy="42" r=".65" fill="#fff"/>
+  <path d="m112 51 10-2-6 4 6 4-10-2" fill="none" stroke="#fb7185" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#ecfdf5" opacity=".32">
+    <path d="m28 55 4-3 4 3-4 3Z"/><path d="m42 44 4-3 4 3-4 3Z"/><path d="m55 48 4-3 4 3-4 3Z"/>
+    <path d="m37 70 4-3 4 3-4 3Z"/><path d="m27 76 4-3 4 3-4 3Z"/>
+  </g>
+  <circle cx="24" cy="96" r="8" fill="#fb7185"/>
+  <circle cx="21.5" cy="93.5" r="2.1" fill="#fff" opacity=".78"/>
+</svg>

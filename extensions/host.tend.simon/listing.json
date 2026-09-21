@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "60-session Simon brain-training campaign",
+    "Adaptive recall with reverse and timed modes",
+    "Shifting pads and integrated glyph art",
+    "Corrected responsive fullscreen rendering"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

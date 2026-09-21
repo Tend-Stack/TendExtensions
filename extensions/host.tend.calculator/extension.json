@@ -1,0 +1,49 @@
+{
+  "schema": 2,
+  "id": "host.tend.calculator",
+  "name": "Calculator",
+  "version": "3.0.0",
+  "author": "tend.host",
+  "description": "Seven-mode calculator: standard, scientific, graphing, programmer, statistics, financial and converters, with a real expression engine, a history tape and full keyboard control. Native ESM extension.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 460,
+      "h": 700
+    },
+    "maxSize": {
+      "w": 460,
+      "h": 700
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "converters/currency.js": "sha256-/0MMQbOTwmkzWxL8PMrFfyjoSQOnb5IgDOxdnGsBixY=",
+    "converters/units.js": "sha256-lC7M2kRCxweBtScpToua+9f3jD6gJ3t/kSbceecVAHc=",
+    "engine/evaluate.js": "sha256-sIIC4eN5l8y9QWl+2ZrsZnPh1+HVi2vVkjWpkh8T1VU=",
+    "engine/finance.js": "sha256-Ow4TEtRlehQRkwXTIX5Xjs4Wb4mM5SS8vYAIMAY5IEE=",
+    "engine/format.js": "sha256-60QR6j1800C4BSDLrW8A0iC6M2xcIERY5o4BN9CbbKg=",
+    "engine/parser.js": "sha256-Pq5IS2GSxrsX2xACWq39WlVAx4/0vC4gg3ciyjhZy6U=",
+    "engine/programmer.js": "sha256-R3Id527BvMeaVAb5QOKKXQt3P1NQ1y3X+/rKCT9IuoI=",
+    "engine/statistics.js": "sha256-40Ai9NBrUKB+Kzl9ej5zXKxe6V2Gfctl/3pyRx0oOVo=",
+    "engine/tokenize.js": "sha256-vl6UQcjy1JFEj2Fe4CVtmLiGqEJK8oQNgLk5RwQrxFE=",
+    "index.js": "sha256-Huog60gL286a2XkdRRPP5sCm4/yCfEhLxQCqJM7hLkU=",
+    "modes/converters.js": "sha256-ZnSQs90//xKhekYLbesE9sph02Aum1eaVj7c5npDFUo=",
+    "modes/expression-mode.js": "sha256-0qC++TvAs5/vX2OLV64SxpcQmWnwX5csv/7TcB1seiQ=",
+    "modes/financial.js": "sha256-V9/T0W3xa8jvLu+xCrmBWipLy3UVj27bcot5a6tDnIU=",
+    "modes/graphing.js": "sha256-X/RM+BluuPUyBuZjZ6f2d8bV32IDhUMi0U1VCxJupt4=",
+    "modes/programmer.js": "sha256-+TyWILBAEYWerncIn0LXGguu4+x93BA3X18D1hvoIYc=",
+    "modes/scientific.js": "sha256-mkbzts2YDF3z3/ast2idd+N66kn877P//geHTd18q14=",
+    "modes/standard.js": "sha256-feDPAgn/aguU1T/qmokvqbchwVfJvrY8vvxuBLSShf0=",
+    "modes/statistics.js": "sha256-aEOAlnxWNbgx3BFlQwtkwpSHws+fIBORLPM44WpanIo=",
+    "store.js": "sha256-DYl7CKTuY/3FVZKoAMEiQHA18rIdbJ6Jr5VJZMgNsB8=",
+    "ui/clipboard.js": "sha256-TODCN003ETZLQR3WsY24kCX8P6vvaCyUnSGHKJ1Xk/8=",
+    "ui/dom.js": "sha256-A+CVCKdVTUJ+rmvnjJ2Bl8G9vHnA6JNRiJTLF/uROPM=",
+    "ui/history.js": "sha256-5BaPgShj98ovDPtuaHkOt3It0MkdzPusJkkgWbWEGZw=",
+    "ui/styles.js": "sha256-lVNVdvDjcNi79OcyQQLzcWKQs4HZpt1rqjx+LYJ+s7I="
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schema": 2,
+  "id": "host.tend.peggle",
+  "name": "Peggle Odyssey: Arc Light",
+  "version": "3.0.6",
+  "author": "tend.host",
+  "description": "Modern arcade ricochet with fever shots, burst pegs, star-rated stages, and responsive desktop/mobile layouts for tend.host.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 500,
+      "h": 720
+    },
+    "minSize": {
+      "w": 500,
+      "h": 720
+    },
+    "maxSize": {
+      "w": 500,
+      "h": 720
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "arcade-kit.js": "sha256-B01xqfcvz3Ca9TfySL44tXedVhP5TOYrszYfysPDxc4=",
+    "icon.svg": "sha256-ddtYEDZlWpJJFU5IMj9AYBk7Q+NTTV/j3VWvLa++QY8=",
+    "index.js": "sha256-eYIlNs4CWn0GNwFaP2bSotG38dR5Ij4+uOn/h5uOAtE=",
+    "README.md": "sha256-d63U3zdFePZ1gFrzMMyrm+46r8reMoBGqNeZJSQrU6Q="
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  }
+}

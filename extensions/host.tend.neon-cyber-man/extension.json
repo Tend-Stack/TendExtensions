@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "id": "host.tend.neon-cyber-man",
+  "name": "Neon Cyber-Man",
+  "version": "1.0.1",
+  "author": "tend.host",
+  "description": "A modern cyberpunk maze-chase arcade game with adaptive ghost AI, dynamic Phaser 4 lighting and glow filters, power modules, challenges, upgrades, and persistent Cyber-Chip progression.",
+  "category": "games",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 1280,
+      "h": 800
+    },
+    "minSize": {
+      "w": 720,
+      "h": 520
+    },
+    "maxSize": {
+      "w": 1600,
+      "h": 1100
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "index.js": "sha256-CtzHoEo3ple7/BoPeM0ImIBCh0/Ssa3fKzLCiiPfGIo=",
+    "src/AudioManager.js": "sha256-1LPY4b6BbwM5QnTw1etsnpr9Wwelo481ZV9Xa8A29UA=",
+    "src/ChallengeManager.js": "sha256-JBdlRC/EBt0kwz76rQsrFfpp7zGb+9OpV6CgxUwQEKs=",
+    "src/GameConfig.js": "sha256-K9tZhbfWQBIxnYvw4LGuSMOuaJrB2QMBfbE2IpbFdYg=",
+    "src/Ghost.js": "sha256-CV6m5Sx5P4V+M7vo04gijEQ3cAfgmI8/+18YX0NhVto=",
+    "src/Maze.js": "sha256-IeG2AlzNVdVasWwMzqNuwjJCmg+rLhsHY9fZphn9keo=",
+    "src/Player.js": "sha256-AvAPCXdcBER1fllSgE02Gd/C8bvfsapdPg27f2lmsrA=",
+    "src/RuntimeContext.js": "sha256-08GRFnPGU/H9m69abZYgmtdguH9rpiM9lz0lV0FxRmw=",
+    "src/Visuals.js": "sha256-GiBZJHiHtD0lEzqTyNG3hyoTbMJ7KakP+9llrq+59/E=",
+    "src/scenes/BootScene.js": "sha256-Gwxy73eMlhNAZ9c+D9dJYH3BfwCuDzDG1pPah4zZIiE=",
+    "src/scenes/GameOverScene.js": "sha256-tLmRWOXKsjnF+zgTujvxOhImSR+lUzPqJ4b0cO/Lqic=",
+    "src/scenes/GameScene.js": "sha256-P5NlVnZDsdp8UEoZGJxbCvvP9gxIPCvRPj/MmWXf4BA=",
+    "src/scenes/MainMenuScene.js": "sha256-CcV9svj0gonck91mC/w0mZ5NUWh0IChJD8ZywFhGX7U="
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [
+      "phaser@4"
+    ],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  }
+}

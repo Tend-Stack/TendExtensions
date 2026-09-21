@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "id": "host.tend.2048",
+  "name": "2048 Odyssey",
+  "version": "2.0.1",
+  "author": "tend.host",
+  "description": "Merge mastery across an endless target ladder. Runtime API 1, persistent arcade progression, mobile full-screen, and challenge systems.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 460,
+      "h": 640
+    },
+    "minSize": {
+      "w": 460,
+      "h": 640
+    },
+    "maxSize": {
+      "w": 460,
+      "h": 640
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "arcade-kit.js": "sha256-B01xqfcvz3Ca9TfySL44tXedVhP5TOYrszYfysPDxc4=",
+    "icon.svg": "sha256-eIhHpVAiFOhKFDNg7lqJIrgGk4siCfgJyt937S5Ljio=",
+    "index.js": "sha256-rG3jwR28G8wu9mD/t8FPTRCQDHWXIfnq8vDTqMy35Rg="
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  }
+}

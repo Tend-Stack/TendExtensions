@@ -1,0 +1,42 @@
+{
+  "schema": 2,
+  "id": "host.tend.tetris",
+  "name": "Tetris",
+  "version": "3.1.0",
+  "author": "tend.host",
+  "description": "The classic rebuilt with responsive keyboard and touch controls, neon graphics, full-screen play, Marathon, Sprint, Blitz, Rift, and Zen modes.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 640,
+      "h": 900
+    },
+    "minSize": {
+      "w": 400,
+      "h": 620
+    },
+    "maxSize": {
+      "w": 1100,
+      "h": 1200
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "arcade-kit-v310.js": "sha256-cIEmoH/2H49uHElOUV01FZlFPZ+5+q3i94PgxpZgHss=",
+    "icon.svg": "sha256-v82U/agXHftinW9lqxBhOLZ/OlrDbdbbuKoDMjixPFY=",
+    "index.js": "sha256-LmvGamUcm5YMXuq7GHV7hM9OpAKOo9mDTAYtSQFnUfw="
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [
+      "phaser@4"
+    ],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "id": "host.tend.matchpuzzle",
+  "name": "Match Puzzle: Odyssey",
+  "version": "2.1.1",
+  "author": "tend.host",
+  "description": "A polished match puzzle adventure with reliable 4+ resolution, repaired game-wide typography, five-star performance ratings, Flow Pressure play styles, objective levels, special-gem combinations, perks, charged boosters, Runtime API 1 lifecycle management, and immersive mobile play.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 500,
+      "h": 700
+    },
+    "minSize": {
+      "w": 500,
+      "h": 700
+    },
+    "maxSize": {
+      "w": 500,
+      "h": 700
+    }
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "index.js": "sha256-Z6ocFWy+3C2qza6SBo7Aq0agAfJ3oMxMqJGr13OyutE=",
+    "icon.svg": "sha256-VdHCeaUafe33PAI5olG2mN24bablXypzT/MEZ85kZOk=",
+    "README.md": "sha256-DCuh1lN1JgAF+3iYBYbx2B5a5X8vGmWB9t7dc8kbGck="
+  }
+}

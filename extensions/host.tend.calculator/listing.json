@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "productivity",
+  "featured": true,
+  "reviewed": true,
+  "features": [
+    "Seven modes: standard, scientific, graphing, programmer, statistics, financial, converters",
+    "Real expression engine with a history tape",
+    "Full keyboard control",
+    "Native ESM extension, no iframe"
+  ],
+  "requirements": [
+    "A Tend panel running schema-2 (native ESM) extensions",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "id": "host.tend.breakout",
+  "name": "Breakout Odyssey",
+  "version": "2.2.0",
+  "author": "tend.host",
+  "description": "Responsive campaign Breakout with live fullscreen relayout, boss walls, power-ups, perks, and fever chains. Uses tend.host Runtime API 1 and host-owned mobile fullscreen.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 460,
+      "h": 640
+    },
+    "minSize": {
+      "w": 460,
+      "h": 640
+    },
+    "maxSize": {
+      "w": 460,
+      "h": 640
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "index.js": "sha256-L7T6DKnCRiFpwN1A6EU9nz9RntYxCTKxA20m2GysMw4=",
+    "arcade-kit.js": "sha256-B01xqfcvz3Ca9TfySL44tXedVhP5TOYrszYfysPDxc4=",
+    "icon.svg": "sha256-luJSDzRgWDBsQBpkbO10uZA+qvbazzOvFDJebyEiaj4="
+  },
+  "runtime": {
+    "api": 1,
+    "kind": "game",
+    "modules": [],
+    "pauseWhenHidden": true,
+    "targetFps": 60
+  }
+}

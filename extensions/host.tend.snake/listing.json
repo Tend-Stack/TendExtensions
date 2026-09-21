@@ -1,0 +1,17 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Endless Classic Growth mode with clear mode-selection cards",
+    "Rotating challenges and milestone rewards",
+    "Perks and evolving hazards",
+    "Separate 60-mission Expedition campaign"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

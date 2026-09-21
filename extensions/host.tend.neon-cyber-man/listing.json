@@ -1,0 +1,18 @@
+{
+  "publisher": "TEND Stack",
+  "category": "games",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Cyberpunk maze-chase arcade game",
+    "Adaptive ghost AI",
+    "Dynamic Phaser 4 lighting and glow filters",
+    "Power modules, challenges, and upgrades",
+    "Persistent Cyber-Chip progression"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1 with the phaser@4 runtime module",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

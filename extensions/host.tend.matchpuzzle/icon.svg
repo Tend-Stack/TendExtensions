@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="8" x2="108" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ec4899"/><stop offset=".48" stop-color="#8b5cf6"/><stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="gem" x1="44" y1="30" x2="83" y2="94" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/><stop offset=".22" stop-color="#fef08a"/><stop offset=".52" stop-color="#22d3ee"/><stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect x="5" y="5" width="118" height="118" rx="30" fill="#080b18"/>
+  <rect x="8" y="8" width="112" height="112" rx="27" fill="url(#bg)" opacity=".95"/>
+  <g opacity=".32" fill="#fff"><circle cx="29" cy="31" r="8"/><circle cx="99" cy="29" r="7"/><circle cx="28" cy="98" r="7"/><circle cx="100" cy="99" r="8"/></g>
+  <path d="M64 24 94 51 83 90 64 105 45 90 34 51Z" fill="url(#gem)" stroke="#fff" stroke-width="4" filter="url(#glow)"/>
+  <path d="m34 51 30 15 30-15M64 24v42M45 90l19-24 19 24" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width="3"/>
+</svg>
