@@ -17,7 +17,11 @@ jobs:
       CORE_COMMIT: 4d1cfb3fb9243f6bfa3a12c0473f8ba39a86d6df
       WORKSPACE: ${{ gitea.workspace }}
     steps:
+      # Full history: the registry sequence is `git rev-list --count HEAD`,
+      # which a shallow checkout would report as 1 on every run.
       - uses: https://gitea.com/actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: https://gitea.com/actions/setup-python@v6
         with:
@@ -30,6 +34,17 @@ jobs:
 
       - name: Build every extension into dist/
         run: python tools/build.py
+
+      - name: Refuse a registry built from a shallow history
+        run: |
+          test "$(git rev-parse --is-shallow-repository)" = "false"
+          python - <<'PY'
+          import json, subprocess
+          seq = json.load(open("dist/registry.json"))["sequence"]
+          count = int(subprocess.check_output(["git", "rev-list", "--count", "HEAD"]).decode())
+          assert seq == count and seq > 1, (seq, count)
+          print(f"registry sequence {seq} matches the commit count")
+          PY
 
       - name: Check out the pinned panel core
         uses: https://gitea.com/actions/checkout@v7
