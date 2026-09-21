@@ -1,5 +1,11 @@
 name: TendExtensions registry CI
 
+# One run per branch: a newer push cancels the superseded run for the same
+# ref; the newest commit's run validates and releases everything below it.
+concurrency:
+  group: ci-${{ gitea.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
@@ -14,7 +20,7 @@ jobs:
     name: Build and validate the registry
     runs-on: tend-ci
     env:
-      CORE_COMMIT: 4d1cfb3fb9243f6bfa3a12c0473f8ba39a86d6df
+      CORE_COMMIT: 056b12c9b004da9a137cf2feca57cfd7a1835d14
       WORKSPACE: ${{ gitea.workspace }}
     steps:
       # Full history: the registry sequence is `git rev-list --count HEAD`,
@@ -103,7 +109,7 @@ jobs:
     name: Publish verified main to GitHub
     runs-on: tend-ci
     needs: [build]
-    if: gitea.event_name == 'push' && gitea.ref == 'refs/heads/main'
+    if: (gitea.event_name == 'push' || gitea.event_name == 'workflow_dispatch') && gitea.ref == 'refs/heads/main'
     steps:
       - uses: https://gitea.com/actions/checkout@v7
         with:
@@ -127,7 +133,7 @@ jobs:
     name: Sign and release the registry
     runs-on: tend-ci
     needs: [publish_github]
-    if: gitea.event_name == 'push' && gitea.ref == 'refs/heads/main'
+    if: (gitea.event_name == 'push' || gitea.event_name == 'workflow_dispatch') && gitea.ref == 'refs/heads/main'
     steps:
       - uses: https://gitea.com/actions/checkout@v7
 
