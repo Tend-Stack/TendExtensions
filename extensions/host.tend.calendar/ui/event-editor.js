@@ -1,16 +1,126 @@
 /* The create/edit event dialog. One form covers both create and edit —
  * `open({ event })` edits, `open({ date })` / `open({ start, end })`
- * creates, prefilled from wherever the user clicked or dragged. */
-import { el, createDialog } from './dom.js';
+ * creates, prefilled from wherever the user clicked or dragged.
+ *
+ * `remindersSupported` and `getReminderCapabilities` (from index.js,
+ * ultimately from `host.reminders`) drive the Reminders field: absent
+ * host support disables the whole field with an explanatory hint;
+ * present-but-no-email disables the Email checkbox per reminder with
+ * its own hint, same as the package brief's "wrap every host call so a
+ * panel without host.reminders degrades gracefully" rule.
+ */
+import { el, clear, createDialog } from './dom.js';
 import { COLORS, RECURRENCE_OPTIONS, normalizeEvent } from '../model.js';
 import { toLocalISO, parseLocal } from '../date-utils.js';
+import { REMINDER_PRESETS, CUSTOM_UNITS, customOffsetMinutes, guessCustomOffset } from '../reminders.js';
 
 const RECURRENCE_LABELS = { none: 'Does not repeat', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+const DEFAULT_REMINDER_OFFSET = 15;
 
-export function createEventEditor({ onSave, onDelete }) {
+export function createEventEditor({ onSave, onDelete, remindersSupported = false, getReminderCapabilities }) {
   let draft = null;
   let editingId = null;
   let els = {};
+
+  function capabilities() {
+    return getReminderCapabilities ? getReminderCapabilities() : { panel: true, email: false };
+  }
+
+  function buildReminderRow(reminder, index) {
+    const isPreset = REMINDER_PRESETS.some((p) => p.offsetMinutes === reminder.offsetMinutes);
+    const presetSelect = el(
+      'select',
+      { class: 'cal-select cal-reminder-preset', attrs: { 'aria-label': 'Reminder time' } },
+      [
+        ...REMINDER_PRESETS.map((p) => el('option', { text: p.label, attrs: { value: String(p.offsetMinutes) } })),
+        el('option', { text: 'Custom…', attrs: { value: 'custom' } }),
+      ],
+    );
+    presetSelect.value = isPreset ? String(reminder.offsetMinutes) : 'custom';
+
+    const guess = guessCustomOffset(reminder.offsetMinutes);
+    const customAmount = el('input', {
+      class: 'cal-input',
+      attrs: { type: 'number', min: '1', max: '999', 'aria-label': 'Custom reminder amount' },
+    });
+    customAmount.value = String(guess.amount);
+    const customUnit = el(
+      'select',
+      { class: 'cal-select', attrs: { 'aria-label': 'Custom reminder unit' } },
+      CUSTOM_UNITS.map((u) => el('option', { text: u, attrs: { value: u } })),
+    );
+    customUnit.value = guess.unit;
+    const customWrap = el('div', { class: 'cal-reminder-custom' }, [customAmount, customUnit]);
+    customWrap.style.display = isPreset ? 'none' : '';
+
+    const caps = capabilities();
+    const panelCheck = el('input', { attrs: { type: 'checkbox' } });
+    panelCheck.checked = reminder.channels.includes('panel');
+    const emailCheck = el('input', { attrs: { type: 'checkbox' } });
+    emailCheck.checked = reminder.channels.includes('email') && caps.email;
+    emailCheck.disabled = !caps.email;
+
+    const removeBtn = el('button', {
+      class: 'cal-btn is-icon cal-reminder-remove',
+      text: '✕',
+      attrs: { type: 'button', 'aria-label': 'Remove reminder' },
+      on: { click: () => { draft.reminders.splice(index, 1); renderReminders(); } },
+    });
+
+    function commit() {
+      const offsetMinutes = presetSelect.value === 'custom'
+        ? (customOffsetMinutes(customAmount.value, customUnit.value) ?? reminder.offsetMinutes)
+        : Number(presetSelect.value);
+      const channels = [panelCheck.checked ? 'panel' : null, emailCheck.checked && caps.email ? 'email' : null].filter(Boolean);
+      draft.reminders[index] = { offsetMinutes, channels: channels.length ? channels : ['panel'] };
+    }
+    presetSelect.addEventListener('change', () => {
+      customWrap.style.display = presetSelect.value === 'custom' ? '' : 'none';
+      commit();
+    });
+    customAmount.addEventListener('input', commit);
+    customUnit.addEventListener('change', commit);
+    panelCheck.addEventListener('change', commit);
+    emailCheck.addEventListener('change', commit);
+
+    const emailLabel = el(
+      'label',
+      { class: `cal-reminder-channel${caps.email ? '' : ' is-disabled'}` },
+      [emailCheck, 'Email'],
+    );
+    const channelsRow = el('div', { class: 'cal-reminder-channels' }, [
+      el('label', { class: 'cal-reminder-channel' }, [panelCheck, 'Panel']),
+      emailLabel,
+      !caps.email ? el('span', { class: 'cal-reminder-hint', text: 'Set up email in Settings → Notifications' }) : null,
+    ]);
+
+    return el('div', { class: 'cal-reminder-row' }, [presetSelect, customWrap, channelsRow, removeBtn]);
+  }
+
+  function renderReminders() {
+    if (!els.remindersList) return;
+    clear(els.remindersList);
+    for (let i = 0; i < draft.reminders.length; i++) els.remindersList.appendChild(buildReminderRow(draft.reminders[i], i));
+  }
+
+  function addReminder() {
+    draft.reminders.push({ offsetMinutes: DEFAULT_REMINDER_OFFSET, channels: ['panel'] });
+    renderReminders();
+  }
+
+  function buildRemindersField() {
+    if (!remindersSupported) {
+      return wrapField('Reminders', el('div', { class: 'cal-reminders-unsupported', text: 'Reminders need panel update' }));
+    }
+    els.remindersList = el('div', { class: 'cal-reminders-list' });
+    els.addReminderBtn = el('button', {
+      class: 'cal-btn',
+      text: '+ Add reminder',
+      attrs: { type: 'button' },
+      on: { click: addReminder },
+    });
+    return wrapField('Reminders', el('div', {}, [els.remindersList, els.addReminderBtn]));
+  }
 
   function buildBody() {
     els.title = el('input', { class: 'cal-input', attrs: { type: 'text', maxlength: '200', 'aria-label': 'Title', placeholder: 'Add a title' } });
@@ -69,12 +179,10 @@ export function createEventEditor({ onSave, onDelete }) {
       els.timeRow,
       wrapField('Colour', els.swatchWrap),
       wrapField('Repeat', els.recurrence),
+      buildRemindersField(),
       wrapField('Location', els.location),
       wrapField('Notes', els.notes),
-      el('div', { class: 'cal-dialog-actions' }, [
-        els.deleteBtn,
-        el('div', { class: 'cal-dialog-actions-right' }, [els.cancelBtn, els.saveBtn]),
-      ]),
+      el('div', { class: 'cal-dialog-actions' }, [els.deleteBtn, els.cancelBtn, els.saveBtn]),
     ]);
   }
 
@@ -113,6 +221,7 @@ export function createEventEditor({ onSave, onDelete }) {
     els.notes.value = draft.notes;
     els.recurrence.value = draft.recurrence;
     selectColor(draft.color);
+    renderReminders();
     els.deleteBtn.style.display = editingId ? '' : 'none';
     applyAllDayVisibility();
   }
@@ -135,6 +244,7 @@ export function createEventEditor({ onSave, onDelete }) {
       notes: els.notes.value.trim(),
       recurrence: els.recurrence.value,
       color: draft.color,
+      reminders: draft.reminders,
     });
   }
 
@@ -161,7 +271,7 @@ export function createEventEditor({ onSave, onDelete }) {
     },
     openForEdit(event) {
       editingId = event.id;
-      draft = { ...event };
+      draft = { ...event, reminders: event.reminders.map((r) => ({ offsetMinutes: r.offsetMinutes, channels: [...r.channels] })) };
       dialog.open();
       fillForm();
     },

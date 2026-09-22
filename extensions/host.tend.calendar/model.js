@@ -1,10 +1,14 @@
 /* The event model: shape, defaults, and recurrence expansion.
  *
- * An event's `source` is always `'local'` today. It exists so a future
- * integration (Google Calendar, an iCal subscription, panel-generated
- * events) can add rows with a different `source` and the views, the
- * editor's read-only affordances, and storage schema never need to
- * migrate — they already branch on it.
+ * An event's `source` is `'local'` (created in the calendar) or
+ * `'ics-import'` (brought in through Settings → Import & export, 1.2.0).
+ * The field exists so a future integration (Google Calendar, an iCal
+ * subscription, panel-generated events) can add rows with a different
+ * `source` and the views, the editor's read-only affordances, and
+ * storage schema never need to migrate — they already branch on it.
+ * `icsUid` carries the original VEVENT UID for an imported event so a
+ * re-import can update it in place instead of duplicating it; it's
+ * `null` for everything else.
  */
 import { addDays, addMonths, parseLocal, toLocalISO } from './date-utils.js';
 
@@ -25,12 +29,40 @@ export const COLORS = [
 ];
 
 export const RECURRENCE_OPTIONS = ['none', 'daily', 'weekly', 'monthly'];
+export const SOURCES = ['local', 'ics-import'];
+export const REMINDER_CHANNELS = ['panel', 'email'];
 
 export function createId() {
   try {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   } catch { /* fall through */ }
   return `ev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function normalizeReminderEntry(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const offsetMinutes = Number(raw.offsetMinutes);
+  if (!Number.isFinite(offsetMinutes) || offsetMinutes < 0) return null;
+  const channelsRaw = Array.isArray(raw.channels) ? raw.channels : ['panel'];
+  const channels = REMINDER_CHANNELS.filter((c) => channelsRaw.includes(c));
+  return { offsetMinutes: Math.round(offsetMinutes), channels: channels.length ? channels : ['panel'] };
+}
+
+/** Validate + de-duplicate (by offset) a stored or freshly-edited
+ *  reminders array. An event with no `reminders` field at all (every
+ *  event created before 1.2.0) normalizes to `[]` — no migration step
+ *  needed beyond this function running on load. */
+export function normalizeReminders(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const entry of raw) {
+    const normalized = normalizeReminderEntry(entry);
+    if (!normalized || seen.has(normalized.offsetMinutes)) continue;
+    seen.add(normalized.offsetMinutes);
+    out.push(normalized);
+  }
+  return out.sort((a, b) => a.offsetMinutes - b.offsetMinutes);
 }
 
 /** Fill in anything missing/invalid on a stored or freshly-created
@@ -54,7 +86,9 @@ export function normalizeEvent(raw) {
     location: typeof raw?.location === 'string' ? raw.location : '',
     notes: typeof raw?.notes === 'string' ? raw.notes : '',
     recurrence: RECURRENCE_OPTIONS.includes(raw?.recurrence) ? raw.recurrence : 'none',
-    source: 'local',
+    reminders: normalizeReminders(raw?.reminders),
+    source: SOURCES.includes(raw?.source) ? raw.source : 'local',
+    icsUid: typeof raw?.icsUid === 'string' && raw.icsUid ? raw.icsUid : null,
     createdAt: typeof raw?.createdAt === 'number' ? raw.createdAt : Date.now(),
     updatedAt: Date.now(),
   };
