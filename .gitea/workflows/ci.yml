@@ -35,16 +35,20 @@ jobs:
           cache: pip
           cache-dependency-path: tools/requirements.txt
 
+      # Private virtualenv per job: the runner's tool-cache site-packages is
+      # shared by every job on tend-ci across three repositories, so another
+      # job's pip install can replace a dependency under this one.
+      - run: python -m venv "$RUNNER_TEMP/venv"
       - name: Install registry tooling dependencies
-        run: pip install -r tools/requirements.txt
+        run: $RUNNER_TEMP/venv/bin/python -m pip install -r tools/requirements.txt
 
       - name: Build every extension into dist/
-        run: python tools/build.py
+        run: $RUNNER_TEMP/venv/bin/python tools/build.py
 
       - name: Refuse a registry built from a shallow history
         run: |
           test "$(git rev-parse --is-shallow-repository)" = "false"
-          python - <<'PY'
+          $RUNNER_TEMP/venv/bin/python - <<'PY'
           import json, subprocess
           seq = json.load(open("dist/registry.json"))["sequence"]
           count = int(subprocess.check_output(["git", "rev-list", "--count", "HEAD"]).decode())
@@ -66,16 +70,16 @@ jobs:
         run: test "$(git -C public-core rev-parse HEAD)" = "$CORE_COMMIT"
 
       - name: Install the pinned panel core's own dependencies
-        run: pip install -r public-core/backend/requirements.txt
+        run: $RUNNER_TEMP/venv/bin/python -m pip install -r public-core/backend/requirements.txt
 
       - name: Validate every built package against the real panel
         env:
           TEND_CORE_CHECKOUT: ${{ env.WORKSPACE }}/public-core
-        run: python tools/validate_with_panel.py
+        run: $RUNNER_TEMP/venv/bin/python tools/validate_with_panel.py
 
       - name: Prove the signer round-trips (throwaway key, never the real one)
         run: |
-          python - <<'PY'
+          $RUNNER_TEMP/venv/bin/python - <<'PY'
           import base64
           import os
           import subprocess
@@ -148,15 +152,19 @@ jobs:
           cache: pip
           cache-dependency-path: tools/requirements.txt
 
+      # Private virtualenv per job: the runner's tool-cache site-packages is
+      # shared by every job on tend-ci across three repositories, so another
+      # job's pip install can replace a dependency under this one.
+      - run: python -m venv "$RUNNER_TEMP/venv"
       - name: Install registry tooling dependencies
-        run: pip install -r tools/requirements.txt
+        run: $RUNNER_TEMP/venv/bin/python -m pip install -r tools/requirements.txt
 
       - name: Sign the registry with the production key
         env:
           TEND_REGISTRY_SIGNING_KEY: ${{ secrets.TEND_REGISTRY_SIGNING_KEY }}
-        run: python tools/sign.py sign
+        run: $RUNNER_TEMP/venv/bin/python tools/sign.py sign
 
       - name: Create or update the GitHub release
         env:
           GH_PUBLISH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
-        run: python tools/release.py
+        run: $RUNNER_TEMP/venv/bin/python tools/release.py
