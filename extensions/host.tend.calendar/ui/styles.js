@@ -39,6 +39,13 @@ const CSS = `
   font-variant-numeric: tabular-nums;
 }
 @media (pointer: coarse) { .cal-root { --cal-touch: 44px; } }
+/* Native <select> popups (and date/time pickers) take the OS/browser's
+ * default colour scheme unless told otherwise — with dark panel tokens
+ * that renders white-on-white. Setting color-scheme on the root makes
+ * every native popup this root contains follow the calendar's own
+ * theme instead of the page's. */
+.cal-root.is-dark { color-scheme: dark; }
+.cal-root.is-light { color-scheme: light; }
 .cal-root.is-light { --cal-soft: color-mix(in oklab, var(--cal-fg) 5%, transparent); }
 .cal-root *, .cal-root *::before, .cal-root *::after { box-sizing: border-box; }
 .cal-root button, .cal-root input, .cal-root select, .cal-root textarea { font-family: inherit; }
@@ -197,19 +204,24 @@ const CSS = `
 .cal-dialog-overlay.is-hidden { display: none; }
 .cal-dialog-panel {
   background: var(--cal-bg); border: 1px solid var(--cal-line); border-radius: 14px;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35); padding: 14px; width: min(420px, 100%);
-  max-height: 100%; overflow-y: auto; display: grid; gap: 10px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35); padding: 16px; width: min(420px, 100%);
+  max-height: 100%; overflow-y: auto; display: grid; gap: 12px;
 }
 .cal-dialog-panel.is-wide { width: min(560px, 100%); }
 .cal-dialog-title { margin: 0; font-size: 15px; font-weight: 700; }
-.cal-field { display: grid; gap: 3px; min-width: 0; }
+.cal-field { display: grid; gap: 4px; min-width: 0; }
 .cal-field-label { font-size: 11px; color: var(--cal-muted); font-weight: 600; }
 .cal-input, .cal-select, .cal-textarea {
-  width: 100%; min-width: 0; min-height: var(--cal-touch);
+  width: 100%; min-width: 0; min-height: var(--cal-touch); box-sizing: border-box;
   background: var(--cal-softer); color: var(--cal-fg);
   border: 1px solid var(--cal-line); border-radius: 8px;
   padding: 6px 9px; font-size: 13px; font-family: inherit;
 }
+/* Explicit colours for the popup a native <select> renders: color-scheme
+ * above gets most engines the rest of the way, but Chromium still needs
+ * <option> told its own background/colour to stay legible against a
+ * dark accent-coloured selection highlight. */
+.cal-select option, .cal-select optgroup { background: var(--cal-bg); color: var(--cal-fg); }
 .cal-textarea { resize: vertical; min-height: 56px; line-height: 1.45; }
 .cal-input:focus, .cal-select:focus, .cal-textarea:focus { border-color: var(--cal-accent); outline: none; }
 .cal-row { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -229,13 +241,20 @@ const CSS = `
 .cal-swatch[aria-pressed="true"] { border-color: var(--cal-fg); }
 .cal-swatch-check { color: white; font-size: 13px; opacity: 0; }
 .cal-swatch[aria-pressed="true"] .cal-swatch-check { opacity: 1; }
-.cal-dialog-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
-.cal-dialog-actions-right { display: flex; gap: 6px; }
+/* The action row sits 16px below the last field (12px panel gap + 4px
+ * here) and its own buttons keep an 8px rhythm — the same numbers the
+ * panel's own sheets use (frontend/src/lib/shell/HomeCanvas.svelte's
+ * .sheet-form/.sheet-actions). Buttons are right-aligned like those
+ * sheets; a destructive action (Delete) is pinned to the opposite edge
+ * with the flex auto-margin trick rather than a separate row, so it
+ * stays reachable but visually separated from Cancel/Save. */
+.cal-dialog-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.cal-dialog-actions .is-danger { margin-right: auto; }
 .cal-btn.is-danger { color: #f87171; }
 .cal-root.is-light .cal-btn.is-danger { color: #b91c1c; }
 
 /* ---- settings sheet ---- */
-.cal-settings-section { display: grid; gap: 6px; }
+.cal-settings-section { display: grid; gap: 8px; }
 .cal-settings-section h3 { margin: 4px 0 0; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cal-muted); }
 .cal-integration-list { display: grid; gap: 6px; }
 .cal-integration-item {
@@ -245,6 +264,30 @@ const CSS = `
 }
 .cal-integration-name { font-size: 12.5px; font-weight: 600; }
 .cal-integration-reason { font-size: 10.5px; color: var(--cal-muted); }
+.cal-settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cal-settings-hint { font-size: 10.5px; color: var(--cal-muted); }
+
+/* ---- reminders (event editor) ---- */
+.cal-reminders-list { display: grid; gap: 8px; }
+.cal-reminder-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 6px; border-radius: 8px; background: var(--cal-softer); border: 1px solid var(--cal-line);
+}
+.cal-reminder-preset { flex: 1 1 140px; min-width: 120px; }
+.cal-reminder-custom { display: flex; gap: 6px; flex: 1 1 100%; }
+.cal-reminder-custom .cal-input { width: 100%; max-width: 72px; }
+.cal-reminder-custom .cal-select { flex: 1 1 auto; }
+.cal-reminder-channels { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cal-reminder-channel { display: flex; align-items: center; gap: 4px; font-size: 11.5px; white-space: nowrap; }
+.cal-reminder-channel input { width: 15px; height: 15px; accent-color: var(--cal-accent); }
+.cal-reminder-channel.is-disabled { color: var(--cal-muted); }
+.cal-reminder-hint { font-size: 9.5px; color: var(--cal-muted); flex-basis: 100%; }
+.cal-reminder-remove { margin-left: auto; }
+.cal-reminders-unsupported { font-size: 11px; color: var(--cal-muted); padding: 8px; border-radius: 8px; background: var(--cal-softer); border: 1px dashed var(--cal-line); }
+
+/* ---- ICS import preview ---- */
+.cal-import-summary { margin: 0; font-size: 13px; }
+.cal-import-notes { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 11.5px; color: var(--cal-muted); max-height: 160px; overflow-y: auto; }
 
 /* ---- month/year picker ---- */
 .cal-picker-nav { display: flex; align-items: center; justify-content: space-between; }
