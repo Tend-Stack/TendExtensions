@@ -47,11 +47,17 @@ def publish(sha: str, remote: str, env=None) -> str:
     if git('status', '--porcelain', '--untracked-files=no'):
         raise RuntimeError('Publication requires an unchanged checkout')
     for _ in range(3):
-        git('-c', 'credential.helper=', 'fetch', '--no-tags', remote, 'refs/heads/main', env=env)
-        current = git('rev-parse', 'FETCH_HEAD')
-        if current == sha or ancestor(sha, current):
+        # A freshly created GitHub repository has no main yet: the first
+        # publication has nothing to fast-forward from, so only the
+        # ancestry checks are skipped; the push below stays as strict.
+        listed = git('-c', 'credential.helper=', 'ls-remote', '--heads', remote, 'refs/heads/main', env=env)
+        current = ''
+        if listed:
+            git('-c', 'credential.helper=', 'fetch', '--no-tags', remote, 'refs/heads/main', env=env)
+            current = git('rev-parse', 'FETCH_HEAD')
+        if current == sha or (current and ancestor(sha, current)):
             return 'already published' if current == sha else 'superseded by a newer published commit'
-        if not ancestor(current, sha):
+        if current and not ancestor(current, sha):
             raise RuntimeError('GitHub main has diverged; refusing to overwrite it')
         result = subprocess.run(['git', '-c', 'credential.helper=', 'push', remote,
                                  sha + ':refs/heads/main'], env=env, capture_output=True)
