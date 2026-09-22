@@ -1,0 +1,19 @@
+{
+  "publisher": "TEND Stack",
+  "category": "productivity",
+  "featured": true,
+  "reviewed": true,
+  "features": [
+    "Month, week, day and agenda views with a locale-aware header",
+    "Click or drag to create events; up to 3 chips per day plus overflow",
+    "Six preset colours, all-day events, location, notes and simple recurrence",
+    "Full keyboard control: arrows, T for today, N for new event, 1-4 to switch views",
+    "Locale-aware month/weekday names, week start and 12/24-hour clock",
+    "Native ESM extension, no iframe, no external network"
+  ],
+  "requirements": [
+    "A Tend panel running schema-2 (native ESM) extensions",
+    "A desktop or mobile browser tab with ES module support"
+  ],
+  "release_notes": "Initial registry release."
+}

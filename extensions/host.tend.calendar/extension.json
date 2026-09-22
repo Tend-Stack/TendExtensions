@@ -1,0 +1,42 @@
+{
+  "schema": 2,
+  "id": "host.tend.calendar",
+  "name": "Calendar",
+  "version": "1.0.0",
+  "author": "tend.host",
+  "description": "A modern month, week, day and agenda calendar with local events, keyboard control and a settings sheet, built to be the panel's default calendar.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 720,
+      "h": 560
+    },
+    "maxSize": {
+      "w": 1400,
+      "h": 1000
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "README.md": "sha256-AhIORHzoS7xBmVpUfYw8Hyd0RAhDhI3rl//VLi3k2DU=",
+    "date-utils.js": "sha256-1nEIw4UoQ4VK6+BMkP31XyLaGQtJZYhRr3McF/OoWQI=",
+    "icon.svg": "sha256-vX9D81J1DecqNRwmlxL8QufDvU+oxvG4t60/fSvd+Ps=",
+    "index.js": "sha256-8AbyQRPhSE2wQxaYibnLL7N8OA8TdZsZjbgzQ/+e5iw=",
+    "model.js": "sha256-xSrITe5KuYbWAZt2ulGVtgnsX+alkY7IlivxpdB+/sw=",
+    "store.js": "sha256-4K6YQqwWsdKdKIEYsQ1CcNYQP3pcLl0/PP22Z14piyY=",
+    "ui/dom.js": "sha256-rnxO8Wr4ypE/w5J3S3L16ph40xhUtPg5VdTcqXrzeP4=",
+    "ui/event-editor.js": "sha256-pApURn3g0ejq6DDtIxfvD/bszBP2r7ozIByjfxvivoA=",
+    "ui/month-year-picker.js": "sha256-Uy96PCZ11vs9j9NFnRwWLMov7w9HNwYpfbKbPO27q7M=",
+    "ui/settings-sheet.js": "sha256-G+0+nm06EUAJravrkVt1O2/LjKHCYSckIhx4ugINkfo=",
+    "ui/styles.js": "sha256-2Wwpi1DFAGxT0P7x0xTOQm5qDL4LxZ2J/0x5AAQNMjU=",
+    "views/agenda.js": "sha256-bB8SwZQtu6bdnBHv6WWwmre7eShilvCr7Ky3E5S1bz4=",
+    "views/day.js": "sha256-PMgYQg8QH91RxkAZCM/qD7EbEgGOxlvdC6C+bPJjIlY=",
+    "views/month.js": "sha256-gLngtUsrBmjayTN/l4AwYvhvcyFHuCp37z9u+LY+XS8=",
+    "views/time-grid.js": "sha256-PReksGSwxnve7D/L0LERHnv6aD9lIRLwRxVyU60B3g0=",
+    "views/week.js": "sha256-dx91dvgCGHbX9bX5QMm0OEs1OXrIdjTHPi3ArXIhBoI="
+  }
+}
