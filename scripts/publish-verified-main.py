@@ -69,8 +69,11 @@ def publish(sha: str, remote: str, env=None) -> str:
 
 
 def main() -> None:
-    if os.environ.get('GITEA_EVENT_NAME') != 'push' or os.environ.get('GITEA_REF') != 'refs/heads/main':
-        raise RuntimeError('Only Gitea main push runs may publish')
+    # Same gate as the workflow's job condition: a push to main, or a manual
+    # dispatch of main (which re-releases the current registry sequence).
+    if (os.environ.get('GITEA_EVENT_NAME') not in ('push', 'workflow_dispatch')
+            or os.environ.get('GITEA_REF') != 'refs/heads/main'):
+        raise RuntimeError('Only Gitea main push or dispatch runs may publish')
     if not os.environ.get('GH_PUBLISH_TOKEN'):
         raise RuntimeError('Configure the GH_PUBLISH_TOKEN Gitea Actions secret')
     with tempfile.TemporaryDirectory() as directory:
