@@ -5,15 +5,15 @@
   "reviewed": true,
   "features": [
     "Month, week, day and agenda views with a locale-aware header",
-    "Click or drag to create events; up to 3 chips per day plus overflow",
-    "Six preset colours, all-day events, location, notes and simple recurrence",
+    "Click or drag to create events; six preset colours, notes and simple recurrence",
+    "Event reminders with panel and email notifications, presets or a custom offset",
+    "ICS import and export — no network, works with any calendar app",
     "Full keyboard control: arrows, T for today, N for new event, 1-4 to switch views",
-    "Locale-aware month/weekday names, week start and 12/24-hour clock",
     "Upcoming shelf widget: today's date, a 7-day strip and your next events"
   ],
   "requirements": [
     "A Tend panel running schema-2 (native ESM) extensions",
     "A desktop or mobile browser tab with ES module support"
   ],
-  "release_notes": "1.1.0: adds the Upcoming shelf widget (small and wide) reading the same local events as the calendar."
+  "release_notes": "1.2.0: readable dropdowns and reworked sheet/editor spacing in the dark theme; event reminders (panel and email) through the panel's reminders API; ICS import and export."
 }

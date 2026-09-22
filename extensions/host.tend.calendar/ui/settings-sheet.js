@@ -1,7 +1,9 @@
-/* Preferences + a placeholder Integrations section. Nothing here talks
- * to a network — the placeholders are clearly labelled and inert; they
- * exist so the layout doesn't need to change when a real integration
- * lands (the event model already carries a `source` field for it). */
+/* Preferences, a placeholder Integrations section, and (1.2.0) the
+ * working Import & export controls. Google Calendar and iCal
+ * subscriptions stay "coming soon" placeholders — no network, no live
+ * wiring — while .ics import/export works today entirely offline;
+ * they're kept in separate sections so the two aren't mistaken for the
+ * same feature. */
 import { el, createDialog } from './dom.js';
 
 const VIEW_OPTIONS = [
@@ -30,7 +32,7 @@ function optionList(options, value) {
   return options.map((opt) => el('option', { text: opt.label, attrs: { value: opt.value, selected: opt.value === value || null } }));
 }
 
-export function createSettingsSheet({ getPrefs, onChange }) {
+export function createSettingsSheet({ getPrefs, onChange, onExportICS, onImportFile }) {
   let els = {};
 
   function buildBody() {
@@ -45,6 +47,28 @@ export function createSettingsSheet({ getPrefs, onChange }) {
       select.addEventListener('change', () => onChange({ [key]: select.value }));
     }
     els.weekNumbers.addEventListener('change', () => onChange({ showWeekNumbers: els.weekNumbers.checked }));
+
+    els.exportBtn = el('button', {
+      class: 'cal-btn',
+      text: 'Export calendar (.ics)',
+      attrs: { type: 'button' },
+      on: { click: () => onExportICS?.() },
+    });
+    els.importInput = el('input', {
+      attrs: { type: 'file', accept: '.ics,text/calendar' },
+      style: { display: 'none' },
+    });
+    els.importBtn = el('button', {
+      class: 'cal-btn',
+      text: 'Import calendar (.ics)',
+      attrs: { type: 'button' },
+      on: { click: () => els.importInput.click() },
+    });
+    els.importInput.addEventListener('change', () => {
+      const file = els.importInput.files?.[0];
+      els.importInput.value = '';
+      if (file) onImportFile?.(file);
+    });
 
     return el('div', {}, [
       el('h2', { class: 'cal-dialog-title', text: 'Settings' }),
@@ -62,11 +86,13 @@ export function createSettingsSheet({ getPrefs, onChange }) {
           el('span', { class: 'cal-integration-reason', text: item.reason }),
         ]))),
       ]),
+      el('div', { class: 'cal-settings-section' }, [
+        el('h3', { text: 'Import & export' }),
+        el('div', { class: 'cal-settings-hint', text: 'Works offline, right now — a one-time .ics file, not a live subscription.' }),
+        el('div', { class: 'cal-settings-actions' }, [els.exportBtn, els.importBtn, els.importInput]),
+      ]),
       el('div', { class: 'cal-dialog-actions' }, [
-        el('span'),
-        el('div', { class: 'cal-dialog-actions-right' }, [
-          el('button', { class: 'cal-btn is-accent', text: 'Done', attrs: { type: 'button' }, on: { click: () => dialog.close() } }),
-        ]),
+        el('button', { class: 'cal-btn is-accent', text: 'Done', attrs: { type: 'button' }, on: { click: () => dialog.close() } }),
       ]),
     ]);
   }

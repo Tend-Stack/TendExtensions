@@ -152,7 +152,7 @@ def test_calendar_extension_builds_and_validates(tmp_path: Path) -> None:
     manifest = json.loads((dst / "extension.json").read_text())
     assert manifest["schema"] == 2
     assert manifest["ui"]["mount"] == "tool-window"
-    assert manifest["permissions"] == ["storage"]
+    assert manifest["permissions"] == ["storage", "notifications"]
     build.check_full_coverage(dst, manifest["integrity"])  # every shipped file hashed, nothing stale
 
     core_checkout = os.environ.get("TEND_CORE_CHECKOUT")

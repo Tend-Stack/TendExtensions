@@ -24,17 +24,22 @@ import { createStore } from './store.js';
 import { createEventEditor } from './ui/event-editor.js';
 import { createMonthYearPicker } from './ui/month-year-picker.js';
 import { createSettingsSheet } from './ui/settings-sheet.js';
+import { createImportPreview } from './ui/import-preview.js';
 import { createMonthView } from './views/month.js';
 import { createWeekView } from './views/week.js';
 import { createDayView } from './views/day.js';
 import { createAgendaView } from './views/agenda.js';
 import { EVENTS_KEY, normalizeEvent } from './model.js';
+import { computeAllReminderRows, idsToCancel } from './reminders.js';
+import { parseICS, serializeICS, icsEventToModel } from './ics.js';
 import {
-  addDays, formatDayTitle, formatMonthYear, formatWeekRange,
+  addDays, formatDayTitle, formatFullDate, formatMonthYear, formatTime, formatWeekRange,
   getLocale, localeIsHour12, localeWeekStart, startOfDay, startOfWeek, toLocalISO,
 } from './date-utils.js';
 
 const PREFS_KEY = 'prefs.v1';
+const REMINDER_REFRESH_MS = 60 * 60 * 1000; // hourly, while the window is open
+const REMINDER_BATCH_SIZE = 200; // host.reminders.schedule's own per-call cap
 
 const VIEW_META = [
   { id: 'month', label: 'Month', key: '1', factory: createMonthView },
@@ -62,7 +67,93 @@ export default function activate(host) {
   let editor = null;
   let picker = null;
   let settings = null;
+  let importPreview = null;
   let keydownHandler = null;
+  let reminderRefreshTimer = null;
+
+  // `host.reminders` is a newer host API (see the package's reminders
+  // permission); an older panel simply won't have it. Every call below
+  // is wrapped so a missing or throwing host.reminders degrades to "no
+  // reminders", never a broken calendar.
+  const remindersSupported = !!(
+    host.reminders
+    && typeof host.reminders.schedule === 'function'
+    && typeof host.reminders.cancel === 'function'
+    && typeof host.reminders.list === 'function'
+    && typeof host.reminders.capabilities === 'function'
+  );
+  let reminderCapabilities = { panel: true, email: false };
+
+  async function loadReminderCapabilities() {
+    if (!remindersSupported) return reminderCapabilities;
+    try { reminderCapabilities = await host.reminders.capabilities(); } catch { /* keep the safe default */ }
+    return reminderCapabilities;
+  }
+
+  /** `#/shell/ext%3A<id>` — the shell-app hash form the panel's router
+   *  (frontend/src/lib/router.svelte.ts) resolves to an extension
+   *  window, built from `extEntryId()`'s `ext:<id>` scheme
+   *  (frontend/src/lib/shell/extensions-store.svelte.ts). Read from
+   *  `host.id` rather than hard-coding the manifest id so this keeps
+   *  working if the extension is ever renamed. */
+  function extensionUrl() {
+    return `#/shell/${encodeURIComponent(`ext:${host.id}`)}`;
+  }
+
+  function reminderPayload(row) {
+    const { event, occurrenceStart } = row;
+    const whenText = event.allDay
+      ? formatFullDate(occurrenceStart, locale)
+      : `${formatFullDate(occurrenceStart, locale)} · ${formatTime(occurrenceStart, locale, getPrefs().hour12)}`;
+    return {
+      id: row.id,
+      at: row.at.toISOString(),
+      title: event.title || 'Untitled event',
+      body: event.location ? `${whenText} · ${event.location}` : whenText,
+      channels: row.channels,
+      url: extensionUrl(),
+    };
+  }
+
+  async function scheduleRows(rows) {
+    if (!remindersSupported || !rows.length) return;
+    const items = rows.map(reminderPayload);
+    for (let i = 0; i < items.length; i += REMINDER_BATCH_SIZE) {
+      try { await host.reminders.schedule(items.slice(i, i + REMINDER_BATCH_SIZE)); } catch { /* best effort */ }
+    }
+  }
+
+  async function cancelIds(ids) {
+    if (!remindersSupported || !ids.length) return;
+    try { await host.reminders.cancel(ids); } catch { /* best effort */ }
+  }
+
+  /** Diff `prevRows` (the schedule computed just before an edit,
+   *  delete, or import) against the schedule the current `events`
+   *  produce now: cancel whatever fell out, (re)schedule the rest.
+   *  Called after every write so a removed reminder — or a whole
+   *  deleted event — stops firing. */
+  async function reconcileReminders(prevRows) {
+    if (!remindersSupported) return;
+    const nextRows = computeAllReminderRows(events);
+    await cancelIds(idsToCancel(prevRows.map((r) => r.id), nextRows.map((r) => r.id)));
+    await scheduleRows(nextRows);
+  }
+
+  /** Startup / hourly reconcile: compare the host's own `list()` (the
+   *  ground truth of what's actually scheduled, including anything
+   *  orphaned by a change made while the window was closed) against
+   *  what the current events say should exist. */
+  async function reconcileWithHost() {
+    if (!remindersSupported) return;
+    const nextRows = computeAllReminderRows(events);
+    const nextIds = new Set(nextRows.map((r) => r.id));
+    let hostList = [];
+    try { hostList = await host.reminders.list(); } catch { hostList = []; }
+    const orphanIds = hostList.map((r) => r.id).filter((id) => !nextIds.has(id));
+    await cancelIds(orphanIds);
+    await scheduleRows(nextRows);
+  }
 
   function getPrefs() {
     const weekStartPref = prefs.weekStart ?? 'locale';
@@ -88,18 +179,68 @@ export default function activate(host) {
   function persistEvents() { store.set(EVENTS_KEY, events); }
 
   function upsertEvent(event, editingId) {
+    const prevRows = remindersSupported ? computeAllReminderRows(events) : [];
     const normalized = normalizeEvent(event);
     const idx = editingId ? events.findIndex((e) => e.id === editingId) : -1;
     if (idx >= 0) { normalized.id = editingId; events[idx] = normalized; }
     else events.push(normalized);
     persistEvents();
     renderActive();
+    void reconcileReminders(prevRows);
   }
 
   function deleteEvent(id) {
+    const prevRows = remindersSupported ? computeAllReminderRows(events) : [];
     events = events.filter((e) => e.id !== id);
     persistEvents();
     renderActive();
+    void reconcileReminders(prevRows);
+  }
+
+  /** All events, as an RFC 5545 document, downloaded via a Blob link —
+   *  no network involved. */
+  function exportICS() {
+    const text = serializeICS(events, { now: new Date() });
+    const blob = new Blob([text], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const link = el('a', { attrs: { href: url, download: 'calendar.ics' } });
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /** Parse the chosen .ics file and open the confirm dialog — nothing
+   *  is written to storage (or scheduled) until the user confirms. */
+  async function importICSFile(file) {
+    const text = await file.text();
+    const { events: vevents, errors } = parseICS(text);
+    const drafts = vevents.map(icsEventToModel);
+    const newCount = drafts.filter((d) => !events.some((e) => e.icsUid && e.icsUid === d.icsUid)).length;
+    const updateCount = drafts.length - newCount;
+    const notes = [
+      ...drafts.filter((d) => d.recurrenceNote).map((d) => `${d.title || 'Untitled event'}: ${d.recurrenceNote}`),
+      ...errors,
+    ];
+    importPreview.open({ total: drafts.length, newCount, updateCount, notes, drafts });
+  }
+
+  /** Merge confirmed import drafts into `events`: an existing event
+   *  whose `icsUid` matches is updated in place (keeps its internal
+   *  `id`, so any reminders already scheduled against it are replaced
+   *  rather than duplicated); everything else is added new. */
+  function applyImport({ drafts }) {
+    if (!drafts.length) return;
+    const prevRows = remindersSupported ? computeAllReminderRows(events) : [];
+    for (const draft of drafts) {
+      const existingIdx = draft.icsUid ? events.findIndex((e) => e.icsUid === draft.icsUid) : -1;
+      const normalized = normalizeEvent(draft);
+      if (existingIdx >= 0) { normalized.id = events[existingIdx].id; events[existingIdx] = normalized; }
+      else events.push(normalized);
+    }
+    persistEvents();
+    renderActive();
+    void reconcileReminders(prevRows);
   }
 
   /** Views hand back what the user clicked/dragged as plain Dates;
@@ -212,7 +353,7 @@ export default function activate(host) {
 
   function onKeydown(event) {
     if (!root || !root.isConnected) return;
-    if (editor.isOpen() || picker.isOpen() || settings.isOpen()) return;
+    if (editor.isOpen() || picker.isOpen() || settings.isOpen() || importPreview.isOpen()) return;
     const target = event.target;
     const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
     if (typing) return;
@@ -240,7 +381,14 @@ export default function activate(host) {
       prefs = loadedPrefs && typeof loadedPrefs === 'object' ? loadedPrefs : {};
       events = (Array.isArray(loadedEvents) ? loadedEvents : []).map(normalizeEvent);
 
-      editor = createEventEditor({ onSave: upsertEvent, onDelete: deleteEvent });
+      await loadReminderCapabilities();
+
+      editor = createEventEditor({
+        onSave: upsertEvent,
+        onDelete: deleteEvent,
+        remindersSupported,
+        getReminderCapabilities: () => reminderCapabilities,
+      });
       picker = createMonthYearPicker({
         locale,
         onPick: (year, month) => { currentDate = new Date(year, month, 1); renderActive(); },
@@ -248,16 +396,27 @@ export default function activate(host) {
       settings = createSettingsSheet({
         getPrefs: getRawPrefs,
         onChange: (patch) => { prefs = { ...prefs, ...patch }; persistPrefs(); renderActive(); },
+        onExportICS: exportICS,
+        onImportFile: importICSFile,
       });
-      root.append(editor.element, picker.element, settings.element);
+      importPreview = createImportPreview({ onConfirm: applyImport });
+      root.append(editor.element, picker.element, settings.element, importPreview.element);
 
       switchView(getPrefs().defaultView, { focus: false });
+
+      // Reminders opened before the window closed may be stale (an
+      // event edited elsewhere, a series that's rolled into a new
+      // occurrence window) — reconcile once now, then hourly while the
+      // window stays open, per the package brief.
+      void reconcileWithHost();
+      reminderRefreshTimer = setInterval(() => { void reconcileWithHost(); }, REMINDER_REFRESH_MS);
 
       keydownHandler = onKeydown;
       window.addEventListener('keydown', keydownHandler);
     },
     unmount() {
       if (keydownHandler) { window.removeEventListener('keydown', keydownHandler); keydownHandler = null; }
+      if (reminderRefreshTimer !== null) { clearInterval(reminderRefreshTimer); reminderRefreshTimer = null; }
       for (const view of Object.values(views)) view.destroy?.();
       store.flushNow();
     },

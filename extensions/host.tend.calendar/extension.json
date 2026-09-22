@@ -2,9 +2,9 @@
   "schema": 2,
   "id": "host.tend.calendar",
   "name": "Calendar",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "tend.host",
-  "description": "A modern month, week, day and agenda calendar with local events, keyboard control and a settings sheet, built to be the panel's default calendar.",
+  "description": "A modern month, week, day and agenda calendar with local events, reminders, ICS import/export, keyboard control and a settings sheet, built to be the panel's default calendar.",
   "icon": "icon.svg",
   "ui": {
     "module": "index.js",
@@ -19,7 +19,8 @@
     }
   },
   "permissions": [
-    "storage"
+    "storage",
+    "notifications"
   ],
   "widgets": [
     {
@@ -35,17 +36,20 @@
     }
   ],
   "integrity": {
-    "README.md": "sha256-KfdydI0GFAFwCmCTKKMS+QiDICaHag8I8c7tkxMU1e8=",
+    "README.md": "sha256-QifWwzuqCNBtaVBtuTphg63aTAR/Jc5Re6ojf+1C8/g=",
     "date-utils.js": "sha256-1nEIw4UoQ4VK6+BMkP31XyLaGQtJZYhRr3McF/OoWQI=",
     "icon.svg": "sha256-vX9D81J1DecqNRwmlxL8QufDvU+oxvG4t60/fSvd+Ps=",
-    "index.js": "sha256-b+0STxM7t7bo5TvAWp4GNJnNa6RDuIV3CewoHbWXqbw=",
-    "model.js": "sha256-KisDP3R2Ny0OBTAvuzMgNHjQasKwEu6QGAoaLLP9sC4=",
+    "ics.js": "sha256-cahlnXF/5V0uWlauBTqkGMQEewnuvqtsz/5INZxXqJI=",
+    "index.js": "sha256-WHcel9cEmnGSmb10i2jzHeffTVfUipO0fcM2C3bj/AQ=",
+    "model.js": "sha256-oljzwc//76WZsded+aFH1spUoK7/ftvVvin+PPych1k=",
+    "reminders.js": "sha256-dSO7ftoveVR9N+9m06DsV7unbKrphZB7ZRMfLbDnY1M=",
     "store.js": "sha256-4K6YQqwWsdKdKIEYsQ1CcNYQP3pcLl0/PP22Z14piyY=",
     "ui/dom.js": "sha256-rnxO8Wr4ypE/w5J3S3L16ph40xhUtPg5VdTcqXrzeP4=",
-    "ui/event-editor.js": "sha256-pApURn3g0ejq6DDtIxfvD/bszBP2r7ozIByjfxvivoA=",
+    "ui/event-editor.js": "sha256-cBwYKAn9vdqfBuLK0tEdnA0sBUz+avEmAWUpElJlD7E=",
+    "ui/import-preview.js": "sha256-yXNAZpeH6lWBlAt6vMqB/bUj3jjq43KHlQJpyw6ztSY=",
     "ui/month-year-picker.js": "sha256-Uy96PCZ11vs9j9NFnRwWLMov7w9HNwYpfbKbPO27q7M=",
-    "ui/settings-sheet.js": "sha256-G+0+nm06EUAJravrkVt1O2/LjKHCYSckIhx4ugINkfo=",
-    "ui/styles.js": "sha256-2Wwpi1DFAGxT0P7x0xTOQm5qDL4LxZ2J/0x5AAQNMjU=",
+    "ui/settings-sheet.js": "sha256-VfooX4wlC1aOQJsacwGhI3JQ4vKDNh5nZUBT7/1LZ/w=",
+    "ui/styles.js": "sha256-8B8Ng+X2hcWxybO8vhzcZ4ZWteknou2fZxw0bNIjYys=",
     "views/agenda.js": "sha256-bB8SwZQtu6bdnBHv6WWwmre7eShilvCr7Ky3E5S1bz4=",
     "views/day.js": "sha256-PMgYQg8QH91RxkAZCM/qD7EbEgGOxlvdC6C+bPJjIlY=",
     "views/month.js": "sha256-gLngtUsrBmjayTN/l4AwYvhvcyFHuCp37z9u+LY+XS8=",

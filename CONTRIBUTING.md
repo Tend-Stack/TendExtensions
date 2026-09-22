@@ -41,7 +41,18 @@
    TEND_CORE_CHECKOUT=/path/to/tend.host python tools/validate_with_panel.py
    ```
 7. Run the tests: `pytest tests/`.
-8. Open a PR. CI re-runs the same build and validates against the pinned
+8. If your extension ships its own pure (no DOM, no host) JS modules with
+   real logic — date maths, parsing, id/schedule computation — add
+   `bun:test` unit tests next to a mirror of the extension under
+   `tests/js/<extension-id>/*.test.js` (never inside `extensions/<id>/`
+   itself — `tools/build.py` ships every file it finds there, tests
+   included, so they stay out). Run them with:
+   ```
+   bun test tests/js
+   ```
+   `extensions/host.tend.calendar`'s `reminders.js` and `ics.js` are the
+   reference example.
+9. Open a PR. CI re-runs the same build and validates against the pinned
    core commit.
 
 ## Updating an existing extension
