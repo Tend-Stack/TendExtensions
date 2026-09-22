@@ -82,7 +82,7 @@ export default function activate(host) {
     && typeof host.reminders.list === 'function'
     && typeof host.reminders.capabilities === 'function'
   );
-  let reminderCapabilities = { panel: true, email: false };
+  let reminderCapabilities = { panel: true, email: false, sound: false };
 
   async function loadReminderCapabilities() {
     if (!remindersSupported) return reminderCapabilities;

@@ -5,6 +5,7 @@
  * they're kept in separate sections so the two aren't mistaken for the
  * same feature. */
 import { el, createDialog } from './dom.js';
+import { createDropdown } from './dropdown.js';
 
 const VIEW_OPTIONS = [
   { value: 'month', label: 'Month' },
@@ -28,24 +29,26 @@ const INTEGRATIONS = [
   { name: 'Panel events', reason: 'coming soon' },
 ];
 
-function optionList(options, value) {
-  return options.map((opt) => el('option', { text: opt.label, attrs: { value: opt.value, selected: opt.value === value || null } }));
-}
-
 export function createSettingsSheet({ getPrefs, onChange, onExportICS, onImportFile }) {
   let els = {};
 
   function buildBody() {
     const prefs = getPrefs();
-    els.defaultView = el('select', { class: 'cal-select', attrs: { 'aria-label': 'Default view' } }, optionList(VIEW_OPTIONS, prefs.defaultView));
-    els.weekStart = el('select', { class: 'cal-select', attrs: { 'aria-label': 'Week starts on' } }, optionList(WEEK_START_OPTIONS, prefs.weekStart));
-    els.clock = el('select', { class: 'cal-select', attrs: { 'aria-label': 'Clock' } }, optionList(CLOCK_OPTIONS, prefs.clock));
+    els.defaultView = createDropdown({
+      options: VIEW_OPTIONS, value: prefs.defaultView, ariaLabel: 'Default view',
+      onChange: (v) => onChange({ defaultView: v }),
+    });
+    els.weekStart = createDropdown({
+      options: WEEK_START_OPTIONS, value: prefs.weekStart, ariaLabel: 'Week starts on',
+      onChange: (v) => onChange({ weekStart: v }),
+    });
+    els.clock = createDropdown({
+      options: CLOCK_OPTIONS, value: prefs.clock, ariaLabel: 'Clock',
+      onChange: (v) => onChange({ clock: v }),
+    });
     els.weekNumbers = el('input', { attrs: { type: 'checkbox' } });
     els.weekNumbers.checked = !!prefs.showWeekNumbers;
 
-    for (const [select, key] of [[els.defaultView, 'defaultView'], [els.weekStart, 'weekStart'], [els.clock, 'clock']]) {
-      select.addEventListener('change', () => onChange({ [key]: select.value }));
-    }
     els.weekNumbers.addEventListener('change', () => onChange({ showWeekNumbers: els.weekNumbers.checked }));
 
     els.exportBtn = el('button', {
@@ -74,9 +77,9 @@ export function createSettingsSheet({ getPrefs, onChange, onExportICS, onImportF
       el('h2', { class: 'cal-dialog-title', text: 'Settings' }),
       el('div', { class: 'cal-settings-section' }, [
         el('h3', { text: 'Preferences' }),
-        field('Default view', els.defaultView),
-        field('Week starts on', els.weekStart),
-        field('Clock', els.clock),
+        field('Default view', els.defaultView.element),
+        field('Week starts on', els.weekStart.element),
+        field('Clock', els.clock.element),
         el('label', { class: 'cal-check-row' }, [els.weekNumbers, 'Show week numbers']),
       ]),
       el('div', { class: 'cal-settings-section' }, [

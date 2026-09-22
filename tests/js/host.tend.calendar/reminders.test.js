@@ -1,7 +1,7 @@
 // Pure-module tests for extensions/host.tend.calendar/reminders.js.
 // Run with `bun test tests/js` from the repo root (see CONTRIBUTING.md).
 import { describe, expect, test } from 'bun:test';
-import { normalizeEvent } from '../../../extensions/host.tend.calendar/model.js';
+import { REMINDER_CHANNELS, normalizeEvent } from '../../../extensions/host.tend.calendar/model.js';
 import {
   REMINDER_PRESETS,
   computeAllReminderRows,
@@ -9,6 +9,7 @@ import {
   customOffsetMinutes,
   guessCustomOffset,
   idsToCancel,
+  reminderChannelsFromSelection,
   reminderId,
   reminderLabel,
   reminderOccurrences,
@@ -196,5 +197,59 @@ describe('idsToCancel', () => {
     expect(idsToCancel(['a', 'b', 'c'], ['b', 'c', 'd'])).toEqual(['a']);
     expect(idsToCancel([], ['a'])).toEqual([]);
     expect(idsToCancel(['a'], [])).toEqual(['a']);
+  });
+});
+
+// 1.3.0: the editor's Sound checkbox alongside Panel/Email.
+describe('reminderChannelsFromSelection', () => {
+  test('one channel per box ticked, in panel/email/sound order', () => {
+    expect(reminderChannelsFromSelection({ panel: true, email: false, sound: false })).toEqual(['panel']);
+    expect(reminderChannelsFromSelection({ panel: true, email: true, sound: false })).toEqual(['panel', 'email']);
+    expect(reminderChannelsFromSelection({ panel: false, email: true, sound: false })).toEqual(['email']);
+  });
+
+  test('sound implies panel even when Panel itself is unticked', () => {
+    expect(reminderChannelsFromSelection({ panel: false, email: false, sound: true })).toEqual(['panel', 'sound']);
+    expect(reminderChannelsFromSelection({ panel: false, email: true, sound: true })).toEqual(['panel', 'email', 'sound']);
+  });
+
+  test('ticking Panel and Sound together does not duplicate panel', () => {
+    expect(reminderChannelsFromSelection({ panel: true, email: false, sound: true })).toEqual(['panel', 'sound']);
+  });
+
+  test('nothing ticked falls back to panel, same as model.js normalization', () => {
+    expect(reminderChannelsFromSelection({ panel: false, email: false, sound: false })).toEqual(['panel']);
+    expect(reminderChannelsFromSelection({})).toEqual(['panel']);
+    expect(reminderChannelsFromSelection()).toEqual(['panel']);
+  });
+});
+
+describe('sound channel — model.js normalization (migration)', () => {
+  test('REMINDER_CHANNELS recognizes sound alongside panel and email', () => {
+    expect(REMINDER_CHANNELS).toEqual(['panel', 'email', 'sound']);
+  });
+
+  test('a reminder saved with a sound channel round-trips through normalizeEvent', () => {
+    const event = normalizeEvent({
+      id: 'ev', title: 'X', start: '2026-09-22T09:00',
+      reminders: [{ offsetMinutes: 10, channels: ['panel', 'sound'] }],
+    });
+    expect(event.reminders).toEqual([{ offsetMinutes: 10, channels: ['panel', 'sound'] }]);
+  });
+
+  test('an event saved before 1.3.0 (no sound channel present) is untouched — no migration step needed', () => {
+    const event = normalizeEvent({
+      id: 'ev', title: 'X', start: '2026-09-22T09:00',
+      reminders: [{ offsetMinutes: 10, channels: ['panel', 'email'] }],
+    });
+    expect(event.reminders).toEqual([{ offsetMinutes: 10, channels: ['panel', 'email'] }]);
+  });
+
+  test('an unknown channel is dropped, keeping the recognized ones', () => {
+    const event = normalizeEvent({
+      id: 'ev', title: 'X', start: '2026-09-22T09:00',
+      reminders: [{ offsetMinutes: 10, channels: ['sound', 'sms', 'bogus'] }],
+    });
+    expect(event.reminders).toEqual([{ offsetMinutes: 10, channels: ['sound'] }]);
   });
 });

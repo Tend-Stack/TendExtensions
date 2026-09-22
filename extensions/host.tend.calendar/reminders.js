@@ -42,6 +42,22 @@ export function guessCustomOffset(offsetMinutes) {
   return { amount: offsetMinutes, unit: 'minutes' };
 }
 
+/** Turn the editor's three channel checkboxes into a `channels` array
+ *  (1.3.0 adds Sound alongside Panel/Email). Sound is delivered
+ *  server-side as a panel notification, so ticking Sound alone still
+ *  sends 'panel' too — a reminder is never Sound-only. Order is
+ *  deterministic (panel, email, sound) and, matching
+ *  model.js#normalizeReminderEntry's own fallback, nothing ticked
+ *  still returns `['panel']` rather than an empty array. */
+export function reminderChannelsFromSelection({ panel, email, sound } = {}) {
+  const wantPanel = !!panel || !!sound;
+  const channels = [];
+  if (wantPanel) channels.push('panel');
+  if (email) channels.push('email');
+  if (sound) channels.push('sound');
+  return channels.length ? channels : ['panel'];
+}
+
 /** Human label for any offset, preset or custom. */
 export function reminderLabel(offsetMinutes) {
   const preset = REMINDER_PRESETS.find((p) => p.offsetMinutes === offsetMinutes);

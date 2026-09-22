@@ -35,16 +35,21 @@ of six preset colours, location, notes, a simple recurrence
 as a whole series), and reminders (below). Delete removes the event
 (and, for a recurring one, the whole series).
 
-## Reminders (1.2.0)
+## Reminders (1.2.0; Sound channel in 1.3.0)
 
 The editor's **Reminders** field adds one or more reminders per event,
 each a preset (at time of event, 5/15 minutes, 1/12 hours, 1/3 days
-before) or a custom amount + unit, with Panel and Email channel
-checkboxes (Panel on by default; Email is disabled with a "Set up
-email in Settings → Notifications" hint until the panel reports an
-SMTP adapter is configured). Reminders fire server-side through the
-panel's `host.reminders` API — the panel, not the browser tab, has to
-be reachable, not this window.
+before) or a custom amount + unit, with Panel, Email and (1.3.0) Sound
+channel checkboxes (Panel on by default; Email is disabled with a "Set
+up email in Settings → Notifications" hint until the panel reports an
+SMTP adapter is configured; Sound is omitted entirely — not just
+disabled — on a panel that doesn't report the capability, since older
+panels don't know the channel at all). Ticking Sound alone still sends
+`panel` too: sound plays server-side as part of the panel
+notification, so a reminder is never Sound-only
+(`reminders.js#reminderChannelsFromSelection`). Reminders fire
+server-side through the panel's `host.reminders` API — the panel, not
+the browser tab, has to be reachable, not this window.
 
 - **Non-recurring events** schedule their one reminder per configured
   entry.
@@ -70,6 +75,32 @@ expose `host.reminders`. On an older panel the field shows itself
 disabled with "Reminders need panel update" instead of silently
 dropping what you type — nothing about the rest of the calendar
 depends on it.
+
+## Dropdowns (1.3.0)
+
+Every dropdown in the calendar (Settings' Default view / Week starts
+on / Clock, the editor's Repeat, each reminder's preset and its custom
+offset's unit) is `ui/dropdown.js`, not a native `<select>`. A native
+select's *popup* is drawn by the browser/OS, not the page, and can't be
+reliably themed — macOS ignores `<option>` colours outright, and
+Chromium/Firefox on Linux vary; 1.2.0's `color-scheme` + `<option>`
+colour CSS still rendered the popup white-on-light-grey on a real
+browser. `ui/dropdown.js` is ordinary DOM instead (a `role="combobox"`
+trigger button plus a `role="listbox"` of `role="option"` rows) styled
+with the calendar's own `--cal-*` tokens, so it matches the rest of the
+calendar in both themes exactly, and opens/closes/positions itself
+inside the extension's own window rather than wherever the OS would
+put a native popup. Click, `Enter`/`Space`/arrows to open; arrows,
+`Home`/`End` and type-ahead to move the active option;
+`Enter`/`Space` selects; `Escape` or a click outside closes it without
+changing the selection. **A future select added to this extension
+should use it too** — don't reintroduce a native `<select>`.
+
+The date/time inputs in the event editor are the one native popup left
+(a full custom date picker is out of scope); `color-scheme` on
+`.cal-root` still keeps their popups legible, and dark mode inverts the
+Chromium/Edge calendar-icon glyph the field itself draws so it doesn't
+disappear against a dark background.
 
 ## Keyboard
 
@@ -186,6 +217,8 @@ model.js               event shape, colours, recurrence expansion
 reminders.js            reminder presets, offset maths, ids, schedule computation (pure)
 ics.js                  RFC 5545 import/export (pure)
 ui/dom.js               element helper + the modal dialog/focus-trap
+ui/dropdown.js           the accessible dropdown (1.3.0) that replaces every <select>
+ui/dropdown-logic.js     its pure keyboard/open-close state machine (DOM-free, unit-tested)
 ui/styles.js            the one scoped stylesheet (panel theme tokens)
 ui/event-editor.js      create/edit event dialog, incl. the Reminders field
 ui/month-year-picker.js the header title's jump-to-month dialog
@@ -201,7 +234,7 @@ widgets/upcoming.js           the Upcoming shelf widget
 widgets/upcoming-preview.svg  its widget-gallery preview image
 ```
 
-Unit tests for `reminders.js` and `ics.js` live outside this folder
-(`tools/build.py` ships every file it finds here) at
-`tests/js/host.tend.calendar/*.test.js` — run with `bun test tests/js`
-from the repo root.
+Unit tests for `reminders.js`, `ics.js` and `ui/dropdown-logic.js` live
+outside this folder (`tools/build.py` ships every file it finds here)
+at `tests/js/host.tend.calendar/*.test.js` — run with
+`bun test tests/js` from the repo root.

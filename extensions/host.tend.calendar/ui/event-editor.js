@@ -10,9 +10,10 @@
  * panel without host.reminders degrades gracefully" rule.
  */
 import { el, clear, createDialog } from './dom.js';
+import { createDropdown } from './dropdown.js';
 import { COLORS, RECURRENCE_OPTIONS, normalizeEvent } from '../model.js';
 import { toLocalISO, parseLocal } from '../date-utils.js';
-import { REMINDER_PRESETS, CUSTOM_UNITS, customOffsetMinutes, guessCustomOffset } from '../reminders.js';
+import { REMINDER_PRESETS, CUSTOM_UNITS, customOffsetMinutes, guessCustomOffset, reminderChannelsFromSelection } from '../reminders.js';
 
 const RECURRENCE_LABELS = { none: 'Does not repeat', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
 const DEFAULT_REMINDER_OFFSET = 15;
@@ -23,20 +24,25 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
   let els = {};
 
   function capabilities() {
-    return getReminderCapabilities ? getReminderCapabilities() : { panel: true, email: false };
+    return getReminderCapabilities ? getReminderCapabilities() : { panel: true, email: false, sound: false };
   }
 
   function buildReminderRow(reminder, index) {
     const isPreset = REMINDER_PRESETS.some((p) => p.offsetMinutes === reminder.offsetMinutes);
-    const presetSelect = el(
-      'select',
-      { class: 'cal-select cal-reminder-preset', attrs: { 'aria-label': 'Reminder time' } },
-      [
-        ...REMINDER_PRESETS.map((p) => el('option', { text: p.label, attrs: { value: String(p.offsetMinutes) } })),
-        el('option', { text: 'Custom…', attrs: { value: 'custom' } }),
-      ],
-    );
-    presetSelect.value = isPreset ? String(reminder.offsetMinutes) : 'custom';
+    const presetOptions = [
+      ...REMINDER_PRESETS.map((p) => ({ value: String(p.offsetMinutes), label: p.label })),
+      { value: 'custom', label: 'Custom…' },
+    ];
+    const presetDropdown = createDropdown({
+      options: presetOptions,
+      value: isPreset ? String(reminder.offsetMinutes) : 'custom',
+      ariaLabel: 'Reminder time',
+      onChange: () => {
+        customWrap.style.display = presetDropdown.value === 'custom' ? '' : 'none';
+        commit();
+      },
+    });
+    presetDropdown.element.classList.add('cal-reminder-preset');
 
     const guess = guessCustomOffset(reminder.offsetMinutes);
     const customAmount = el('input', {
@@ -44,13 +50,13 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
       attrs: { type: 'number', min: '1', max: '999', 'aria-label': 'Custom reminder amount' },
     });
     customAmount.value = String(guess.amount);
-    const customUnit = el(
-      'select',
-      { class: 'cal-select', attrs: { 'aria-label': 'Custom reminder unit' } },
-      CUSTOM_UNITS.map((u) => el('option', { text: u, attrs: { value: u } })),
-    );
-    customUnit.value = guess.unit;
-    const customWrap = el('div', { class: 'cal-reminder-custom' }, [customAmount, customUnit]);
+    const customUnitDropdown = createDropdown({
+      options: CUSTOM_UNITS.map((u) => ({ value: u, label: u })),
+      value: guess.unit,
+      ariaLabel: 'Custom reminder unit',
+      onChange: commit,
+    });
+    const customWrap = el('div', { class: 'cal-reminder-custom' }, [customAmount, customUnitDropdown.element]);
     customWrap.style.display = isPreset ? 'none' : '';
 
     const caps = capabilities();
@@ -59,6 +65,12 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     const emailCheck = el('input', { attrs: { type: 'checkbox' } });
     emailCheck.checked = reminder.channels.includes('email') && caps.email;
     emailCheck.disabled = !caps.email;
+    // Sound (1.3.0): omitted entirely on a panel that doesn't report the
+    // capability (older panel, or `capabilities()` simply not returning
+    // it — treated the same as `false`), unlike Email's shown-but-
+    // disabled treatment above.
+    const soundCheck = caps.sound ? el('input', { attrs: { type: 'checkbox' } }) : null;
+    if (soundCheck) soundCheck.checked = reminder.channels.includes('sound');
 
     const removeBtn = el('button', {
       class: 'cal-btn is-icon cal-reminder-remove',
@@ -68,20 +80,20 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     });
 
     function commit() {
-      const offsetMinutes = presetSelect.value === 'custom'
-        ? (customOffsetMinutes(customAmount.value, customUnit.value) ?? reminder.offsetMinutes)
-        : Number(presetSelect.value);
-      const channels = [panelCheck.checked ? 'panel' : null, emailCheck.checked && caps.email ? 'email' : null].filter(Boolean);
-      draft.reminders[index] = { offsetMinutes, channels: channels.length ? channels : ['panel'] };
+      const offsetMinutes = presetDropdown.value === 'custom'
+        ? (customOffsetMinutes(customAmount.value, customUnitDropdown.value) ?? reminder.offsetMinutes)
+        : Number(presetDropdown.value);
+      const channels = reminderChannelsFromSelection({
+        panel: panelCheck.checked,
+        email: emailCheck.checked && caps.email,
+        sound: !!soundCheck?.checked && caps.sound,
+      });
+      draft.reminders[index] = { offsetMinutes, channels };
     }
-    presetSelect.addEventListener('change', () => {
-      customWrap.style.display = presetSelect.value === 'custom' ? '' : 'none';
-      commit();
-    });
     customAmount.addEventListener('input', commit);
-    customUnit.addEventListener('change', commit);
     panelCheck.addEventListener('change', commit);
     emailCheck.addEventListener('change', commit);
+    if (soundCheck) soundCheck.addEventListener('change', commit);
 
     const emailLabel = el(
       'label',
@@ -91,10 +103,11 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     const channelsRow = el('div', { class: 'cal-reminder-channels' }, [
       el('label', { class: 'cal-reminder-channel' }, [panelCheck, 'Panel']),
       emailLabel,
+      soundCheck ? el('label', { class: 'cal-reminder-channel' }, [soundCheck, 'Sound']) : null,
       !caps.email ? el('span', { class: 'cal-reminder-hint', text: 'Set up email in Settings → Notifications' }) : null,
     ]);
 
-    return el('div', { class: 'cal-reminder-row' }, [presetSelect, customWrap, channelsRow, removeBtn]);
+    return el('div', { class: 'cal-reminder-row' }, [presetDropdown.element, customWrap, channelsRow, removeBtn]);
   }
 
   function renderReminders() {
@@ -131,11 +144,11 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     els.endTime = el('input', { class: 'cal-input', attrs: { type: 'time' } });
     els.location = el('input', { class: 'cal-input', attrs: { type: 'text', maxlength: '200', placeholder: 'Add a location' } });
     els.notes = el('textarea', { class: 'cal-textarea', attrs: { maxlength: '2000', placeholder: 'Notes' } });
-    els.recurrence = el(
-      'select',
-      { class: 'cal-select', attrs: { 'aria-label': 'Repeat' } },
-      RECURRENCE_OPTIONS.map((id) => el('option', { text: RECURRENCE_LABELS[id], attrs: { value: id } })),
-    );
+    els.recurrence = createDropdown({
+      options: RECURRENCE_OPTIONS.map((id) => ({ value: id, label: RECURRENCE_LABELS[id] })),
+      value: 'none',
+      ariaLabel: 'Repeat',
+    });
     els.swatchWrap = el('div', { class: 'cal-swatches', attrs: { role: 'radiogroup', 'aria-label': 'Colour' } });
     els.swatches = new Map();
     for (const color of COLORS) {
@@ -178,7 +191,7 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
       el('label', { class: 'cal-check-row' }, [els.allDay, 'All day']),
       els.timeRow,
       wrapField('Colour', els.swatchWrap),
-      wrapField('Repeat', els.recurrence),
+      wrapField('Repeat', els.recurrence.element),
       buildRemindersField(),
       wrapField('Location', els.location),
       wrapField('Notes', els.notes),
@@ -219,7 +232,7 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     els.endTime.value = pad2(end.getHours()) + ':' + pad2(end.getMinutes());
     els.location.value = draft.location;
     els.notes.value = draft.notes;
-    els.recurrence.value = draft.recurrence;
+    els.recurrence.setValue(draft.recurrence);
     selectColor(draft.color);
     renderReminders();
     els.deleteBtn.style.display = editingId ? '' : 'none';

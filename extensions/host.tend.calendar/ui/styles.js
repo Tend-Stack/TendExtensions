@@ -39,11 +39,14 @@ const CSS = `
   font-variant-numeric: tabular-nums;
 }
 @media (pointer: coarse) { .cal-root { --cal-touch: 44px; } }
-/* Native <select> popups (and date/time pickers) take the OS/browser's
- * default colour scheme unless told otherwise — with dark panel tokens
- * that renders white-on-white. Setting color-scheme on the root makes
- * every native popup this root contains follow the calendar's own
- * theme instead of the page's. */
+/* 1.3.0 replaced every <select> with the calendar's own dropdown (see
+ * ui/dropdown.js) because native select popups are UA/OS-rendered and
+ * can't be reliably themed. The date/time inputs' native pickers are
+ * the one popup still native (out of scope for that swap) — they still
+ * take the OS/browser's default colour scheme unless told otherwise,
+ * which renders white-on-white against dark panel tokens. Setting
+ * color-scheme on the root keeps those pickers following the
+ * calendar's own theme instead of the page's. */
 .cal-root.is-dark { color-scheme: dark; }
 .cal-root.is-light { color-scheme: light; }
 .cal-root.is-light { --cal-soft: color-mix(in oklab, var(--cal-fg) 5%, transparent); }
@@ -211,19 +214,63 @@ const CSS = `
 .cal-dialog-title { margin: 0; font-size: 15px; font-weight: 700; }
 .cal-field { display: grid; gap: 4px; min-width: 0; }
 .cal-field-label { font-size: 11px; color: var(--cal-muted); font-weight: 600; }
-.cal-input, .cal-select, .cal-textarea {
+.cal-input, .cal-dropdown-trigger, .cal-textarea {
   width: 100%; min-width: 0; min-height: var(--cal-touch); box-sizing: border-box;
   background: var(--cal-softer); color: var(--cal-fg);
   border: 1px solid var(--cal-line); border-radius: 8px;
   padding: 6px 9px; font-size: 13px; font-family: inherit;
 }
-/* Explicit colours for the popup a native <select> renders: color-scheme
- * above gets most engines the rest of the way, but Chromium still needs
- * <option> told its own background/colour to stay legible against a
- * dark accent-coloured selection highlight. */
-.cal-select option, .cal-select optgroup { background: var(--cal-bg); color: var(--cal-fg); }
+/* The date/time inputs are the one native popup left (a date picker is
+ * out of scope for 1.3.0's dropdown swap) — color-scheme above gets
+ * Firefox and Chromium's calendar/clock popups the rest of the way for
+ * free, but the picker *glyph* Chromium/Edge draw inside the field is a
+ * fixed dark-on-transparent icon that goes invisible against a dark
+ * field; invert it in dark mode only. */
+.cal-root.is-dark input[type="date"]::-webkit-calendar-picker-indicator,
+.cal-root.is-dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.6);
+}
 .cal-textarea { resize: vertical; min-height: 56px; line-height: 1.45; }
-.cal-input:focus, .cal-select:focus, .cal-textarea:focus { border-color: var(--cal-accent); outline: none; }
+.cal-input:focus, .cal-textarea:focus { border-color: var(--cal-accent); outline: none; }
+.cal-dropdown-trigger:focus-visible { border-color: var(--cal-accent); }
+
+/* ---- dropdown (1.3.0 — replaces native <select>) ---- */
+.cal-dropdown { position: relative; width: 100%; min-width: 0; }
+.cal-dropdown-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
+.cal-dropdown-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-dropdown-chevron {
+  flex: 0 0 auto; width: 7px; height: 7px; margin-top: -2px;
+  border-right: 1.5px solid var(--cal-muted); border-bottom: 1.5px solid var(--cal-muted);
+  transform: rotate(45deg); transition: transform 120ms ease;
+}
+.cal-dropdown.is-open .cal-dropdown-chevron { transform: rotate(-135deg); margin-top: 2px; }
+/* Absolute within .cal-dropdown (its own positioned ancestor), never
+ * against the viewport — the calendar runs in a fixed-size tool window
+ * and the menu has to stay inside it; dropdown.js flips this to open
+ * upward (.is-flipped) when the window doesn't have room below. */
+.cal-dropdown-menu {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5;
+  margin: 0; padding: 4px; display: grid; gap: 1px;
+  max-height: 240px; overflow-y: auto;
+  background: var(--cal-bg); border: 1px solid var(--cal-line); border-radius: var(--cal-radius);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+}
+.cal-dropdown-menu.is-hidden { display: none; }
+.cal-dropdown-menu.is-flipped { top: auto; bottom: calc(100% + 4px); }
+.cal-dropdown-option {
+  display: flex; align-items: center; gap: 6px; min-height: var(--cal-touch);
+  padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--cal-fg);
+  font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums;
+}
+.cal-dropdown-option:hover, .cal-dropdown-option.is-active { background: var(--cal-softer); }
+.cal-dropdown-option.is-selected { color: var(--cal-accent); font-weight: 600; }
+.cal-dropdown-option-check { flex: 0 0 auto; width: 13px; text-align: center; font-size: 11px; color: var(--cal-accent); opacity: 0; }
+.cal-dropdown-option.is-selected .cal-dropdown-option-check { opacity: 1; }
+.cal-dropdown-option-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The chevron's rotate transition is already covered by the file's
+ * closing prefers-reduced-motion block (1ms transition-duration on
+ * every .cal-root descendant), so it needs no rule of its own here. */
+
 .cal-row { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .cal-stack { display: grid; gap: 8px; }
 /* Flex, not grid: when the time input is hidden (all-day), the date
@@ -276,7 +323,7 @@ const CSS = `
 .cal-reminder-preset { flex: 1 1 140px; min-width: 120px; }
 .cal-reminder-custom { display: flex; gap: 6px; flex: 1 1 100%; }
 .cal-reminder-custom .cal-input { width: 100%; max-width: 72px; }
-.cal-reminder-custom .cal-select { flex: 1 1 auto; }
+.cal-reminder-custom .cal-dropdown { flex: 1 1 auto; }
 .cal-reminder-channels { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cal-reminder-channel { display: flex; align-items: center; gap: 4px; font-size: 11.5px; white-space: nowrap; }
 .cal-reminder-channel input { width: 15px; height: 15px; accent-color: var(--cal-accent); }

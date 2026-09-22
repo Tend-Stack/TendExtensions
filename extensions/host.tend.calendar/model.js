@@ -30,7 +30,7 @@ export const COLORS = [
 
 export const RECURRENCE_OPTIONS = ['none', 'daily', 'weekly', 'monthly'];
 export const SOURCES = ['local', 'ics-import'];
-export const REMINDER_CHANNELS = ['panel', 'email'];
+export const REMINDER_CHANNELS = ['panel', 'email', 'sound']; // 'sound', 1.3.0
 
 export function createId() {
   try {
