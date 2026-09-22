@@ -6,7 +6,7 @@
   "features": [
     "Month, week, day and agenda views with a locale-aware header",
     "Click or drag to create events; six preset colours, notes and simple recurrence",
-    "Event reminders with panel and email notifications, presets or a custom offset",
+    "Event reminders with panel, email and sound notifications, presets or a custom offset",
     "ICS import and export — no network, works with any calendar app",
     "Full keyboard control: arrows, T for today, N for new event, 1-4 to switch views",
     "Upcoming shelf widget: today's date, a 7-day strip and your next events"
@@ -15,5 +15,5 @@
     "A Tend panel running schema-2 (native ESM) extensions",
     "A desktop or mobile browser tab with ES module support"
   ],
-  "release_notes": "1.2.0: readable dropdowns and reworked sheet/editor spacing in the dark theme; event reminders (panel and email) through the panel's reminders API; ICS import and export."
+  "release_notes": "1.3.0: every dropdown (settings and the event editor) is now the calendar's own accessible control instead of a native <select> — a native popup can't be reliably themed, and 1.2.0's CSS-only fix still rendered unreadable on some browsers; a Sound channel joins Panel and Email on each reminder, shown when the panel reports the capability."
 }
