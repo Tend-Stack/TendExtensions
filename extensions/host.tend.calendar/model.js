@@ -10,6 +10,11 @@ import { addDays, addMonths, parseLocal, toLocalISO } from './date-utils.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/* The `host.storage` key events live under — shared by the main window
+ * (index.js) and the Upcoming shelf widget (widgets/upcoming.js) so
+ * both read the exact same array. */
+export const EVENTS_KEY = 'events.v1';
+
 export const COLORS = [
   { id: 'sky', hex: '#38bdf8' },
   { id: 'violet', hex: '#a78bfa' },

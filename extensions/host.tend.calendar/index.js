@@ -28,13 +28,12 @@ import { createMonthView } from './views/month.js';
 import { createWeekView } from './views/week.js';
 import { createDayView } from './views/day.js';
 import { createAgendaView } from './views/agenda.js';
-import { normalizeEvent } from './model.js';
+import { EVENTS_KEY, normalizeEvent } from './model.js';
 import {
   addDays, formatDayTitle, formatMonthYear, formatWeekRange,
   getLocale, localeIsHour12, localeWeekStart, startOfDay, startOfWeek, toLocalISO,
 } from './date-utils.js';
 
-const EVENTS_KEY = 'events.v1';
 const PREFS_KEY = 'prefs.v1';
 
 const VIEW_META = [

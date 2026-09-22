@@ -59,6 +59,26 @@ month grid. An **Integrations** section lists what's planned
 (Google Calendar, iCal subscriptions, panel-generated events) as
 clearly labelled, inert placeholders — no live wiring yet.
 
+## Widget
+
+The **Upcoming** shelf widget (schema-2 `widgets` block, added in 1.1.0)
+puts a read-only glance at your calendar on the shelf, next to the
+clock and server cards. It reads the same `events.v1` storage key the
+main window writes — there's no separate copy of the data, and
+anything you add here shows up in the widget within 60 seconds (or
+immediately the next time its tab becomes visible).
+
+- **Small**: today's weekday and day number, and the next 3 events
+  (time or "All day", a colour dot, the title).
+- **Wide**: a 7-day strip (today highlighted, a dot on days with an
+  event) alongside the next 5 events.
+- An empty calendar shows "No upcoming events" instead of a blank
+  card.
+
+The card has no controls — clicking an event does nothing today, since
+widgets don't have a navigation API yet. The widget gallery's preview
+renders fixed sample events and never touches storage.
+
 ## Storage keys
 
 | Key | Shape |
@@ -92,4 +112,6 @@ views/week.js           7-day time grid
 views/day.js            1-day time grid
 views/agenda.js         upcoming list grouped by day
 icon.svg               rounded-square gradient icon
+widgets/upcoming.js           the Upcoming shelf widget
+widgets/upcoming-preview.svg  its widget-gallery preview image
 ```

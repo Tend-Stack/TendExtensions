@@ -9,11 +9,11 @@
     "Six preset colours, all-day events, location, notes and simple recurrence",
     "Full keyboard control: arrows, T for today, N for new event, 1-4 to switch views",
     "Locale-aware month/weekday names, week start and 12/24-hour clock",
-    "Native ESM extension, no iframe, no external network"
+    "Upcoming shelf widget: today's date, a 7-day strip and your next events"
   ],
   "requirements": [
     "A Tend panel running schema-2 (native ESM) extensions",
     "A desktop or mobile browser tab with ES module support"
   ],
-  "release_notes": "Initial registry release."
+  "release_notes": "1.1.0: adds the Upcoming shelf widget (small and wide) reading the same local events as the calendar."
 }
