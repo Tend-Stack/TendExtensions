@@ -40,7 +40,11 @@ def write_fixture_extension(
     if extra_files:
         files.update(extra_files)
     for name, data in files.items():
-        (ext_dir / name).write_bytes(data)
+        # `extra_files` may nest a path (e.g. "widgets/upcoming.js") —
+        # create its parent directory first.
+        path = ext_dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
 
     manifest = {
         "schema": 2,

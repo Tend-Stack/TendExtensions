@@ -175,3 +175,136 @@ def test_listing_requires_three_to_six_features(fixture_repo: Path) -> None:
 
     with pytest.raises(build.BuildError, match="3-6 entries"):
         build.run(fixture_repo, sequence=1, revision=REVISION_A)
+
+
+# ---------- extension.json 'widgets' block (schema-2 shelf widgets) ----------
+
+VALID_WIDGET = {
+    "id": "upcoming",
+    "name": "Upcoming",
+    "description": "Next events.",
+    "sizes": ["small", "wide"],
+    "module": "widgets/upcoming.js",
+    "preview": "widgets/upcoming-preview.svg",
+}
+
+_WIDGET_FILES = {
+    "widgets/upcoming.js": b"export default function activate(host) { return { mount(){}, unmount(){} }; }\n",
+    "widgets/upcoming-preview.svg": b"<svg xmlns='http://www.w3.org/2000/svg'></svg>\n",
+}
+
+
+def _valid_widget(**overrides: object) -> dict:
+    widget = dict(VALID_WIDGET)
+    widget.update(overrides)
+    return widget
+
+
+def _write_widget_extension(extensions_dir: Path, *, widgets: object, extra_files: dict | None = None) -> Path:
+    files = dict(_WIDGET_FILES)
+    if extra_files:
+        files.update(extra_files)
+    ext_dir = write_fixture_extension(extensions_dir, extra_files=files)
+    manifest = json.loads((ext_dir / "extension.json").read_text())
+    manifest["widgets"] = widgets
+    (ext_dir / "extension.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return ext_dir
+
+
+def test_widgets_block_valid_normalizes_and_builds(tmp_path: Path) -> None:
+    extensions_dir = tmp_path / "extensions"
+    _write_widget_extension(extensions_dir, widgets=[VALID_WIDGET])
+
+    registry = build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    manifest = json.loads((extensions_dir / "host.tend.fixture" / "extension.json").read_text())
+    assert manifest["widgets"] == [VALID_WIDGET]
+    assert registry["extensions"][0]["id"] == "host.tend.fixture"
+
+
+def test_widgets_must_be_a_list(tmp_path: Path) -> None:
+    extensions_dir = tmp_path / "extensions"
+    _write_widget_extension(extensions_dir, widgets={"id": "upcoming"})
+
+    with pytest.raises(build.BuildError, match="must be a list"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_widgets_entry_must_be_an_object(tmp_path: Path) -> None:
+    extensions_dir = tmp_path / "extensions"
+    _write_widget_extension(extensions_dir, widgets=["not-an-object"])
+
+    with pytest.raises(build.BuildError, match="must be an object"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_widgets_max_eight_enforced(tmp_path: Path) -> None:
+    extensions_dir = tmp_path / "extensions"
+    widgets = [_valid_widget(id=f"w{i}") for i in range(9)]
+    _write_widget_extension(extensions_dir, widgets=widgets)
+
+    with pytest.raises(build.BuildError, match="at most 8"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_widgets_duplicate_id_rejected(tmp_path: Path) -> None:
+    extensions_dir = tmp_path / "extensions"
+    _write_widget_extension(extensions_dir, widgets=[VALID_WIDGET, dict(VALID_WIDGET)])
+
+    with pytest.raises(build.BuildError, match="duplicate widget id"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_widget_module_must_be_covered_by_integrity(tmp_path: Path) -> None:
+    extensions_dir = tmp_path / "extensions"
+    _write_widget_extension(extensions_dir, widgets=[_valid_widget(module="widgets/missing.js")])
+
+    with pytest.raises(build.BuildError, match="not covered by the integrity map"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_widget_preview_must_be_covered_by_integrity(tmp_path: Path) -> None:
+    extensions_dir = tmp_path / "extensions"
+    _write_widget_extension(extensions_dir, widgets=[_valid_widget(preview="widgets/missing.svg")])
+
+    with pytest.raises(build.BuildError, match="not covered by the integrity map"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_widgets_require_schema_2(tmp_path: Path) -> None:
+    extensions_dir = tmp_path / "extensions"
+    ext_dir = _write_widget_extension(extensions_dir, widgets=[VALID_WIDGET])
+    manifest = json.loads((ext_dir / "extension.json").read_text())
+    manifest["schema"] = 1
+    manifest["ui"] = None
+    (ext_dir / "extension.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(build.BuildError, match="requires schema 2"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize(
+    "mutation,match",
+    [
+        ({"id": "Upcoming"}, "lowercase letters"),
+        ({"id": "-bad"}, "lowercase letters"),
+        ({"id": "way-too-long-" + "x" * 40}, "lowercase letters"),
+        ({"name": ""}, "non-empty string"),
+        ({"name": "x" * 61}, "non-empty string"),
+        ({"description": "x" * 161}, "field 'description'"),
+        ({"sizes": []}, "field 'sizes'"),
+        ({"sizes": ["small", "small"]}, "field 'sizes'"),
+        ({"sizes": ["huge"]}, "field 'sizes'"),
+        ({"module": "../escape.js"}, "field 'module'"),
+        ({"module": "widgets/upcoming.txt"}, "field 'module'"),
+        ({"module": "/abs/path.js"}, "field 'module'"),
+        ({"preview": "widgets/upcoming.txt"}, "field 'preview'"),
+        ({"bogus": True}, "unknown field"),
+    ],
+)
+def test_widget_entry_field_rejections(tmp_path: Path, mutation: dict, match: str) -> None:
+    extensions_dir = tmp_path / "extensions"
+    _write_widget_extension(extensions_dir, widgets=[_valid_widget(**mutation)])
+
+    with pytest.raises(build.BuildError, match=match):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)

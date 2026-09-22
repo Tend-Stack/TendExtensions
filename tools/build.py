@@ -77,6 +77,19 @@ KNOWN_CATEGORIES = {
 KNOWN_RUNTIME_MODULES = {"phaser@4"}
 KNOWN_RUNTIME_KEYS = {"api", "kind", "modules", "pauseWhenHidden", "targetFps"}
 
+# ---------- shelf widgets (schema-2 only) ----------
+# Mirrors app.services.extensions._parse_widgets in the panel core: same
+# field rules, same normalized shape. A package that fails this never
+# reaches validate_with_panel.py's ground-truth check.
+KNOWN_WIDGET_SIZES = ("small", "wide")
+KNOWN_WIDGET_KEYS = {"id", "name", "description", "sizes", "module", "preview"}
+MAX_WIDGETS_PER_EXTENSION = 8
+MAX_WIDGET_NAME_CHARS = 60
+MAX_WIDGET_DESCRIPTION_CHARS = 160
+WIDGET_MODULE_SUFFIXES = (".js", ".mjs")
+WIDGET_PREVIEW_SUFFIXES = (".svg", ".png", ".webp")
+_WIDGET_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+
 # Files never shipped inside the ZIP or covered by the integrity map.
 _LISTING_NAME = "listing.json"
 _MANIFEST_NAME = "extension.json"
@@ -198,6 +211,142 @@ def validate_manifest(manifest: dict[str, Any], *, ext_id_hint: str) -> None:
                 raise BuildError(
                     f"{ext_id_hint}: 'integrity' entries must be 'sha256-<base64>' strings (bad key {key!r})"
                 )
+
+    widgets = manifest.get("widgets")
+    if widgets is not None:
+        if schema != 2:
+            raise BuildError(
+                f"{ext_id_hint}: 'widgets' requires schema 2 (schema-1 packages cannot ship shelf widgets)"
+            )
+        manifest["widgets"] = validate_widgets(widgets, manifest["integrity"], ext_id_hint)
+
+
+def _widget_package_path(
+    raw: object,
+    *,
+    field: str,
+    widget_id: str,
+    suffixes: tuple[str, ...],
+    ext_id_hint: str,
+) -> str:
+    """Same tightness as the panel's `_widget_package_path`: no absolute
+    paths, no parent refs, no empty path segments, a known suffix."""
+    if not isinstance(raw, str) or not raw.strip():
+        raise BuildError(
+            f"{ext_id_hint}: widget {widget_id!r} must set '{field}' to a file path inside the package"
+        )
+    path = raw.strip().replace("\\", "/")
+    if path.startswith("/"):
+        raise BuildError(
+            f"{ext_id_hint}: widget {widget_id!r} field '{field}' must be a relative package path "
+            f"without a leading '/', got {raw!r}"
+        )
+    parts = path.split("/")
+    if any(part in ("", ".", "..") for part in parts) or ":" in path:
+        raise BuildError(
+            f"{ext_id_hint}: widget {widget_id!r} field '{field}' must stay inside the package "
+            f"(no '..', no empty path segments), got {raw!r}"
+        )
+    if not path.lower().endswith(suffixes):
+        raise BuildError(
+            f"{ext_id_hint}: widget {widget_id!r} field '{field}' must end with one of "
+            f"{', '.join(suffixes)}, got {raw!r}"
+        )
+    return path
+
+
+def validate_widgets(
+    raw_widgets: object,
+    integrity: dict[str, Any],
+    ext_id_hint: str,
+) -> list[dict[str, Any]]:
+    """Validate + normalize extension.json's schema-2 `widgets` block.
+    Raises BuildError on anything the panel's `_parse_widgets` would also
+    reject; returns the normalized list so a hand-written manifest gets
+    the exact same defaults (empty description, ordered sizes, null
+    preview) the panel would store."""
+    if not isinstance(raw_widgets, list):
+        raise BuildError(f"{ext_id_hint}: 'widgets' must be a list of widget declarations")
+    if len(raw_widgets) > MAX_WIDGETS_PER_EXTENSION:
+        raise BuildError(
+            f"{ext_id_hint}: declares {len(raw_widgets)} widgets; at most "
+            f"{MAX_WIDGETS_PER_EXTENSION} are allowed per extension"
+        )
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for entry in raw_widgets:
+        if not isinstance(entry, dict):
+            raise BuildError(f"{ext_id_hint}: each entry in 'widgets' must be an object")
+        widget_id = entry.get("id")
+        if not isinstance(widget_id, str) or not _WIDGET_ID_RE.match(widget_id):
+            raise BuildError(
+                f"{ext_id_hint}: widget 'id' must be lowercase letters, digits and dashes "
+                f"(1-40 chars, starting with a letter or digit), got {widget_id!r}"
+            )
+        if widget_id in seen:
+            raise BuildError(f"{ext_id_hint}: declares duplicate widget id {widget_id!r}")
+        seen.add(widget_id)
+        unknown_keys = sorted(set(entry) - KNOWN_WIDGET_KEYS)
+        if unknown_keys:
+            raise BuildError(
+                f"{ext_id_hint}: widget {widget_id!r} contains unknown field(s): {', '.join(unknown_keys)}"
+            )
+        name = entry.get("name")
+        if not isinstance(name, str) or not name.strip() or len(name) > MAX_WIDGET_NAME_CHARS:
+            raise BuildError(
+                f"{ext_id_hint}: widget {widget_id!r} must set 'name' to a non-empty string of at "
+                f"most {MAX_WIDGET_NAME_CHARS} characters"
+            )
+        description = entry.get("description", "")
+        if not isinstance(description, str) or len(description) > MAX_WIDGET_DESCRIPTION_CHARS:
+            raise BuildError(
+                f"{ext_id_hint}: widget {widget_id!r} field 'description' must be a string of at "
+                f"most {MAX_WIDGET_DESCRIPTION_CHARS} characters"
+            )
+        sizes = entry.get("sizes", ["small"])
+        if (
+            not isinstance(sizes, list)
+            or not sizes
+            or not all(isinstance(s, str) for s in sizes)
+            or len(set(sizes)) != len(sizes)
+            or any(s not in KNOWN_WIDGET_SIZES for s in sizes)
+        ):
+            raise BuildError(
+                f"{ext_id_hint}: widget {widget_id!r} field 'sizes' must be a non-empty list of "
+                f"distinct values from {list(KNOWN_WIDGET_SIZES)}"
+            )
+        module = _widget_package_path(
+            entry.get("module"), field="module", widget_id=widget_id,
+            suffixes=WIDGET_MODULE_SUFFIXES, ext_id_hint=ext_id_hint,
+        )
+        if module not in integrity:
+            raise BuildError(
+                f"{ext_id_hint}: widget {widget_id!r} module {module!r} is not covered by the "
+                f"integrity map (file must exist in the package)"
+            )
+        preview_raw = entry.get("preview")
+        preview = (
+            _widget_package_path(
+                preview_raw, field="preview", widget_id=widget_id,
+                suffixes=WIDGET_PREVIEW_SUFFIXES, ext_id_hint=ext_id_hint,
+            )
+            if preview_raw is not None
+            else None
+        )
+        if preview is not None and preview not in integrity:
+            raise BuildError(
+                f"{ext_id_hint}: widget {widget_id!r} preview {preview!r} is not covered by the "
+                f"integrity map (file must exist in the package)"
+            )
+        normalized.append({
+            "id": widget_id,
+            "name": name.strip(),
+            "description": description.strip(),
+            "sizes": [s for s in KNOWN_WIDGET_SIZES if s in sizes],
+            "module": module,
+            "preview": preview,
+        })
+    return normalized
 
 
 LISTING_REQUIRED_STR_FIELDS = ("publisher", "category", "release_notes")
