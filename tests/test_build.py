@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 from pathlib import Path
 
 import pytest
 from conftest import REVISION_A, REVISION_B, write_fixture_extension
 
-from tools import build
+from tools import build, validate_with_panel
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _zip_hashes(dist_dir: Path) -> dict[str, str]:
@@ -129,6 +133,38 @@ def test_unknown_permission_is_rejected(fixture_repo: Path) -> None:
 
     with pytest.raises(build.BuildError, match="unknown permission"):
         build.run(fixture_repo, sequence=1, revision=REVISION_A)
+
+
+def test_calendar_extension_builds_and_validates(tmp_path: Path) -> None:
+    """The real `host.tend.calendar` package (not a fixture) builds on
+    its own with full integrity coverage and, when a panel core
+    checkout is available, passes the same real-core validation
+    (parse_manifest, archive members, integrity, WAF scan) as every
+    other shipped extension."""
+    src = REPO_ROOT / "extensions" / "host.tend.calendar"
+    dst = tmp_path / "extensions" / "host.tend.calendar"
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(src, dst)
+
+    registry = build.run(tmp_path, sequence=1, revision=REVISION_A)
+    assert [e["id"] for e in registry["extensions"]] == ["host.tend.calendar"]
+
+    manifest = json.loads((dst / "extension.json").read_text())
+    assert manifest["schema"] == 2
+    assert manifest["ui"]["mount"] == "tool-window"
+    assert manifest["permissions"] == ["storage"]
+    build.check_full_coverage(dst, manifest["integrity"])  # every shipped file hashed, nothing stale
+
+    core_checkout = os.environ.get("TEND_CORE_CHECKOUT")
+    if not core_checkout:
+        pytest.skip("TEND_CORE_CHECKOUT not set; skipping real-core validation")
+    try:
+        extensions_module = validate_with_panel._import_panel_extensions(Path(core_checkout))
+    except validate_with_panel.ValidationError as exc:
+        pytest.skip(f"panel core dependencies not importable: {exc}")
+    zip_path = tmp_path / "dist" / registry["extensions"][0]["package"]["name"]
+    ext_id = validate_with_panel.validate_zip(zip_path, extensions_module)
+    assert ext_id == "host.tend.calendar"
 
 
 def test_listing_requires_three_to_six_features(fixture_repo: Path) -> None:
