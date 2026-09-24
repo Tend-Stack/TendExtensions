@@ -52,6 +52,8 @@ KNOWN_PERMISSIONS = {
     "storage",
     "notifications",
     "network",
+    "email",
+    "mascot",
     "files.read",
     "documents.read",
     "documents.write",
