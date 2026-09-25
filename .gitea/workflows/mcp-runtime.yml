@@ -1,0 +1,196 @@
+name: Publish the TEND MCP runtime
+
+# Build, sign and publish one version of the optional `host.tend.mcp` component
+# runtime: the confined worker image for both platforms, the browser package, and
+# the two signed envelopes a panel verifies. See docs/mcp-runtime.md.
+#
+# Manual only, and deliberately so. A component runtime is the one thing this
+# registry publishes that a panel executes: the assets are pinned by digest in a
+# panel release, so publishing one is a decision about what somebody's server
+# will run, not a consequence of a commit landing.
+#
+# The core commit is an input rather than a pin in this file because the runtime
+# is built from the panel core's own source (cmd/tend-mcp-worker,
+# cmd/tend-mcp-pack, extensions/mcp-ui). Naming the exact commit is what makes
+# the build auditable: the same commit and the same version produce the same
+# three artifact digests anywhere, which is the only reason the digests inside a
+# signed envelope are worth checking.
+
+on:
+  workflow_dispatch:
+    inputs:
+      core_commit:
+        description: "Full 40-hex commit on Rubirosa/tend.host to build the runtime from"
+        required: true
+      version:
+        description: "Release version, x.y.z — becomes the tag mcp-runtime-<version>"
+        required: true
+      overwrite:
+        description: "Replace assets already published under this version (only for a release nothing has installed)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build, sign and publish the runtime
+    runs-on: tend-ci
+    env:
+      CORE_COMMIT: ${{ gitea.event.inputs.core_commit }}
+      VERSION: ${{ gitea.event.inputs.version }}
+      OVERWRITE: ${{ gitea.event.inputs.overwrite }}
+      WORKSPACE: ${{ gitea.workspace }}
+      RELEASE_DIR: ${{ gitea.workspace }}/dist/mcp-runtime
+      # Through the environment rather than inline `${{ }}` in a shell: an
+      # expression expanded into a script is text the shell parses, and a ref or
+      # a sha is not this workflow's to quote for.
+      GITEA_REF: ${{ gitea.ref }}
+      GITEA_SHA: ${{ gitea.sha }}
+      # The key id a panel pins in internal/mcp/distribution. Every step that
+      # touches a key checks against this, so a rotated key fails the run rather
+      # than publishing a release no panel will trust.
+      EXPECTED_KEY_ID: 17949d0c35c1eb4d
+    steps:
+      - name: Validate the inputs
+        run: |
+          echo "$CORE_COMMIT" | grep -Eq '^[0-9a-f]{40}$' \
+            || { echo "core_commit must be a full lowercase 40-hex commit sha" >&2; exit 1; }
+          echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$' \
+            || { echo "version must be x.y.z, got '$VERSION'" >&2; exit 1; }
+
+      # The release is tagged on the registry commit this run checks out, and the
+      # tag has to exist on GitHub. Only main is mirrored there
+      # (scripts/publish-verified-main.py), so a dispatch from any other ref would
+      # create a tag pointing at a commit GitHub has never seen.
+      - name: Refuse to publish from anything but main
+        run: |
+          test "$GITEA_REF" = "refs/heads/main" \
+            || { echo "this workflow publishes only from main, got '$GITEA_REF'" >&2; exit 1; }
+
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@v7
+        with:
+          ref: ${{ gitea.sha }}
+          persist-credentials: false
+
+      # Read-only on the core repository: this run builds from it and never
+      # writes to it.
+      - name: Check out the panel core at the named commit
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@v7
+        with:
+          repository: Rubirosa/tend.host
+          ref: ${{ gitea.event.inputs.core_commit }}
+          path: core
+          fetch-depth: 0
+          token: ${{ secrets.CORE_REPOSITORY_TOKEN }}
+          persist-credentials: false
+
+      - name: Verify the core checkout is the commit that was named
+        run: test "$(git -C core rev-parse HEAD)" = "$CORE_COMMIT"
+
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.sum
+
+      # No key in this step. Build and pack are reproducible and carry no
+      # authority, so the signing secret is exposed to exactly one step below.
+      - name: Build and pack both platforms
+        run: |
+          core/scripts/mcp-runtime-release.sh --version "$VERSION" --out "$RELEASE_DIR"
+
+      - name: Check the committed public key is the pinned one
+        run: |
+          KEY_ID="$(python3 - <<'PY'
+          import base64, hashlib, pathlib
+          raw = base64.b64decode(pathlib.Path("keys/tend-mcp-runtime.pub").read_text().strip(), validate=True)
+          assert len(raw) == 32, f"public key must decode to 32 bytes, got {len(raw)}"
+          print(hashlib.sha256(raw).hexdigest()[:16])
+          PY
+          )"
+          echo "committed public key id: $KEY_ID"
+          test "$KEY_ID" = "$EXPECTED_KEY_ID" \
+            || { echo "keys/tend-mcp-runtime.pub is not the pinned key $EXPECTED_KEY_ID" >&2; exit 1; }
+
+      # The only step the signing secret reaches. The key is written with mode
+      # 0600 to the runner's own temporary directory, used once, and removed on
+      # every exit path including a failure — a trap rather than a later step,
+      # because a step that never runs cannot clean up after one that failed.
+      - name: Sign and verify both envelopes
+        env:
+          TEND_MCP_SIGNING_KEY_B64: ${{ secrets.TEND_MCP_SIGNING_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          KEY_FILE="$RUNNER_TEMP/tend-mcp.key"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          test -n "${TEND_MCP_SIGNING_KEY_B64:-}" \
+            || { echo "TEND_MCP_SIGNING_KEY_B64 is not set on this repository" >&2; exit 1; }
+          ( umask 077 && printf '%s' "$TEND_MCP_SIGNING_KEY_B64" | base64 -d > "$KEY_FILE" )
+          chmod 600 "$KEY_FILE"
+          test -s "$KEY_FILE" || { echo "the decoded signing key is empty" >&2; exit 1; }
+
+          PUBLIC_KEY="$WORKSPACE/keys/tend-mcp-runtime.pub"
+          for ARCH in amd64 arm64; do
+            ( cd core && go run ./cmd/tend-mcp-release sign "$KEY_FILE" \
+                --version "$VERSION" \
+                --platform "linux/$ARCH" \
+                --ui "$RELEASE_DIR/tend-mcp-ui.zip" \
+                --service "$RELEASE_DIR/service-linux-$ARCH.zip" \
+                --min-core 0.6.0 \
+                --max-core 0.9.0 \
+                --capability mcp.apps.summary.read \
+                --capability mcp.deployments.status.read \
+                --days 365 \
+                --out "$RELEASE_DIR/runtime-linux-$ARCH.json" )
+          done
+          rm -f "$KEY_FILE"
+
+          # Exactly the verification a panel runs, against the public key this
+          # repository commits: a release that would be refused on installation
+          # is refused here instead, before anything is published.
+          for ARCH in amd64 arm64; do
+            ( cd core && go run ./cmd/tend-mcp-release verify "$PUBLIC_KEY" \
+                "$RELEASE_DIR/runtime-linux-$ARCH.json" \
+                --core-version 0.6.0 --platform "linux/$ARCH" ) | tee "$RUNNER_TEMP/verify-$ARCH.txt"
+            grep -q "key $EXPECTED_KEY_ID" "$RUNNER_TEMP/verify-$ARCH.txt" \
+              || { echo "runtime-linux-$ARCH.json was not signed by $EXPECTED_KEY_ID" >&2; exit 1; }
+          done
+
+      - name: Confirm the signing key is gone
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/tend-mcp.key"
+          test ! -e "$RUNNER_TEMP/tend-mcp.key"
+
+      - name: Report the five assets and their digests
+        run: |
+          cd "$RELEASE_DIR"
+          sha256sum runtime-linux-amd64.json runtime-linux-arm64.json \
+                    tend-mcp-ui.zip service-linux-amd64.zip service-linux-arm64.zip
+
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # Private virtualenv per job: the runner's tool-cache site-packages is
+      # shared by every job on tend-ci across three repositories, so another
+      # job's pip install can replace a module under this one. The publisher
+      # itself needs nothing but the standard library.
+      - run: python -m venv "$RUNNER_TEMP/venv"
+
+      - name: Create or update the GitHub release
+        env:
+          GH_PUBLISH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          ARGS=(--version "$VERSION" --revision "$GITEA_SHA" --dist "$RELEASE_DIR")
+          if [ "$OVERWRITE" = "true" ]; then
+            ARGS+=(--overwrite)
+          fi
+          $RUNNER_TEMP/venv/bin/python -m tools.mcp_release "${ARGS[@]}"
+
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-upload-artifact@v4
+        with:
+          name: mcp-runtime-${{ gitea.event.inputs.version }}
+          path: dist/mcp-runtime/
