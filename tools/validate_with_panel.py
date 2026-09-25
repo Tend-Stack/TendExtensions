@@ -1,99 +1,112 @@
 #!/usr/bin/env python3
-"""Validate every built package against the real Tend panel core.
+"""Validate every built package against the real Tend core.
 
-`tools/build.py` re-implements the panel's manifest rules so a plain
-`pip install cryptography` checkout can build without ever importing the
-panel. This script is the ground-truth check: given a checkout of the
-panel core (`TEND_CORE_CHECKOUT`, or `--core` on the command line), it
-imports `app.services.extensions.parse_manifest` and
-`app.services.extensions._validated_archive_members` directly and runs
-every ZIP in `dist/` through them, so a PR can never ship a package the
-real panel would refuse to install.
+`tools/build.py` re-implements the core's manifest rules so a plain
+`pip install cryptography` checkout can build without a Go toolchain at
+all. This script is the ground-truth check: given a checkout of the Tend
+core (`TEND_CORE_CHECKOUT`, or `--core` on the command line), it runs every
+ZIP in `dist/` through `cmd/tend-validate-extension` — the core's own
+command for validating a package exactly as its install path would (the
+same parse-manifest, archive-member, integrity and install-time safety-scan
+checks the panel itself runs) — so a PR can never ship a package the real
+panel would refuse to install.
 
-Requires `dist/*.zip` to already exist — run `tools/build.py` first.
+The core was a Python (FastAPI) checkout through commit 64361cd3, when
+`backend/` — and the `app.services.extensions` module this script used to
+import directly — was deleted for good: the whole stack is Go now. A
+checkout older than that has no `cmd/tend-validate-extension` and is
+refused outright rather than silently skipped.
+
+Requires `dist/*.zip` to already exist — run `tools/build.py` first — and
+the core checkout's own `go` toolchain on `PATH` (CI installs it from
+`public-core/go.mod`; locally, whatever `go` you use to build tend.host
+works, since `go run` builds against the checkout's own go.mod/go.sum).
 """
 from __future__ import annotations
 
 import argparse
-import importlib
+import json
 import os
+import shutil
+import subprocess
 import sys
-import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class ValidationError(Exception):
-    """A built package failed panel validation."""
+    """The validation run itself could not be completed — a missing or
+    pre-Go core checkout, a missing `go` toolchain, or output the validator
+    command did not produce. A single package failing validation is NOT
+    this: that is reported per-package in the parsed --json list instead,
+    so one bad package never stops the rest from being reported."""
 
 
-def _import_panel_extensions(core_checkout: Path):
-    backend = core_checkout / "backend"
-    if not backend.is_dir():
-        raise ValidationError(f"{backend} does not look like a Tend panel core checkout (no backend/)")
-    sys.path.insert(0, str(backend))
+def _require_go_core(core_checkout: Path) -> None:
+    """Refuses clearly, before ever shelling out, when core_checkout is not
+    a Go tend.host checkout new enough to carry cmd/tend-validate-extension
+    (the command this script depends on)."""
+    if not (core_checkout / "go.mod").is_file():
+        raise ValidationError(f"{core_checkout} does not look like a Tend core checkout (no go.mod)")
+    if not (core_checkout / "cmd" / "tend-validate-extension").is_dir():
+        raise ValidationError(
+            f"{core_checkout} has no cmd/tend-validate-extension — this is a pre-Go pin, from "
+            "before the core's backend/ was deleted at 64361cd3. Point TEND_CORE_CHECKOUT / --core "
+            "at a checkout on or after the Go cutover."
+        )
+    if shutil.which("go") is None:
+        raise ValidationError('the "go" toolchain is not on PATH')
+
+
+def run_validator(core_checkout: Path, zips: list[Path]) -> list[dict]:
+    """Runs `go run ./cmd/tend-validate-extension --json <zips>` from
+    core_checkout (so `go run` resolves the checkout's own module) and
+    returns the parsed JSON list: one dict per package, in the exact shape
+    cmd/tend-validate-extension/main.go's packageResult marshals (file, ok,
+    and — id/version/schema/warnings on success or reason on failure).
+
+    zips are passed as absolute paths: core_checkout is the subprocess's
+    cwd, and dist/ lives under the registry's own repo root, not under
+    core_checkout.
+    """
+    cmd = ["go", "run", "./cmd/tend-validate-extension", "--json"] + [str(p.resolve()) for p in zips]
+    proc = subprocess.run(cmd, cwd=core_checkout, capture_output=True, text=True)
+    # Exit 0 (everything validated) and 1 (at least one package failed) both
+    # still print the JSON list this function needs; anything else means the
+    # command itself never ran to completion (a usage error, a build
+    # failure in the checkout) and there is no per-package report to parse.
+    if proc.returncode not in (0, 1):
+        raise ValidationError(
+            f"cmd/tend-validate-extension exited {proc.returncode} (not a per-package failure):\n"
+            f"{proc.stderr}"
+        )
     try:
-        module = importlib.import_module("app.services.extensions")
-    except Exception as exc:  # noqa: BLE001 - surface the real import failure
-        raise ValidationError(f"could not import app.services.extensions from {backend}: {exc}") from exc
-    return module
+        results = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise ValidationError(
+            f"cmd/tend-validate-extension --json did not print valid JSON: {exc}\n"
+            f"stdout: {proc.stdout}\nstderr: {proc.stderr}"
+        ) from exc
+    return results
 
 
-def validate_zip(zip_path: Path, extensions_module) -> str:
-    """Run one built ZIP through the panel's manifest parser and archive
-    member validation (the parts that don't need a database or an event
-    loop). Returns the manifest id on success."""
-    with zipfile.ZipFile(zip_path) as zf:
-        manifest_name = None
-        for name in zf.namelist():
-            parts = name.split("/")
-            if parts[-1] == "extension.json" and len(parts) <= 2:
-                manifest_name = name
-                break
-        if manifest_name is None:
-            raise ValidationError(f"{zip_path.name}: no extension.json at the root of the ZIP")
+def report(results: list[dict]) -> int:
+    """Prints one OK/FAIL line per package and a summary line, then returns
+    the process exit status — the same report shape this script has always
+    produced, now sourced from cmd/tend-validate-extension's parsed --json
+    output instead of a direct Python import."""
+    failures = 0
+    for r in results:
+        name = Path(r["file"]).name
+        if r.get("ok"):
+            print(f"OK    {name}  ({r.get('id')})")
+        else:
+            failures += 1
+            print(f"FAIL  {name}: {r.get('reason')}")
 
-        try:
-            extensions_module._validated_archive_members(zf)
-        except extensions_module.ManifestError as exc:
-            raise ValidationError(f"{zip_path.name}: archive member validation failed: {exc}") from exc
-
-        raw_manifest = zf.read(manifest_name)
-        try:
-            manifest = extensions_module.parse_manifest(raw_manifest)
-        except extensions_module.ManifestError as exc:
-            raise ValidationError(f"{zip_path.name}: parse_manifest rejected the manifest: {exc}") from exc
-
-        # Integrity verification needs the files on disk, not just inside
-        # the open ZipFile handle — extract to a throwaway directory and
-        # run the same WAF check the installer runs before promoting a
-        # staged extension. Neither call touches a database.
-        if manifest.get("schema") == 2:
-            import shutil
-            import tempfile
-
-            from app.services import extension_waf
-
-            with tempfile.TemporaryDirectory() as tmp:
-                tmp_path = Path(tmp)
-                for info in zf.infolist():
-                    if info.is_dir():
-                        continue
-                    target = tmp_path / info.filename
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    with zf.open(info) as src, target.open("wb") as dst:
-                        shutil.copyfileobj(src, dst)
-                try:
-                    extension_waf.verify_integrity(tmp_path, manifest["integrity"])
-                except extension_waf.IntegrityError as exc:
-                    raise ValidationError(f"{zip_path.name}: integrity verification failed: {exc}") from exc
-                scan = extension_waf.scan_extension(tmp_path, manifest.get("permissions", []))
-                if scan.has_blocks():
-                    lines = "; ".join(f"[{f.rule_id}] {f.file}:{f.line} {f.message}" for f in scan.blocks)
-                    raise ValidationError(f"{zip_path.name}: WAF scan blocked install: {lines}")
-
-        return manifest["id"]
+    print(f"\n{len(results) - failures}/{len(results)} package(s) passed panel validation")
+    return 1 if failures else 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -103,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
         "--core",
         type=Path,
         default=None,
-        help="path to a Tend panel core checkout (defaults to $TEND_CORE_CHECKOUT)",
+        help="path to a Tend core checkout (defaults to $TEND_CORE_CHECKOUT)",
     )
     args = parser.parse_args(argv)
 
@@ -120,23 +133,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        extensions_module = _import_panel_extensions(core_checkout)
+        _require_go_core(core_checkout)
+        results = run_validator(core_checkout, zips)
     except ValidationError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    failures: list[str] = []
-    for zip_path in zips:
-        try:
-            ext_id = validate_zip(zip_path, extensions_module)
-        except ValidationError as exc:
-            failures.append(str(exc))
-            print(f"FAIL  {zip_path.name}: {exc}")
-        else:
-            print(f"OK    {zip_path.name}  ({ext_id})")
-
-    print(f"\n{len(zips) - len(failures)}/{len(zips)} package(s) passed panel validation")
-    return 1 if failures else 0
+    return report(results)
 
 
 if __name__ == "__main__":

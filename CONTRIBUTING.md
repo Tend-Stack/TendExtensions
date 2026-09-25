@@ -35,8 +35,11 @@
    ```
    This validates every extension's manifest, rebuilds its integrity map,
    and writes `dist/<id>-<version>.zip` plus `dist/registry.json`.
-6. If you have a checkout of the Tend panel core, validate against its real
-   manifest parser before opening a PR:
+6. If you have a checkout of the Tend core, validate against its real
+   install-path checks before opening a PR — this needs a Go toolchain on
+   `PATH` for the checkout's own `go run` (a checkout from before the core's
+   `backend/` was retired has no `cmd/tend-validate-extension` and is
+   refused with a clear error rather than silently skipped):
    ```
    TEND_CORE_CHECKOUT=/path/to/tend.host python tools/validate_with_panel.py
    ```
@@ -79,6 +82,7 @@ Panels pick up the new registry on their next scheduled or manual check.
   uncovered file, no stale entry for a file that no longer exists).
 - Only permissions and runtime modules the panel already knows about are
   allowed (`tools/build.py` and `tools/validate_with_panel.py` both check
-  this — the second one against the real panel code).
+  this — the second one by running the real core's own
+  `cmd/tend-validate-extension`).
 - Keep ZIPs deterministic: no dotfiles, no directory entries, sorted member
   order. `tools/build.py` does this for you; don't hand-build the ZIP.

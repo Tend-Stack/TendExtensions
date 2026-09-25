@@ -18,13 +18,13 @@ def _core_checkout() -> Path | None:
 
 def test_validate_every_built_extension_against_the_reference_core(tmp_path: Path) -> None:
     """Builds the repository's real extensions/ tree and runs every
-    resulting ZIP through the actual panel core's parse_manifest,
-    _validated_archive_members, and extension_waf (integrity + WAF scan).
+    resulting ZIP through the actual core's own cmd/tend-validate-extension
+    — the same parse-manifest, archive-member, integrity and install-time
+    safety-scan checks the panel's install path runs.
 
-    Skipped when TEND_CORE_CHECKOUT isn't set, or when the checkout's own
-    dependencies (aiosqlite, httpx, Pillow — none of which this repo's
-    own tooling needs) aren't importable in the current environment. CI
-    always sets both, against the pinned core commit.
+    Skipped when TEND_CORE_CHECKOUT isn't set, or when the checkout has no
+    cmd/tend-validate-extension (a pre-Go pin) or no `go` toolchain on
+    PATH. CI always sets both, against the pinned core commit.
     """
     core_checkout = _core_checkout()
     if core_checkout is None:
@@ -33,9 +33,9 @@ def test_validate_every_built_extension_against_the_reference_core(tmp_path: Pat
         pytest.fail(f"TEND_CORE_CHECKOUT={core_checkout} does not exist")
 
     try:
-        extensions_module = validate_with_panel._import_panel_extensions(core_checkout)
+        validate_with_panel._require_go_core(core_checkout)
     except validate_with_panel.ValidationError as exc:
-        pytest.skip(f"panel core dependencies not importable: {exc}")
+        pytest.skip(f"core checkout not usable: {exc}")
 
     # Build into a throwaway dist/ so this test never mutates the real
     # repository's extensions/ (build.py rewrites integrity maps in
@@ -50,12 +50,9 @@ def test_validate_every_built_extension_against_the_reference_core(tmp_path: Pat
     assert registry["extensions"], "expected at least one seeded extension"
 
     dist_dir = tmp_path / "dist"
-    failures = []
-    for zip_path in sorted(dist_dir.glob("*.zip")):
-        try:
-            validate_with_panel.validate_zip(zip_path, extensions_module)
-        except validate_with_panel.ValidationError as exc:
-            failures.append(str(exc))
+    zips = sorted(dist_dir.glob("*.zip"))
+    results = validate_with_panel.run_validator(core_checkout, zips)
 
+    failures = [f"{r['file']}: {r.get('reason')}" for r in results if not r.get("ok")]
     assert not failures, "\n".join(failures)
-    assert len(list(dist_dir.glob("*.zip"))) == len(registry["extensions"])
+    assert len(results) == len(registry["extensions"])
