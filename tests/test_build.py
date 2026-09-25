@@ -159,12 +159,83 @@ def test_calendar_extension_builds_and_validates(tmp_path: Path) -> None:
     if not core_checkout:
         pytest.skip("TEND_CORE_CHECKOUT not set; skipping real-core validation")
     try:
-        extensions_module = validate_with_panel._import_panel_extensions(Path(core_checkout))
+        validate_with_panel._require_go_core(Path(core_checkout))
     except validate_with_panel.ValidationError as exc:
-        pytest.skip(f"panel core dependencies not importable: {exc}")
+        pytest.skip(f"core checkout not usable: {exc}")
     zip_path = tmp_path / "dist" / registry["extensions"][0]["package"]["name"]
-    ext_id = validate_with_panel.validate_zip(zip_path, extensions_module)
-    assert ext_id == "host.tend.calendar"
+    results = validate_with_panel.run_validator(Path(core_checkout), [zip_path])
+    assert len(results) == 1
+    assert results[0]["ok"] is True, results[0]
+    assert results[0]["id"] == "host.tend.calendar"
+
+
+# ---------- validate_with_panel: JSON parsing and reporting ----------
+
+
+class _FakeCompletedProcess:
+    def __init__(self, returncode: int, stdout: str, stderr: str = "") -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def test_run_validator_parses_json_and_report_prints_ok_fail_lines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No Go toolchain and no core checkout needed: subprocess.run is
+    stubbed with a fixed cmd/tend-validate-extension --json payload, so this
+    proves run_validator's parsing and report()'s OK/FAIL formatting on
+    every run, not just when TEND_CORE_CHECKOUT happens to be set."""
+    fake_stdout = json.dumps(
+        [
+            {"file": "/x/host.tend.a-1.0.0.zip", "ok": True, "id": "host.tend.a", "version": "1.0.0", "schema": 2, "warnings": 1},
+            {"file": "/x/host.tend.b-1.0.0.zip", "ok": False, "reason": "extension.json is not valid UTF-8 JSON: ..."},
+        ]
+    )
+
+    def fake_run(cmd, *, cwd, capture_output, text):  # noqa: ANN001 - matches subprocess.run's call shape
+        assert cmd[:4] == ["go", "run", "./cmd/tend-validate-extension", "--json"]
+        assert cwd == tmp_path
+        assert capture_output is True
+        assert text is True
+        return _FakeCompletedProcess(returncode=1, stdout=fake_stdout)
+
+    monkeypatch.setattr(validate_with_panel.subprocess, "run", fake_run)
+
+    zips = [Path("/x/host.tend.a-1.0.0.zip"), Path("/x/host.tend.b-1.0.0.zip")]
+    results = validate_with_panel.run_validator(tmp_path, zips)
+    assert [r["file"] for r in results] == [str(p) for p in zips]
+    assert results[0]["id"] == "host.tend.a"
+    assert results[1]["reason"].startswith("extension.json")
+
+    exit_code = validate_with_panel.report(results)
+    out = capsys.readouterr().out
+    assert exit_code == 1
+    assert "OK    host.tend.a-1.0.0.zip  (host.tend.a)" in out
+    assert "FAIL  host.tend.b-1.0.0.zip: extension.json is not valid UTF-8 JSON: ..." in out
+    assert "1/2 package(s) passed panel validation" in out
+
+
+def test_run_validator_rejects_a_usage_or_build_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """An exit status outside {0, 1} means cmd/tend-validate-extension never
+    produced a per-package report at all (bad flags, a compile error in the
+    checkout) — that is a ValidationError, not a wrongly-parsed empty
+    result list."""
+
+    def fake_run(cmd, *, cwd, capture_output, text):  # noqa: ANN001 - matches subprocess.run's call shape
+        return _FakeCompletedProcess(returncode=2, stdout="", stderr="usage: tend-validate-extension ...")
+
+    monkeypatch.setattr(validate_with_panel.subprocess, "run", fake_run)
+
+    with pytest.raises(validate_with_panel.ValidationError, match="exited 2"):
+        validate_with_panel.run_validator(tmp_path, [Path("/x/a.zip")])
+
+
+def test_require_go_core_refuses_a_pre_go_checkout(tmp_path: Path) -> None:
+    (tmp_path / "go.mod").write_text("module tend.host\n", encoding="utf-8")
+    # No cmd/tend-validate-extension directory — the pre-Go-cutover shape.
+    with pytest.raises(validate_with_panel.ValidationError, match="pre-Go pin"):
+        validate_with_panel._require_go_core(tmp_path)
 
 
 def test_listing_requires_three_to_six_features(fixture_repo: Path) -> None:

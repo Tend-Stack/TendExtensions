@@ -20,7 +20,7 @@ jobs:
     name: Build and validate the registry
     runs-on: tend-ci
     env:
-      CORE_COMMIT: 056b12c9b004da9a137cf2feca57cfd7a1835d14
+      CORE_COMMIT: 1aab99b06c5366b1e93bd1f0d9f7b51418f87657
       WORKSPACE: ${{ gitea.workspace }}
     steps:
       # Full history: the registry sequence is `git rev-list --count HEAD`,
@@ -69,8 +69,11 @@ jobs:
       - name: Verify the pinned core checkout
         run: test "$(git -C public-core rev-parse HEAD)" = "$CORE_COMMIT"
 
-      - name: Install the pinned panel core's own dependencies
-        run: $RUNNER_TEMP/venv/bin/python -m pip install -r public-core/backend/requirements.txt
+      - name: Set up the pinned core's Go toolchain
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@v5
+        with:
+          go-version-file: public-core/go.mod
+          cache: false
 
       - name: Validate every built package against the real panel
         env:
