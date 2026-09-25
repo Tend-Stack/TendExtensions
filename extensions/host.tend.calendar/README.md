@@ -23,17 +23,22 @@ Month/Agenda, a 9am hour for Week/Day).
 
 ## Creating and editing events
 
-- **Month**: click an empty day to create an all-day event there;
-  click a chip to edit it.
+- **Month**: click an empty day to create a timed one-hour event there
+  (1.4.0: the next full hour from now if it's today, 09:00 otherwise —
+  not all-day); click a chip to edit it.
 - **Week / Day**: click a time slot for a default one-hour event, or
   drag to set the exact range; click a block to edit it.
 - **Agenda**: click an item to edit it.
 
-The editor covers title, all-day toggle, start/end date and time, one
-of six preset colours, location, notes, a simple recurrence
-(none / daily / weekly / monthly — no end date; recurring events edit
-as a whole series), and reminders (below). Delete removes the event
-(and, for a recurring one, the whole series).
+The editor covers title, an all-day toggle (1.4.0: explicit, not the
+default — new events are timed everywhere they're created), start/end
+date and time (the time fields stay visible, disabled and dimmed while
+All day is checked, so the option is discoverable rather than
+vanishing), one of six preset colours, location, notes, a simple
+recurrence (none / daily / weekly / monthly — no end date; recurring
+events edit as a whole series), and reminders (below). Moving Start
+keeps End's duration; an End before Start is refused with a message.
+Delete removes the event (and, for a recurring one, the whole series).
 
 ## Reminders (1.2.0; Sound channel in 1.3.0)
 

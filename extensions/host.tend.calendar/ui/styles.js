@@ -278,6 +278,16 @@ const CSS = `
  * grid track. */
 .cal-time-inputs { display: flex; gap: 6px; min-width: 0; }
 .cal-time-inputs > * { flex: 1 1 0; min-width: 0; }
+/* 1.4.0: Date/Time sub-labels inside each Start/End row, and the
+ * disabled-but-visible dimming for Time while "All day" is on (never
+ * display:none — the option stays discoverable). */
+.cal-time-input-group { display: grid; gap: 3px; min-width: 0; }
+.cal-time-input-sublabel { font-size: 9.5px; color: var(--cal-muted); text-transform: uppercase; letter-spacing: .03em; }
+.cal-time-input-group.is-disabled { opacity: .45; }
+.cal-time-input-group.is-disabled .cal-input { cursor: not-allowed; }
+.cal-field-error { font-size: 11.5px; color: #f87171; }
+.cal-root.is-light .cal-field-error { color: #b91c1c; }
+.cal-field-error.is-hidden { display: none; }
 .cal-check-row { display: flex; align-items: center; gap: 7px; font-size: 12.5px; min-height: var(--cal-touch); }
 .cal-check-row input { width: 17px; height: 17px; accent-color: var(--cal-accent); }
 .cal-swatches { display: flex; gap: 6px; flex-wrap: wrap; }

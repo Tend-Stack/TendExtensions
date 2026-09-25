@@ -98,7 +98,10 @@ export function createMonthView(ctx) {
         'aria-label': day.toDateString() + (isToday ? ', today' : ''),
       },
       on: {
-        click: () => ctx.onCreate({ date: day, allDay: true }),
+        // 1.4.0: no `allDay` flag here — ctx.onCreate/seedToDraft now
+        // seeds a timed default (next full hour, or 09:00) for a bare
+        // `{ date }`; All day stays an explicit toggle in the editor.
+        click: () => ctx.onCreate({ date: day }),
         keydown: (event) => {
           if (event.key === 'Enter') { event.preventDefault(); ctx.onOpenDay(day); }
         },

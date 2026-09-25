@@ -254,6 +254,18 @@ describe('serializeICS + parseICS round-trip', () => {
     expect(roundTripped.icsUid).toBe(original.id); // no icsUid on export -> UID falls back to event.id
   });
 
+  test('a timed event with non-zero minutes round-trips the exact time (1.4.0: not truncated to the hour)', () => {
+    const original = normalizeEvent({
+      id: 'ev-1b', title: 'Odd-minute meeting', start: '2026-09-22T09:37', end: '2026-09-22T10:52', allDay: false,
+    });
+    const doc = serializeICS([original]);
+    const { events } = parseICS(doc);
+    const roundTripped = normalizeEvent(icsEventToModel(events[0]));
+    expect(roundTripped.start).toBe('2026-09-22T09:37');
+    expect(roundTripped.end).toBe('2026-09-22T10:52');
+    expect(roundTripped.allDay).toBe(false);
+  });
+
   test('an all-day multi-day event round-trips its exact start/end', () => {
     const original = normalizeEvent({
       id: 'ev-2', title: 'Offsite', allDay: true, start: '2026-03-10', end: '2026-03-12',

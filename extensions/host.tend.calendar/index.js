@@ -33,7 +33,7 @@ import { EVENTS_KEY, normalizeEvent } from './model.js';
 import { computeAllReminderRows, idsToCancel } from './reminders.js';
 import { parseICS, serializeICS, icsEventToModel } from './ics.js';
 import {
-  addDays, formatDayTitle, formatFullDate, formatMonthYear, formatTime, formatWeekRange,
+  addDays, defaultTimedSeedForDay, formatDayTitle, formatFullDate, formatMonthYear, formatTime, formatWeekRange,
   getLocale, localeIsHour12, localeWeekStart, startOfDay, startOfWeek, toLocalISO,
 } from './date-utils.js';
 
@@ -244,11 +244,18 @@ export default function activate(host) {
   }
 
   /** Views hand back what the user clicked/dragged as plain Dates;
-   *  turn that into the local-ISO seed the editor's model expects. */
+   *  turn that into the local-ISO seed the editor's model expects.
+   *  1.4.0: new events default to timed, not all-day — a bare
+   *  `{ date }` (month-cell click, or "+ New event" on Month/Agenda)
+   *  goes through `defaultTimedSeedForDay` (next full hour, or 09:00);
+   *  "All day" stays an explicit toggle a person picks in the editor. */
   function seedToDraft(seed) {
     if (seed.date) {
-      const iso = toLocalISO(seed.date, false);
-      return { start: iso, end: iso, allDay: true };
+      if (seed.allDay) {
+        const iso = toLocalISO(seed.date, false);
+        return { start: iso, end: iso, allDay: true };
+      }
+      return seedToDraft(defaultTimedSeedForDay(seed.date));
     }
     return {
       start: toLocalISO(seed.start, !seed.allDay),

@@ -12,7 +12,7 @@
 import { el, clear, createDialog } from './dom.js';
 import { createDropdown } from './dropdown.js';
 import { COLORS, RECURRENCE_OPTIONS, normalizeEvent } from '../model.js';
-import { toLocalISO, parseLocal } from '../date-utils.js';
+import { toLocalISO, parseLocal, minutesBetween, timeFieldsEnabled } from '../date-utils.js';
 import { REMINDER_PRESETS, CUSTOM_UNITS, customOffsetMinutes, guessCustomOffset, reminderChannelsFromSelection } from '../reminders.js';
 
 const RECURRENCE_LABELS = { none: 'Does not repeat', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
@@ -22,6 +22,10 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
   let draft = null;
   let editingId = null;
   let els = {};
+  // Duration (minutes) between start and end, preserved when the start
+  // moves so a 30-minute meeting stays 30 minutes when it's dragged to
+  // a new time (1.4.0); recomputed whenever End is edited directly.
+  let durationMinutes = 60;
 
   function capabilities() {
     return getReminderCapabilities ? getReminderCapabilities() : { panel: true, email: false, sound: false };
@@ -177,13 +181,23 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     // Start and End stack vertically rather than sit side by side: a
     // date input plus a time input already needs the dialog's full
     // width to stay readable, so a 2-up layout here would squeeze both
-    // into illegibly narrow boxes.
+    // into illegibly narrow boxes. Each input gets its own "Date" /
+    // "Time" label (1.4.0) so Time reads clearly next to Date instead
+    // of being an unlabelled second box.
+    els.startTimeGroup = timeInputGroup('Time', els.startTime);
+    els.endTimeGroup = timeInputGroup('Time', els.endTime);
+    els.timeError = el('div', { class: 'cal-field-error is-hidden', attrs: { role: 'alert' } });
     els.timeRow = el('div', { class: 'cal-stack' }, [
-      wrapField('Start', el('div', { class: 'cal-time-inputs' }, [els.startDate, els.startTime])),
-      wrapField('End', el('div', { class: 'cal-time-inputs' }, [els.endDate, els.endTime])),
+      wrapField('Start', el('div', { class: 'cal-time-inputs' }, [timeInputGroup('Date', els.startDate), els.startTimeGroup])),
+      wrapField('End', el('div', { class: 'cal-time-inputs' }, [timeInputGroup('Date', els.endDate), els.endTimeGroup])),
+      els.timeError,
     ]);
 
     els.allDay.addEventListener('change', () => applyAllDayVisibility());
+    els.startDate.addEventListener('change', keepEndDurationOnStartChange);
+    els.startTime.addEventListener('change', keepEndDurationOnStartChange);
+    els.endDate.addEventListener('change', recomputeDurationFromEnd);
+    els.endTime.addEventListener('change', recomputeDurationFromEnd);
 
     return el('div', {}, [
       els.title2,
@@ -203,16 +217,64 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     return el('label', { class: 'cal-field' }, [el('span', { class: 'cal-field-label', text: label }), control]);
   }
 
+  /** One Date-or-Time input plus its own small visible label (1.4.0) —
+   *  "Time" now reads clearly beside "Date" instead of being an
+   *  unlabelled second box next to it. */
+  function timeInputGroup(label, input) {
+    return el('label', { class: 'cal-time-input-group' }, [el('span', { class: 'cal-time-input-sublabel', text: label }), input]);
+  }
+
+  function currentStart() {
+    return parseLocal(`${els.startDate.value}T${els.startTime.value || '00:00'}`);
+  }
+  function currentEnd() {
+    return parseLocal(`${els.endDate.value}T${els.endTime.value || '00:00'}`);
+  }
+
+  /** Start moved (date or time): shift End by the preserved duration
+   *  so a 30-minute event dragged to a new time stays 30 minutes. */
+  function keepEndDurationOnStartChange() {
+    const start = currentStart();
+    if (!start) return;
+    const end = new Date(start.getTime() + durationMinutes * 60000);
+    els.endDate.value = toLocalISO(end, false);
+    els.endTime.value = pad2(end.getHours()) + ':' + pad2(end.getMinutes());
+    hideTimeError();
+  }
+
+  /** End edited directly: remember its new duration relative to Start
+   *  (only when it's still after Start — an in-progress edit that's
+   *  briefly before Start doesn't discard the last good duration). */
+  function recomputeDurationFromEnd() {
+    const start = currentStart();
+    const end = currentEnd();
+    if (start && end && end > start) durationMinutes = minutesBetween(start, end);
+    hideTimeError();
+  }
+
+  function showTimeError(message) {
+    els.timeError.textContent = message;
+    els.timeError.classList.remove('is-hidden');
+  }
+  function hideTimeError() {
+    els.timeError.classList.add('is-hidden');
+  }
+
   function selectColor(id) {
     draft.color = id;
     for (const [colorId, node] of els.swatches) node.setAttribute('aria-pressed', String(colorId === id));
     for (const [colorId, node] of els.swatches) node.setAttribute('aria-checked', String(colorId === id));
   }
 
+  // 1.4.0: the time fields stay visible when "All day" is on — disabled
+  // and dimmed, not hidden, so the option a person is missing (time of
+  // day) is still discoverable rather than disappearing outright.
   function applyAllDayVisibility() {
-    const allDay = els.allDay.checked;
-    els.startTime.style.display = allDay ? 'none' : '';
-    els.endTime.style.display = allDay ? 'none' : '';
+    const enabled = timeFieldsEnabled(els.allDay.checked);
+    els.startTime.disabled = !enabled;
+    els.endTime.disabled = !enabled;
+    els.startTimeGroup.classList.toggle('is-disabled', !enabled);
+    els.endTimeGroup.classList.toggle('is-disabled', !enabled);
   }
 
   const dialog = createDialog({
@@ -230,6 +292,9 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     els.endDate.value = toLocalISO(end, false);
     els.startTime.value = pad2(start.getHours()) + ':' + pad2(start.getMinutes());
     els.endTime.value = pad2(end.getHours()) + ':' + pad2(end.getMinutes());
+    durationMinutes = minutesBetween(start, end);
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) durationMinutes = 60;
+    hideTimeError();
     els.location.value = draft.location;
     els.notes.value = draft.notes;
     els.recurrence.setValue(draft.recurrence);
@@ -264,10 +329,15 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
   function save() {
     const event = readForm();
     if (!event.title) { els.title.focus(); return; }
+    // 1.4.0: refuse End-before-Start with a message rather than
+    // silently nudging End forward — a person who sees an end time
+    // move on its own after clicking Save has no idea what happened.
     if (parseLocal(event.end) < parseLocal(event.start)) {
-      const start = parseLocal(event.start);
-      event.end = event.allDay ? event.start : toLocalISO(new Date(start.getTime() + 30 * 60000), true);
+      showTimeError('End must be after start.');
+      (event.allDay ? els.endDate : els.endTime).focus();
+      return;
     }
+    hideTimeError();
     onSave(event, editingId);
     dialog.close();
   }

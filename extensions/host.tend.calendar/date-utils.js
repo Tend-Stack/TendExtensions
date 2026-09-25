@@ -182,3 +182,29 @@ export function parseLocal(value) {
 export function minutesBetween(a, b) {
   return Math.round((b - a) / 60000);
 }
+
+/** The next whole-hour boundary strictly after `now` (1.4.0): 14:23 ->
+ *  15:00, and 14:00:00.000 exactly -> 15:00 too, since it's the *next*
+ *  hour, not the current one. Used to seed a new event's default start
+ *  time so a freshly created event is timed, not all-day, by default. */
+export function nextFullHour(now = new Date()) {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1, 0, 0, 0);
+}
+
+/** 1.4.0's "new events are timed by default" rule as a pure function:
+ *  a month-cell or "+ New event" click on `day` seeds the next full
+ *  hour from `now` if `day` is today, or 09:00 otherwise, with a
+ *  one-hour duration. Kept DOM-free (index.js is not) so it's directly
+ *  unit-tested. */
+export function defaultTimedSeedForDay(day, now = new Date()) {
+  const start = isSameDay(day, now) ? nextFullHour(now) : new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9, 0);
+  return { start, end: new Date(start.getTime() + 60 * 60000), allDay: false };
+}
+
+/** Whether the editor's Start/End time inputs should be enabled — the
+ *  1.4.0 rule that "All day" disables and dims them rather than hiding
+ *  them, expressed as a pure predicate so the rule itself (not just
+ *  the DOM side effect) is unit-tested. */
+export function timeFieldsEnabled(allDay) {
+  return !allDay;
+}

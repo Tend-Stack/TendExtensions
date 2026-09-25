@@ -134,6 +134,21 @@ describe('computeReminderSchedule', () => {
     expect(rows[0].channels).toEqual(['panel']);
   });
 
+  test('the offset computes from the exact non-midnight start (1.4.0: no rounding to midnight)', () => {
+    const now = new Date(2026, 8, 22, 9, 0);
+    const start = new Date(2026, 8, 22, 14, 37); // an odd minute, well away from midnight
+    const event = normalizeEvent({
+      id: 'ev-1c', title: 'Odd-minute meeting', start: iso(start), end: iso(new Date(start.getTime() + 3600000)),
+      reminders: [{ offsetMinutes: 10, channels: ['panel'] }],
+    });
+    const rows = computeReminderSchedule(event, now);
+    expect(rows).toHaveLength(1);
+    // 14:37 - 10 minutes = 14:27, not midnight and not rounded to any hour.
+    expect(rows[0].at.getTime()).toBe(start.getTime() - 10 * 60000);
+    expect(rows[0].at.getHours()).toBe(14);
+    expect(rows[0].at.getMinutes()).toBe(27);
+  });
+
   test('a reminder whose computed time has already passed is dropped', () => {
     const now = new Date(2026, 8, 22, 15, 0);
     const start = new Date(2026, 8, 22, 15, 10); // starts in 10 minutes
