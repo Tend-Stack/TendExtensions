@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from conftest import REVISION_A
 
-from tools import mcp_release
+from tools import mcp_release, mcp_window
 from tools.release import ReleaseError
 
 VERSION = "0.1.0"
@@ -25,6 +25,9 @@ def write_release_dir(
     *,
     version: str = VERSION,
     break_field: str | None = None,
+    min_core: str = "0.6.0",
+    max_core: str = "0.9.0",
+    salt: bytes = b"",
 ) -> dict[str, bytes]:
     """Write the five assets a runtime release publishes.
 
@@ -35,8 +38,10 @@ def write_release_dir(
     """
     directory.mkdir(parents=True, exist_ok=True)
     bodies: dict[str, bytes] = {
-        "service-linux-amd64.zip": b"amd64 worker image bytes",
-        "service-linux-arm64.zip": b"arm64 worker image bytes",
+        # `salt` stands in for a build that produced different bytes: two runtime
+        # versions whose images were byte-identical would not exercise replacement.
+        "service-linux-amd64.zip": b"amd64 worker image bytes" + salt,
+        "service-linux-arm64.zip": b"arm64 worker image bytes" + salt,
         "tend-mcp-ui.zip": b"browser package bytes",
     }
     ui_digest = _digest(bodies["tend-mcp-ui.zip"])
@@ -49,6 +54,14 @@ def write_release_dir(
             "ui_sha256": ui_digest,
             "service_sha256": _digest(service),
             "capabilities": ["mcp.apps.summary.read", "mcp.deployments.status.read"],
+            # The window and the sequence the publisher derives rather than types:
+            # the sequence is the one the panel derives from the version, because
+            # the panel refuses any other value.
+            "min_core_version": min_core,
+            "max_core_version": max_core,
+            "sequence": mcp_window.sequence_of(version),
+            "issued_at": 1790357825,
+            "expires_at": 1821893825,
         }
         if break_field == "version":
             payload["version"] = "9.9.9"

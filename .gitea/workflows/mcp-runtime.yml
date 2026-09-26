@@ -4,10 +4,22 @@ name: Publish the TEND MCP runtime
 # runtime: the confined worker image for both platforms, the browser package, and
 # the two signed envelopes a panel verifies. See docs/mcp-runtime.md.
 #
-# Manual only, and deliberately so. A component runtime is the one thing this
-# registry publishes that a panel executes: the assets are pinned by digest in a
-# panel release, so publishing one is a decision about what somebody's server
-# will run, not a consequence of a commit landing.
+# Dispatch-triggered, and now dispatchable by a machine: the core's release
+# workflow calls
+#
+#   POST /api/v1/repos/Rubirosa/TendExtensions/actions/workflows/mcp-runtime.yml/dispatches
+#   {"ref": "main", "inputs": {"core_commit": "<40-hex>"}}
+#
+# so a core release re-signs the runtime for its own version without a human
+# typing a compatibility window. What that removes is the failure this workflow
+# used to have: the window was typed by hand, so every core release above it
+# needed a re-sign somebody had to remember.
+#
+# What it does not remove is the decision. A component runtime is the one thing
+# this registry publishes that a panel *executes*, so the run still refuses more
+# than it does: it publishes only from main, only under the pinned key, only
+# envelopes that describe the artifacts beside them, and only a release whose
+# sequence climbs above the one the alias already serves.
 #
 # The core commit is an input rather than a pin in this file because the runtime
 # is built from the panel core's own source (cmd/tend-mcp-worker,
@@ -22,9 +34,22 @@ on:
       core_commit:
         description: "Full 40-hex commit on Rubirosa/tend.host to build the runtime from"
         required: true
-      version:
-        description: "Release version, x.y.z — becomes the tag mcp-runtime-<version>"
-        required: true
+      runtime_version:
+        description: "Runtime version x.y.z. Empty: bump the patch of the version the alias serves"
+        required: false
+        default: ""
+      max_core_version:
+        description: "Emergency override of max_core_version. Empty: the core VERSION at core_commit. Recorded in the release notes"
+        required: false
+        default: ""
+      force:
+        description: "Publish even though core_commit is not a newer core release than the alias already covers"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Build, sign, verify and print the plan — publish nothing"
+        type: boolean
+        default: false
       overwrite:
         description: "Replace assets already published under this version (only for a release nothing has installed)"
         type: boolean
@@ -39,7 +64,10 @@ jobs:
     runs-on: tend-ci
     env:
       CORE_COMMIT: ${{ gitea.event.inputs.core_commit }}
-      VERSION: ${{ gitea.event.inputs.version }}
+      REQUESTED_VERSION: ${{ gitea.event.inputs.runtime_version }}
+      MAX_CORE_OVERRIDE: ${{ gitea.event.inputs.max_core_version }}
+      FORCE: ${{ gitea.event.inputs.force }}
+      DRY_RUN: ${{ gitea.event.inputs.dry_run }}
       OVERWRITE: ${{ gitea.event.inputs.overwrite }}
       WORKSPACE: ${{ gitea.workspace }}
       RELEASE_DIR: ${{ gitea.workspace }}/dist/mcp-runtime
@@ -57,8 +85,15 @@ jobs:
         run: |
           echo "$CORE_COMMIT" | grep -Eq '^[0-9a-f]{40}$' \
             || { echo "core_commit must be a full lowercase 40-hex commit sha" >&2; exit 1; }
-          echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$' \
-            || { echo "version must be x.y.z, got '$VERSION'" >&2; exit 1; }
+          VERSION_RE='^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$'
+          if [ -n "$REQUESTED_VERSION" ]; then
+            echo "$REQUESTED_VERSION" | grep -Eq "$VERSION_RE" \
+              || { echo "runtime_version must be x.y.z, got '$REQUESTED_VERSION'" >&2; exit 1; }
+          fi
+          if [ -n "$MAX_CORE_OVERRIDE" ]; then
+            echo "$MAX_CORE_OVERRIDE" | grep -Eq "$VERSION_RE" \
+              || { echo "max_core_version must be x.y.z, got '$MAX_CORE_OVERRIDE'" >&2; exit 1; }
+          fi
 
       # The release is tagged on the registry commit this run checks out, and the
       # tag has to exist on GitHub. Only main is mirrored there
@@ -89,6 +124,38 @@ jobs:
       - name: Verify the core checkout is the commit that was named
         run: test "$(git -C core rev-parse HEAD)" = "$CORE_COMMIT"
 
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # Private virtualenv per job: the runner's tool-cache site-packages is
+      # shared by every job on tend-ci across three repositories, so another
+      # job's pip install can replace a module under this one. The publisher
+      # itself needs nothing but the standard library.
+      - run: python -m venv "$RUNNER_TEMP/venv"
+
+      # Everything that used to be typed into the dispatch form, derived instead:
+      # the compatibility window from the core checkout's VERSION and
+      # RELEASE_COMPATIBILITY.json, the runtime version from the version the alias
+      # serves, the sequence from that version. It refuses here — before the build
+      # and long before the key is decoded — if the window is empty, if the
+      # sequence would not climb, or if this core commit is not a release above
+      # the one the alias already covers.
+      - name: Resolve the window, the version and the sequence
+        run: |
+          set -euo pipefail
+          test -n "${GITHUB_ENV:-}" || { echo "GITHUB_ENV is not set on this runner" >&2; exit 1; }
+          ARGS=(--core core --json-out "$RUNNER_TEMP/mcp-plan.json" --env-out "$GITHUB_ENV")
+          if [ -n "$REQUESTED_VERSION" ]; then ARGS+=(--runtime-version "$REQUESTED_VERSION"); fi
+          if [ -n "$MAX_CORE_OVERRIDE" ]; then ARGS+=(--max-core-version "$MAX_CORE_OVERRIDE"); fi
+          if [ "$FORCE" = "true" ]; then ARGS+=(--force); fi
+          $RUNNER_TEMP/venv/bin/python -m tools.mcp_window "${ARGS[@]}"
+
+      - name: Report what this run will publish
+        run: |
+          echo "runtime version: $RUNTIME_VERSION (sequence $RUNTIME_SEQUENCE)"
+          echo "core window: $MIN_CORE_VERSION to $MAX_CORE_VERSION"
+
       - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@v5
         with:
           go-version-file: core/go.mod
@@ -98,7 +165,7 @@ jobs:
       # authority, so the signing secret is exposed to exactly one step below.
       - name: Build and pack both platforms
         run: |
-          core/scripts/mcp-runtime-release.sh --version "$VERSION" --out "$RELEASE_DIR"
+          core/scripts/mcp-runtime-release.sh --version "$RUNTIME_VERSION" --out "$RELEASE_DIR"
 
       - name: Check the committed public key is the pinned one
         run: |
@@ -117,6 +184,11 @@ jobs:
       # 0600 to the runner's own temporary directory, used once, and removed on
       # every exit path including a failure — a trap rather than a later step,
       # because a step that never runs cannot clean up after one that failed.
+      #
+      # The window comes from the resolve step; nothing about it is typed here.
+      # `--sequence` is deliberately absent: the core derives the sequence from
+      # the version and refuses any other value, so the version is the only thing
+      # that can make a release climb.
       - name: Sign and verify both envelopes
         env:
           TEND_MCP_SIGNING_KEY_B64: ${{ secrets.TEND_MCP_SIGNING_KEY_B64 }}
@@ -133,12 +205,12 @@ jobs:
           PUBLIC_KEY="$WORKSPACE/keys/tend-mcp-runtime.pub"
           for ARCH in amd64 arm64; do
             ( cd core && go run ./cmd/tend-mcp-release sign "$KEY_FILE" \
-                --version "$VERSION" \
+                --version "$RUNTIME_VERSION" \
                 --platform "linux/$ARCH" \
                 --ui "$RELEASE_DIR/tend-mcp-ui.zip" \
                 --service "$RELEASE_DIR/service-linux-$ARCH.zip" \
-                --min-core 0.6.0 \
-                --max-core 0.9.0 \
+                --min-core "$MIN_CORE_VERSION" \
+                --max-core "$MAX_CORE_VERSION" \
                 --capability mcp.apps.summary.read \
                 --capability mcp.deployments.status.read \
                 --days 365 \
@@ -147,14 +219,18 @@ jobs:
           rm -f "$KEY_FILE"
 
           # Exactly the verification a panel runs, against the public key this
-          # repository commits: a release that would be refused on installation
-          # is refused here instead, before anything is published.
+          # repository commits, at BOTH ends of the derived window: a release that
+          # would be refused on installation by the oldest or the newest core it
+          # claims is refused here instead, before anything is published.
           for ARCH in amd64 arm64; do
-            ( cd core && go run ./cmd/tend-mcp-release verify "$PUBLIC_KEY" \
-                "$RELEASE_DIR/runtime-linux-$ARCH.json" \
-                --core-version 0.6.0 --platform "linux/$ARCH" ) | tee "$RUNNER_TEMP/verify-$ARCH.txt"
-            grep -q "key $EXPECTED_KEY_ID" "$RUNNER_TEMP/verify-$ARCH.txt" \
-              || { echo "runtime-linux-$ARCH.json was not signed by $EXPECTED_KEY_ID" >&2; exit 1; }
+            for CORE_VERSION in "$MIN_CORE_VERSION" "$MAX_CORE_VERSION"; do
+              ( cd core && go run ./cmd/tend-mcp-release verify "$PUBLIC_KEY" \
+                  "$RELEASE_DIR/runtime-linux-$ARCH.json" \
+                  --core-version "$CORE_VERSION" --platform "linux/$ARCH" ) \
+                | tee "$RUNNER_TEMP/verify-$ARCH-$CORE_VERSION.txt"
+              grep -q "key $EXPECTED_KEY_ID" "$RUNNER_TEMP/verify-$ARCH-$CORE_VERSION.txt" \
+                || { echo "runtime-linux-$ARCH.json was not signed by $EXPECTED_KEY_ID" >&2; exit 1; }
+            done
           done
 
       - name: Confirm the signing key is gone
@@ -169,22 +245,28 @@ jobs:
           sha256sum runtime-linux-amd64.json runtime-linux-arm64.json \
                     tend-mcp-ui.zip service-linux-amd64.zip service-linux-arm64.zip
 
-      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-python@v6
-        with:
-          python-version: "3.12"
+      # The same decisions the publish makes, written to a directory and sent
+      # nowhere. It runs on every dispatch, so the plan is in the log even when
+      # the publish then fails, and `dry_run` stops the job right after it.
+      - name: Write the publish plan without touching the network
+        run: |
+          set -euo pipefail
+          $RUNNER_TEMP/venv/bin/python -m tools.mcp_release \
+            --version "$RUNTIME_VERSION" --revision "$GITEA_SHA" --dist "$RELEASE_DIR" \
+            --plan "$RUNNER_TEMP/mcp-plan.json" --dry-run-out "$RUNNER_TEMP/dry-run"
+          cat "$RUNNER_TEMP/dry-run/plan.json"
 
-      # Private virtualenv per job: the runner's tool-cache site-packages is
-      # shared by every job on tend-ci across three repositories, so another
-      # job's pip install can replace a module under this one. The publisher
-      # itself needs nothing but the standard library.
-      - run: python -m venv "$RUNNER_TEMP/venv"
-
-      - name: Create or update the GitHub release
+      # One step for both releases: the immutable `mcp-runtime-<version>` and then
+      # the moving alias `mcp-runtime-latest`, in that order, so the alias never
+      # points panels at a runtime whose own release does not exist.
+      - name: Create or update the release and move the alias
+        if: ${{ gitea.event.inputs.dry_run != 'true' }}
         env:
           GH_PUBLISH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
         run: |
           set -euo pipefail
-          ARGS=(--version "$VERSION" --revision "$GITEA_SHA" --dist "$RELEASE_DIR")
+          ARGS=(--version "$RUNTIME_VERSION" --revision "$GITEA_SHA" --dist "$RELEASE_DIR"
+                --plan "$RUNNER_TEMP/mcp-plan.json")
           if [ "$OVERWRITE" = "true" ]; then
             ARGS+=(--overwrite)
           fi
@@ -192,5 +274,5 @@ jobs:
 
       - uses: https://j.santanafam.com/Rubirosa/gh-actions-upload-artifact@v4
         with:
-          name: mcp-runtime-${{ gitea.event.inputs.version }}
+          name: mcp-runtime-${{ env.RUNTIME_VERSION }}
           path: dist/mcp-runtime/

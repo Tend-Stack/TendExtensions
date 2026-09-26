@@ -165,11 +165,15 @@ tools/
     sign.py                      sign registry.json into the published envelope (also --verify)
     validate_with_panel.py       run every built package through the panel's own installer
     release.py                   create or update the registry-N GitHub release and upload its assets
+    mcp_window.py                derive the MCP runtime's core window, version and sequence from a core checkout
+    mcp_release.py               publish mcp-runtime-<version> and move the mcp-runtime-latest alias
     requirements.txt             the only dependency is `cryptography`
 
 tests/                           tooling tests (reproducible builds, integrity, signing, panel validation)
 scripts/publish-verified-main.py publishes the exact verified commit to this repository
 .gitea/workflows/ci.yml          the pipeline: build and validate → publish → sign and release
+.gitea/workflows/mcp-runtime.yml build, sign and publish the optional MCP component runtime
+docs/mcp-runtime.md              what that runtime is, how it is signed, and how a core release re-signs it
 ```
 
 `dist/` is never committed. Everything a panel downloads is rebuilt by CI from the sources in `main`.
