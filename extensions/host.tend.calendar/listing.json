@@ -15,5 +15,5 @@
     "A Tend panel running schema-2 (native ESM) extensions",
     "A desktop or mobile browser tab with ES module support"
   ],
-  "release_notes": "1.4.0: new events default to a timed hour (the next full hour, or 09:00 on a future date) with a one-hour duration instead of all-day — All day is now an explicit toggle you turn on, not the default; the editor's Start/End time fields stay visible and dimmed (not hidden) while All day is checked, each clearly labelled Date and Time; End follows Start to keep the same duration when you move Start, and an End before Start is refused with a message instead of being silently nudged forward."
+  "release_notes": "1.5.0: Start and End are now one bar split into two equal halves — date on the left, time on the right — instead of a full-width date row; below about 420px the halves stack, date above time. While All day is checked, the time half is hidden outright and the date half takes the full bar, replacing 1.4.0's dimmed-but-visible treatment."
 }

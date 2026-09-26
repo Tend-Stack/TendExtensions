@@ -273,18 +273,23 @@ const CSS = `
 
 .cal-row { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .cal-stack { display: grid; gap: 8px; }
-/* Flex, not grid: when the time input is hidden (all-day), the date
- * input should reclaim its space rather than sit in a half-empty
- * grid track. */
+/* 1.5.0: Start/End are one bar split into two equal halves, date then
+ * time, sharing the row's full width with a small gap. Flex, not grid:
+ * when the time half is hidden (all-day), the date half should reclaim
+ * its space rather than sit in a half-empty grid track. Below ~420px —
+ * the same width the (non-wide) dialog panel itself caps at — the
+ * halves stack instead, date above time, still full width each. */
 .cal-time-inputs { display: flex; gap: 6px; min-width: 0; }
 .cal-time-inputs > * { flex: 1 1 0; min-width: 0; }
-/* 1.4.0: Date/Time sub-labels inside each Start/End row, and the
- * disabled-but-visible dimming for Time while "All day" is on (never
- * display:none — the option stays discoverable). */
+@media (max-width: 420px) {
+  .cal-time-inputs { flex-direction: column; }
+}
+/* Date/Time sub-labels inside each Start/End row (1.4.0). The Time half
+ * is disabled and removed from layout (not just dimmed) while "All day"
+ * is checked (1.5.0), so Date takes the full bar with no empty gap. */
 .cal-time-input-group { display: grid; gap: 3px; min-width: 0; }
 .cal-time-input-sublabel { font-size: 9.5px; color: var(--cal-muted); text-transform: uppercase; letter-spacing: .03em; }
-.cal-time-input-group.is-disabled { opacity: .45; }
-.cal-time-input-group.is-disabled .cal-input { cursor: not-allowed; }
+.cal-time-input-group.is-hidden { display: none; }
 .cal-field-error { font-size: 11.5px; color: #f87171; }
 .cal-root.is-light .cal-field-error { color: #b91c1c; }
 .cal-field-error.is-hidden { display: none; }

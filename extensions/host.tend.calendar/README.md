@@ -32,9 +32,10 @@ Month/Agenda, a 9am hour for Week/Day).
 
 The editor covers title, an all-day toggle (1.4.0: explicit, not the
 default — new events are timed everywhere they're created), start/end
-date and time (the time fields stay visible, disabled and dimmed while
-All day is checked, so the option is discoverable rather than
-vanishing), one of six preset colours, location, notes, a simple
+as a date | time bar split into two equal halves (1.5.0; the halves
+stack, date above time, below about 420px), with the time half hidden
+and date taking the full bar while All day is checked, one of six
+preset colours, location, notes, a simple
 recurrence (none / daily / weekly / monthly — no end date; recurring
 events edit as a whole series), and reminders (below). Moving Start
 keeps End's duration; an End before Start is refused with a message.

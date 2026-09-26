@@ -178,12 +178,12 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     els.cancelBtn = el('button', { class: 'cal-btn', text: 'Cancel', attrs: { type: 'button' }, on: { click: () => dialog.close() } });
     els.saveBtn = el('button', { class: 'cal-btn is-accent', text: 'Save', attrs: { type: 'button' }, on: { click: save } });
     els.title2 = el('h2', { class: 'cal-dialog-title', text: 'New event' });
-    // Start and End stack vertically rather than sit side by side: a
-    // date input plus a time input already needs the dialog's full
-    // width to stay readable, so a 2-up layout here would squeeze both
-    // into illegibly narrow boxes. Each input gets its own "Date" /
-    // "Time" label (1.4.0) so Time reads clearly next to Date instead
-    // of being an unlabelled second box.
+    // Each of Start and End is one bar (.cal-time-inputs) split into two
+    // equal halves, date on the left and time on the right (1.5.0), so
+    // the two rows line up; below ~420px the halves stack, date above
+    // time (see .cal-time-inputs' media query in styles.js). Each half
+    // keeps its own "Date" / "Time" sub-label (1.4.0) so Time reads
+    // clearly next to Date instead of being an unlabelled second box.
     els.startTimeGroup = timeInputGroup('Time', els.startTime);
     els.endTimeGroup = timeInputGroup('Time', els.endTime);
     els.timeError = el('div', { class: 'cal-field-error is-hidden', attrs: { role: 'alert' } });
@@ -266,15 +266,16 @@ export function createEventEditor({ onSave, onDelete, remindersSupported = false
     for (const [colorId, node] of els.swatches) node.setAttribute('aria-checked', String(colorId === id));
   }
 
-  // 1.4.0: the time fields stay visible when "All day" is on — disabled
-  // and dimmed, not hidden, so the option a person is missing (time of
-  // day) is still discoverable rather than disappearing outright.
+  // 1.5.0: Start/End are a single date | time bar split into two equal
+  // halves (.cal-time-inputs); while "All day" is on, the Time half is
+  // hidden outright (disabled and removed from layout) so Date reclaims
+  // the full bar rather than leaving an empty half.
   function applyAllDayVisibility() {
     const enabled = timeFieldsEnabled(els.allDay.checked);
     els.startTime.disabled = !enabled;
     els.endTime.disabled = !enabled;
-    els.startTimeGroup.classList.toggle('is-disabled', !enabled);
-    els.endTimeGroup.classList.toggle('is-disabled', !enabled);
+    els.startTimeGroup.classList.toggle('is-hidden', !enabled);
+    els.endTimeGroup.classList.toggle('is-hidden', !enabled);
   }
 
   const dialog = createDialog({
