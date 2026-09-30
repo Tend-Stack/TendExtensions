@@ -211,8 +211,6 @@ jobs:
                 --service "$RELEASE_DIR/service-linux-$ARCH.zip" \
                 --min-core "$MIN_CORE_VERSION" \
                 --max-core "$MAX_CORE_VERSION" \
-                --capability mcp.apps.summary.read \
-                --capability mcp.deployments.status.read \
                 --days 365 \
                 --out "$RELEASE_DIR/runtime-linux-$ARCH.json" )
           done

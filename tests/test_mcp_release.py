@@ -14,6 +14,7 @@ from tools.release import ReleaseError
 VERSION = "0.1.0"
 TAG = "mcp-runtime-0.1.0"
 UPLOAD_URL = "https://uploads.github.com/repos/Tend-Stack/TendExtensions/releases/7/assets{?name,label}"
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _digest(data: bytes) -> str:
@@ -374,3 +375,9 @@ def _no_api(*args, **kwargs):
 
 def test_tag_for_is_the_download_path_a_panel_pins() -> None:
     assert mcp_release.tag_for("0.1.0") == "mcp-runtime-0.1.0"
+
+
+def test_runtime_workflow_uses_the_core_workers_capability_contract() -> None:
+    workflow = (ROOT / ".gitea/workflows/mcp-runtime.yml").read_text()
+    assert "go run ./cmd/tend-mcp-release sign" in workflow
+    assert "--capability" not in workflow

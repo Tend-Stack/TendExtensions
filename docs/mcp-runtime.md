@@ -57,6 +57,12 @@ panel's own verifier against the public key committed at
 `keys/tend-mcp-runtime.pub` at **both ends** of the derived window, prints the five
 digests and the plan, publishes `mcp-runtime-<version>`, and then moves the alias.
 
+The workflow does not carry its own capability list. The core signer defaults
+to the exact capabilities compiled into the worker at `core_commit`, so the
+signed envelope and the worker's readiness reply cannot drift when a capability
+is added. Passing copied `--capability` flags here would recreate an installable
+release that can never become ready.
+
 ## What the workflow refuses
 
 - A dispatch from any ref but `main`. The tag points at the registry commit the
