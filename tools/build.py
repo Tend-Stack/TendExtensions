@@ -64,6 +64,7 @@ KNOWN_PERMISSIONS = {
     "sites.create",
     "sites.preview",
     "sites.publish",
+    "ondacast",
 }
 KNOWN_UI_KINDS = {"shell-app", "tool-window"}
 KNOWN_RUNTIME_KINDS = {"game", "utility"}

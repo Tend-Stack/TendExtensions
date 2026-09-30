@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f.svg)](LICENSE)
 [![Latest registry release](https://img.shields.io/github/v/release/Tend-Stack/TendExtensions?label=registry&sort=semver)](https://github.com/Tend-Stack/TendExtensions/releases)
-[![Extensions](https://img.shields.io/badge/extensions-18-14b8a6.svg)](#whats-in-the-registry)
+[![Extensions](https://img.shields.io/badge/extensions-19-14b8a6.svg)](#whats-in-the-registry)
 
 Every extension lives here as plain source, in its own folder. A pull request adds one or updates one.
 On merge, CI builds every package, signs the index, and publishes a release that every Tend panel
@@ -34,8 +34,8 @@ An extension is a folder with an `extension.json` manifest (schema 2) and the ES
 The panel loads the entry module, calls `activate(host)`, and mounts what it returns in a
 **tool window** or as a full **shell app**. Through `host` an extension gets exactly what it declared
 in `permissions` and nothing else: key-value **storage**, **notifications**, the current **theme** and
-**user**, and, for extensions that declare them, **files**, **media**, **documents**, and **sites**.
-There is no outbound network from an extension; the panel's content-security policy enforces that.
+**user**, and, for extensions that declare them, **files**, **media**, **documents**, **sites**, and the read-only **ondacast** catalog.
+There is no direct outbound network from an extension: anything external goes through a panel capability.
 
 Every file an extension ships is pinned in the manifest's **integrity map** (SHA-256). The panel refuses
 a package whose bytes disagree with its manifest, and runs every package through its installer, its
@@ -65,6 +65,7 @@ publisher, category, feature bullets, requirements, and the release notes for th
 | Extension | Version | Category | What it is |
 |---|---|---|---|
 | **Calculator** (`host.tend.calculator`) | 3.0.0 | productivity | Standard, scientific, graphing, programmer, statistics, financial and converter modes, a real expression engine, a history tape, full keyboard control |
+| **TEND Media** (`host.tend.media`) | 1.0.0 | media | Radio, podcasts and audiobooks from OndaCast with subscriptions, a queue, per-show speed, sleep timer, transcripts and clips to Notes |
 | **Riftwing: Skybound** (`com.tendstack.riftwing`) | 4.1.1 | games | A fast, replayable sky-runner with eight worlds and nine pilots |
 | **2048 Odyssey** (`host.tend.2048`) | 2.0.1 | games | Merge mastery across an endless target ladder |
 | **Breakout Odyssey** (`host.tend.breakout`) | 2.2.0 | games | Campaign Breakout with boss walls and live relayout |

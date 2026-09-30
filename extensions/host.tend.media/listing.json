@@ -1,0 +1,19 @@
+{
+  "publisher": "TEND Stack",
+  "category": "media",
+  "featured": true,
+  "reviewed": true,
+  "features": [
+    "Live radio, podcasts and LibriVox audiobooks from OndaCast in one calm player",
+    "Subscribe to shows; new episodes land in Listen now, with play next and a queue",
+    "Speed remembered per show or book, and a sleep timer by minutes or end of chapter",
+    "Transcripts that follow along, audiobook chapters and bookmarks",
+    "Clip the last 30 seconds, with its transcript, to TEND Notes",
+    "Progress follows you across devices; a compact player when the window is narrow"
+  ],
+  "requirements": [
+    "A Tend panel that provides the ondacast capability",
+    "TEND Notes installed with a notebook, to save clips (optional)"
+  ],
+  "release_notes": "1.0.0: First release. Radio, podcasts and audiobooks from OndaCast with subscriptions, a queue, per-show speed, sleep timer, transcripts, bookmarks and Clip to Notes."
+}
