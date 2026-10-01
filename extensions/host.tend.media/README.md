@@ -4,10 +4,11 @@ Radio stations, podcasts and audiobooks from [OndaCast](https://ondacast.com), i
 
 - **Listen now:** continue where you left off, stations on air, new episodes from your shows.
 - **Radio:** every OndaCast station, by listeners or by genre (Country, Latin, Rock, Pop, Hip-Hop, Easy Listening, Talk & News), with the song on air, its artwork and recently played tracks.
+- **My Media:** favorite stations, subscribed shows (with new-episode counts), saved and in-progress audiobooks, and recently played, filtered by kind, sorted and searchable, plus a Your week listening summary.
 - **Now playing panel:** follows what is playing: the station and song for radio; queue, chapters, transcript and details for podcasts; chapters with progress, bookmarks and Continue listening for books.
 - **Podcasts:** browse, subscribe, play next, queue, mark as played.
 - **Audiobooks:** LibriVox classics with chapters, bookmarks and time left at your speed.
-- **Player:** −15/+30, chapter skip, per-show speed, sleep timer (minutes, end of chapter, end of the current radio show), transcripts, volume, OS media keys.
+- **Player:** adjustable skip back/forward, smart rewind after a pause, continuous play, keyboard shortcuts (press ?), a reorderable queue, chapter skip, per-show speed, sleep timer (minutes, end of chapter, end of the current radio show), transcripts, volume, OS media keys.
 - **Clip to Notes:** saves the last 30 seconds, with its transcript, as a note in TEND Notes.
 - **Narrow window:** a compact now-playing view that shares the same state.
 
