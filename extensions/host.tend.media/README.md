@@ -3,7 +3,7 @@
 Radio stations, podcasts and audiobooks from [OndaCast](https://ondacast.com), inside Tend.
 
 - **Listen now:** continue where you left off, stations on air, new episodes from your shows.
-- **Radio:** every OndaCast station, by listeners or by genre (Country, Latin, Rock, Pop, Hip-Hop, Easy Listening, Talk & News), with the song on air, its artwork and recently played tracks.
+- **Radio:** every OndaCast station, by listeners or by genre (Country, Latin, Rock, Pop, Hip-Hop, Easy Listening, Talk & News), with the song on air, its artwork and recently played tracks. **Near me** lists the stations around you, nearest first, with distances and Play nearest (your location is rounded to about a kilometre and never stored).
 - **My Media:** favorite stations, subscribed shows (with new-episode counts), saved and in-progress audiobooks, and recently played, filtered by kind, sorted and searchable, plus a Your week listening summary.
 - **Now playing panel:** follows what is playing: the station and song for radio; queue, chapters, transcript and details for podcasts; chapters with progress, bookmarks and Continue listening for books.
 - **Podcasts:** browse, subscribe, play next, queue, mark as played; episodes newest or oldest first, filtered by unplayed / in progress / played; per-show skip intro and outro, speed, and auto-add new episodes to Up next.

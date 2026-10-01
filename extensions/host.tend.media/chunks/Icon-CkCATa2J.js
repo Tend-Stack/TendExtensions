@@ -1,6 +1,8 @@
 import { A as e, H as t, K as n, Y as r, at as i, it as a, q as o, tt as s, w as c } from "./Cover-CFUQKa8h.js";
 //#region src/icons.ts
 var l = {
+	pin: "M12 21s-6.5-5.8-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 15.2 12 21 12 21zM12 7.5a2.3 2.3 0 1 0 0 4.6a2.3 2.3 0 1 0 0-4.6z",
+	refresh: "M4.5 12a7.5 7.5 0 0 1 13-5.1L20 9.5M20 4.5v5h-5M19.5 12a7.5 7.5 0 0 1-13 5.1L4 14.5M4 19.5v-5h5",
 	info: "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M12 11v5 M12 7.6v.4",
 	play: "M8 5v14l11-7z",
 	pause: "M7 5h4v14H7zM13 5h4v14h-4z",

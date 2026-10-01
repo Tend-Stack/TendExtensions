@@ -15,5 +15,5 @@
     "A Tend panel that provides the ondacast capability",
     "TEND Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.5.1: Go to show from any episode's ••• menu. A tidier category row with the rest under More. Show pages get an About card with the full description and details, and descriptions no longer go missing. New from your shows now replaces episodes you've played with the next unplayed ones."
+  "release_notes": "1.6.0: A Near me chip on the Radio tab lists the stations around you, nearest first, with distances and Play nearest. Ask Sprout for a local station and it plays from the same list. Your location is rounded to about a kilometre and never stored."
 }
