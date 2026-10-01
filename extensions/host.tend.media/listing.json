@@ -5,15 +5,15 @@
   "reviewed": true,
   "features": [
     "Live radio, podcasts and LibriVox audiobooks from OndaCast in one calm player",
-    "My Media: favorite stations, your shows, your audiobooks and history, filtered by kind",
-    "Every OndaCast station by listeners or genre, with the song on air and its artwork",
-    "Resume episodes and books where you left off, with smart rewind and chapter progress",
-    "Your week: time listened per day, by kind, and your listening streak",
-    "Custom skip intervals, sleep timer, speed per show, keyboard shortcuts and a reorderable queue"
+    "My Media: favorite stations, your shows, audiobooks, playlists and history, filtered by kind",
+    "Episodes newest or oldest first, filtered by unplayed, in progress or played, with show notes",
+    "Per-show skip intro and outro, speed, and new episodes added to Up next automatically",
+    "Playlists, repeat one or all, shuffle, and a reorderable Up next",
+    "Resume anywhere, chapter progress, bookmarks with notes, sleep timer and keyboard shortcuts"
   ],
   "requirements": [
     "A Tend panel that provides the ondacast capability",
     "TEND Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.2.0: My Media, a library of favorite stations, subscribed shows and your audiobooks, filterable by kind; hearts to favorite stations and save books; a Your week listening summary with streaks; playback preferences (skip intervals, smart rewind, continuous play); keyboard shortcuts; drag to reorder Up next."
+  "release_notes": "1.3.0: Episodes sort newest or oldest first and filter by unplayed, in progress or played; per-show skip intro, skip outro, speed and auto-add to Up next; playlists; repeat one or all; shuffle Up next; audiobook shelf, chapter progress, bookmark notes, mark as finished and start over."
 }
