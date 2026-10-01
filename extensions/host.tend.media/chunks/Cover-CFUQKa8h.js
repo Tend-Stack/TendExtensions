@@ -2476,7 +2476,8 @@ function qi(e) {
 		hue: Bi(t),
 		mark: Vi(n),
 		category: $(e.category),
-		episodes: Hi(e.episode_count)
+		episodes: Hi(e.episode_count),
+		language: $(e.language) || void 0
 	};
 }
 function Ji(e, t) {

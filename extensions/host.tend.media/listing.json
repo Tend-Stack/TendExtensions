@@ -15,5 +15,5 @@
     "A Tend panel that provides the ondacast capability",
     "TEND Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.5.0: TEND Media now shows what is playing in the panel's top bar and keeps playing while minimized. Ask Sprout to play a show, an episode, an audiobook or a station, and he will offer new episodes of the shows you follow. Add Now playing, New episodes, Continue listening and Favorite stations widgets to your shelf. Needs the latest Tend panel for the top bar, Sprout and widget controls."
+  "release_notes": "1.5.1: Go to show from any episode's ••• menu. A tidier category row with the rest under More. Show pages get an About card with the full description and details, and descriptions no longer go missing. New from your shows now replaces episodes you've played with the next unplayed ones."
 }

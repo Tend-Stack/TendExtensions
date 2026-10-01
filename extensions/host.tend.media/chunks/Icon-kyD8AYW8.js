@@ -1,6 +1,7 @@
-import { A as e, H as t, K as n, Y as r, at as i, it as a, q as o, tt as s, w as c } from "./Cover-CgtzAtR8.js";
+import { A as e, H as t, K as n, Y as r, at as i, it as a, q as o, tt as s, w as c } from "./Cover-CFUQKa8h.js";
 //#region src/icons.ts
 var l = {
+	info: "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M12 11v5 M12 7.6v.4",
 	play: "M8 5v14l11-7z",
 	pause: "M7 5h4v14H7zM13 5h4v14h-4z",
 	stop: "M6.5 6.5h11v11h-11z",
