@@ -5,15 +5,15 @@
   "reviewed": true,
   "features": [
     "Live radio, podcasts and LibriVox audiobooks from OndaCast in one calm player",
-    "My Media: favorite stations, your shows, audiobooks, playlists and history, filtered by kind",
-    "Podcast categories (True Crime, Comedy, News, Sports and more) and episodes sorted and filtered your way",
-    "Up next fills itself from the show or new episodes you play, always behind your own picks",
-    "Per-show skip intro and outro and speed, playlists, repeat one or all, shuffle",
+    "In the top bar: artwork and what is playing, with play/pause, even while the window is minimized",
+    "Ask Sprout to play a show, an episode, a book or a station; he tells you about new episodes",
+    "Shelf widgets: Now playing, New episodes, Continue listening and Favorite stations",
+    "Podcast categories, Up next that fills itself, playlists, repeat and shuffle",
     "Resume anywhere, chapter progress, bookmarks with notes, sleep timer and keyboard shortcuts"
   ],
   "requirements": [
     "A Tend panel that provides the ondacast capability",
     "TEND Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.4.1: The seek bar now stays in step with the audio. Episodes longer than their listed length (inserted ads) no longer show 0:00 left while still playing, and audiobook chapters line up with their real lengths. Includes 1.4.0: Up next fills itself from the show you play, and podcast categories."
+  "release_notes": "1.5.0: TEND Media now shows what is playing in the panel's top bar and keeps playing while minimized. Ask Sprout to play a show, an episode, an audiobook or a station, and he will offer new episodes of the shows you follow. Add Now playing, New episodes, Continue listening and Favorite stations widgets to your shelf. Needs the latest Tend panel for the top bar, Sprout and widget controls."
 }
