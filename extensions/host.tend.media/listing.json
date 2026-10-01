@@ -15,5 +15,5 @@
     "A Tend panel that provides the ondacast capability",
     "TEND Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.3.0: Episodes sort newest or oldest first and filter by unplayed, in progress or played; per-show skip intro, skip outro, speed and auto-add to Up next; playlists; repeat one or all; shuffle Up next; audiobook shelf, chapter progress, bookmark notes, mark as finished and start over."
+  "release_notes": "1.3.1: Your library now stays put. Favorites, subscriptions, playlists, history, progress and preferences are kept on the panel (with a copy in your browser) and load every time you open TEND Media."
 }

@@ -2,7 +2,7 @@
   "schema": 2,
   "id": "host.tend.media",
   "name": "TEND Media",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "author": "tend.host",
   "description": "Radio stations, podcasts and audiobooks from OndaCast in one player: subscriptions, a queue, per-show speed, a sleep timer, transcripts, audiobook bookmarks and clips saved to TEND Notes.",
   "icon": "icon.svg",
@@ -27,6 +27,6 @@
   "integrity": {
     "README.md": "sha256-TfkuM8nncgCjoATPM5xtQeSLBRF7fTejqxKx9+OXdks=",
     "icon.svg": "sha256-SbSAyR4prIUkwozxPbf5VCyQH+gS9mYGZIByD0NeZXU=",
-    "index.js": "sha256-1GMt0gXJpMHX+coD+H9ZD1NpEJ/nBwCDtAHMAAzTI24="
+    "index.js": "sha256-BvxlndjI+zS3B8rPZNTRKlzmfpz0sYR3mZQUpOXuWuk="
   }
 }
