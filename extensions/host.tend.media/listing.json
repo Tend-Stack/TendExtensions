@@ -15,5 +15,5 @@
     "A Tend panel that provides the ondacast capability",
     "TEND Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.4.0: Play an episode from a show or from New from your shows and its other unplayed episodes line up in Up next, behind anything you queued yourself. Browse podcasts by category, starting with True Crime (needs the latest Tend panel)."
+  "release_notes": "1.4.1: The seek bar now stays in step with the audio. Episodes longer than their listed length (inserted ads) no longer show 0:00 left while still playing, and audiobook chapters line up with their real lengths. Includes 1.4.0: Up next fills itself from the show you play, and podcast categories."
 }

@@ -2499,6 +2499,7 @@ var Yi = (e) => Ui(e.lines).map((e) => ({
 	el = null;
 	src = "";
 	live = !1;
+	pendingSeek = !1;
 	onEnded = () => {};
 	onError = (e) => {};
 	onBuffering = (e) => {};
@@ -2511,6 +2512,12 @@ var Yi = (e) => Ui(e.lines).map((e) => ({
 	get duration() {
 		let e = this.el?.duration ?? NaN;
 		return Number.isFinite(e) ? e : 0;
+	}
+	get url() {
+		return this.src;
+	}
+	get settled() {
+		return !!this.el && !!this.src && this.el.readyState >= 1 && !this.el.seeking && !this.pendingSeek;
 	}
 	element() {
 		if (this.el) return this.el;
@@ -2531,14 +2538,14 @@ var Yi = (e) => Ui(e.lines).map((e) => ({
 			!n && Math.abs(r.currentTime - t) > 1 && this.seek(t);
 			return;
 		}
-		this.src = e, r.preload = n ? "none" : "auto", r.src = e, t > 0 && r.addEventListener("loadedmetadata", () => {
-			this.src === e && (r.currentTime = t);
+		this.src = e, r.preload = n ? "none" : "auto", r.src = e, this.pendingSeek = t > 0, t > 0 && r.addEventListener("loadedmetadata", () => {
+			this.src === e && (r.currentTime = t), this.pendingSeek = !1;
 		}, { once: !0 });
 	}
 	seek(e) {
-		this.el && this.src && !this.live && (this.el.readyState >= 1 ? this.el.currentTime = e : this.el.addEventListener("loadedmetadata", () => {
-			this.el && (this.el.currentTime = e);
-		}, { once: !0 }));
+		this.el && this.src && !this.live && (this.el.readyState >= 1 ? this.el.currentTime = e : (this.pendingSeek = !0, this.el.addEventListener("loadedmetadata", () => {
+			this.el && (this.el.currentTime = e), this.pendingSeek = !1;
+		}, { once: !0 })));
 	}
 	apply(e) {
 		let t = this.el;
@@ -2547,7 +2554,7 @@ var Yi = (e) => Ui(e.lines).map((e) => ({
 		})) : !e.playing && !t.paused && t.pause());
 	}
 	stop() {
-		this.el && (this.el.pause(), this.el.removeAttribute("src"), this.el.load(), this.src = "");
+		this.el && (this.el.pause(), this.el.removeAttribute("src"), this.el.load(), this.src = "", this.pendingSeek = !1);
 	}
 	destroy() {
 		this.stop(), this.el = null;
@@ -2588,11 +2595,33 @@ var ua = (e, t) => {
 		index: n,
 		offset: Math.max(0, t - (e[n]?.start ?? 0))
 	};
-}, da = (e, t) => Object.fromEntries(Object.entries(e).sort((e, t) => t[1].at - e[1].at).slice(0, t)), fa = (e, t) => {
+};
+function da(e, t, n) {
+	let r = e[t];
+	if (!r || !(n > 0)) return {
+		chapters: e,
+		delta: 0
+	};
+	let i = e[t + 1], a = n - (r.dur ?? (i ? i.start - r.start : n));
+	return Math.abs(a) < 2 ? {
+		chapters: e,
+		delta: 0
+	} : {
+		chapters: e.map((e, r) => r < t ? e : r === t ? {
+			...e,
+			dur: n
+		} : {
+			...e,
+			start: e.start + a
+		}),
+		delta: a
+	};
+}
+var fa = (e, t) => Object.fromEntries(Object.entries(e).sort((e, t) => t[1].at - e[1].at).slice(0, t)), pa = (e, t) => {
 	let n = aa(e, t);
 	return n < 0 ? 0 : t - e[n].start > 3 ? e[n].start : e[n - 1]?.start ?? 0;
 };
-function pa(e, t, n = 1, r = n * e.speed) {
+function ma(e, t, n = 1, r = n * e.speed) {
 	let i = e.pos;
 	if (t) {
 		let n = Math.min(t.dur, e.pos + r);
@@ -2632,8 +2661,8 @@ function pa(e, t, n = 1, r = n * e.speed) {
 		ended: !1
 	};
 }
-var ma = (e, t, n) => Math.max(0, e - t) / n, ha = (e) => typeof e == "number" && e < 60 ? Math.max(0, e / 60) : 1, ga = (e) => `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, "0")}-${String(e.getDate()).padStart(2, "0")}`;
-function _a(e, t, n, r, i = 120) {
+var ha = (e, t, n) => Math.max(0, e - t) / n, ga = (e) => typeof e == "number" && e < 60 ? Math.max(0, e / 60) : 1, _a = (e) => `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, "0")}-${String(e.getDate()).padStart(2, "0")}`;
+function va(e, t, n, r, i = 120) {
 	let a = e[t] ?? {}, o = {
 		...e,
 		[t]: {
@@ -2644,19 +2673,19 @@ function _a(e, t, n, r, i = 120) {
 	for (let e of s.slice(0, Math.max(0, s.length - i))) delete o[e];
 	return o;
 }
-var va = (e) => (e?.radio ?? 0) + (e?.podcast ?? 0) + (e?.book ?? 0);
-function ya(e, t = /* @__PURE__ */ new Date()) {
+var ya = (e) => (e?.radio ?? 0) + (e?.podcast ?? 0) + (e?.book ?? 0);
+function ba(e, t = /* @__PURE__ */ new Date()) {
 	let n = [], r = {
 		radio: 0,
 		podcast: 0,
 		book: 0
 	};
 	for (let i = 6; i >= 0; i--) {
-		let a = new Date(t.getFullYear(), t.getMonth(), t.getDate() - i), o = ga(a), s = e[o];
+		let a = new Date(t.getFullYear(), t.getMonth(), t.getDate() - i), o = _a(a), s = e[o];
 		n.push({
 			key: o,
 			label: a.toLocaleDateString(void 0, { weekday: "short" }),
-			seconds: va(s)
+			seconds: ya(s)
 		});
 		for (let e of [
 			"radio",
@@ -2665,7 +2694,7 @@ function ya(e, t = /* @__PURE__ */ new Date()) {
 		]) r[e] += s?.[e] ?? 0;
 	}
 	let i = 0;
-	for (let n = 0; n < 366; n++) if (va(e[ga(new Date(t.getFullYear(), t.getMonth(), t.getDate() - n))]) >= 60) i++;
+	for (let n = 0; n < 366; n++) if (ya(e[_a(new Date(t.getFullYear(), t.getMonth(), t.getDate() - n))]) >= 60) i++;
 	else if (n > 0 || i > 0) break;
 	return {
 		days: n,
@@ -2674,11 +2703,11 @@ function ya(e, t = /* @__PURE__ */ new Date()) {
 		streak: i
 	};
 }
-var ba = (e, t, n, r = 60) => [{
+var xa = (e, t, n, r = 60) => [{
 	id: t,
 	at: n
 }, ...e.filter((e) => e.id !== t)].slice(0, r);
-function xa(e, t, n) {
+function Sa(e, t, n) {
 	let r = e.filter((e) => e !== t);
 	if (r.length === e.length) return e;
 	let i = Math.max(0, Math.min(r.length, n));
@@ -2688,7 +2717,7 @@ function xa(e, t, n) {
 		...r.slice(i)
 	];
 }
-var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
+var Ca = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, wa = [
 	{
 		label: "All",
 		slugs: []
@@ -2721,7 +2750,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		label: "Talk & News",
 		slugs: ["talk", "news"]
 	}
-], wa = [
+], Ta = [
 	{
 		label: "All",
 		slugs: []
@@ -2811,7 +2840,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		label: "Leisure",
 		slugs: ["leisure", "games-hobbies"]
 	}
-], Ta = {
+], Ea = {
 	radio: ["onair", "queue"],
 	podcast: [
 		"queue",
@@ -2825,29 +2854,29 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		"trans",
 		"about"
 	]
-}, Ea = {
+}, Da = {
 	back: 15,
 	fwd: 30,
 	smartRewind: !0,
 	continuous: !0,
 	repeat: "off",
 	autoFill: !0
-}, Da = [
+}, Oa = [
 	5,
 	10,
 	15,
 	30
-], Oa = [
+], ka = [
 	10,
 	15,
 	30,
 	45,
 	60
-], ka = {
+], Aa = {
 	intro: 0,
 	outro: 0,
 	autoQueue: !1
-}, Aa = [
+}, ja = [
 	0,
 	10,
 	15,
@@ -2855,13 +2884,13 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	45,
 	60,
 	90
-], ja = [
+], Ma = [
 	0,
 	10,
 	15,
 	30,
 	60
-], Ma = [
+], Na = [
 	.8,
 	1,
 	1.1,
@@ -2870,14 +2899,14 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	1.6,
 	1.8,
 	2
-], Na = [
+], Pa = [
 	5,
 	15,
 	30,
 	45,
 	60,
 	90
-], Pa = 200, Fa = class {
+], Fa = 200, Ia = class {
 	#e = /* @__PURE__ */ N(F({}));
 	get items() {
 		return U(this.#e);
@@ -3289,7 +3318,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	set stats(e) {
 		P(this.#te, e, !0);
 	}
-	#ne = /* @__PURE__ */ N(F({ ...Ea }));
+	#ne = /* @__PURE__ */ N(F({ ...Da }));
 	get prefs() {
 		return U(this.#ne);
 	}
@@ -3347,6 +3376,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	lastSaved = 0;
 	pausedAt = 0;
 	loadedId = null;
+	fileIdx = 0;
 	constructor(e) {
 		this.host = e, this.api = e.ondacast, this.supported = !!e.ondacast;
 		let t = String(e.user?.id ?? "local");
@@ -3408,7 +3438,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	}
 	get rightTabs() {
 		let e = this.item;
-		return e ? Ta[e.type] : ["queue"];
+		return e ? Ea[e.type] : ["queue"];
 	}
 	get activeRtab() {
 		let e = this.rightTabs;
@@ -3429,7 +3459,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	}
 	showPrefsOf(e) {
 		return {
-			...ka,
+			...Aa,
 			...this.showPrefs[e] ?? {}
 		};
 	}
@@ -3508,7 +3538,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		}).length;
 	}
 	get week() {
-		return ya(this.stats);
+		return ba(this.stats);
 	}
 	get libraryCounts() {
 		return {
@@ -3521,7 +3551,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		this.history = [], this.say("Listening history cleared"), this.scheduleSave();
 	}
 	moveQueue(e, t) {
-		this.queue = xa(this.queue, e, t), this.scheduleSave();
+		this.queue = Sa(this.queue, e, t), this.scheduleSave();
 	}
 	isAuto(e) {
 		return this.upAuto.includes(e);
@@ -3668,7 +3698,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		}
 	}
 	async loadStations(e = this.genre, t = !1) {
-		let n = this.api, r = Ca.find((t) => t.label === e), i = this.radioLists[e];
+		let n = this.api, r = wa.find((t) => t.label === e), i = this.radioLists[e];
 		if (!n || !r || i?.status === "loading" || t && !i?.more) return;
 		let a = (t) => {
 			this.radioLists = {
@@ -3843,7 +3873,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		};
 	}
 	async loadPodcastGenre(e = this.podGenre) {
-		let t = this.api, n = wa.find((t) => t.label === e);
+		let t = this.api, n = Ta.find((t) => t.label === e);
 		if (!t?.podcasts.genre || !n?.slugs.length || this.podGenreLists[e]?.status === "loading") return;
 		let r = (t) => {
 			this.podGenreLists = {
@@ -4131,14 +4161,14 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	}
 	saveCurrent() {
 		let e = this.item;
-		e && e.type !== "radio" && (this.progress = da({
+		e && e.type !== "radio" && (this.progress = fa({
 			...this.progress,
 			[e.id]: {
 				pos: Math.round(this.pos),
 				dur: this.durOf(e.id),
 				at: Date.now()
 			}
-		}, Pa));
+		}, Fa));
 	}
 	async play(e) {
 		if (e === this.now && this.item) {
@@ -4163,7 +4193,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 			let e = this.showPrefsOf(n.show).intro;
 			e && (!n.dur || e < n.dur - 30) && (this.pos = e);
 		}
-		this.queue = sa(this.queue, e), this.upAuto = this.upAuto.filter((t) => t !== e), this.speed = this.speedFor(e), n.type === "radio" && (this.recentStations = [e, ...this.recentStations.filter((t) => t !== e)].slice(0, 6)), Ta[n.type].includes(this.rtab) || (this.rtab = Ta[n.type][0]), this.history = ba(this.history, e, Date.now()), this.playing = !0, this.sync(!0), n.type === "radio" && this.refreshNowPlaying(), this.rtab === "trans" && this.loadTranscript(), this.scheduleSave();
+		this.queue = sa(this.queue, e), this.upAuto = this.upAuto.filter((t) => t !== e), this.speed = this.speedFor(e), n.type === "radio" && (this.recentStations = [e, ...this.recentStations.filter((t) => t !== e)].slice(0, 6)), Ea[n.type].includes(this.rtab) || (this.rtab = Ea[n.type][0]), this.history = xa(this.history, e, Date.now()), this.playing = !0, this.sync(!0), n.type === "radio" && this.refreshNowPlaying(), this.rtab === "trans" && this.loadTranscript(), this.scheduleSave();
 	}
 	stop() {
 		this.item && (this.playing = !1, this.pausedAt = Date.now(), this.sync());
@@ -4181,7 +4211,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 			}
 			if (this.playing = !this.playing, !this.playing) this.saveCurrent(), this.pausedAt = Date.now();
 			else if (Pi(e) && this.prefs.smartRewind && this.pausedAt) {
-				let e = Sa(Date.now() - this.pausedAt);
+				let e = Ca(Date.now() - this.pausedAt);
 				e && this.pos > e && this.seekTo(this.pos - e);
 			}
 			this.sync(), this.scheduleSave();
@@ -4192,7 +4222,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	}
 	previous() {
 		let e = this.item;
-		e && Pi(e) && this.seekTo(fa(e.chapters, this.pos));
+		e && Pi(e) && this.seekTo(pa(e.chapters, this.pos));
 	}
 	skip(e) {
 		let t = this.item;
@@ -4205,7 +4235,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		if (t && Pi(t)) {
 			if (this.pos = e, t.type === "book") {
 				let { index: n, offset: r } = ua(t.chapters, e), i = t.chapters[n];
-				i?.url && this.engine.load(i.url, r);
+				i?.url && (this.fileIdx = n, this.engine.load(i.url, r));
 			} else this.engine.seek(e);
 			this.sync();
 		}
@@ -4228,9 +4258,9 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 			return;
 		}
 		if (e.type === "book") {
-			let t = aa(e.chapters, this.pos + 1), n = e.chapters[t + 1];
+			let t = e.chapters[this.fileIdx]?.url === this.engine.url ? this.fileIdx : aa(e.chapters, this.pos + 1), n = e.chapters[t + 1];
 			if (n?.url) {
-				this.pos = n.start, this.sleep === "chapter" && (this.sleep = null, this.playing = !1, this.say("Sleep timer: paused at end of chapter")), this.engine.load(n.url, 0), this.sync(), this.rtab === "trans" && this.loadTranscript();
+				this.pos = n.start, this.fileIdx = t + 1, this.sleep === "chapter" && (this.sleep = null, this.playing = !1, this.say("Sleep timer: paused at end of chapter")), this.engine.load(n.url, 0), this.sync(), this.rtab === "trans" && this.loadTranscript();
 				return;
 			}
 		}
@@ -4267,14 +4297,11 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 		let t = this.item;
 		if (!t) return;
 		let n;
-		Pi(t) && this.engine.active && (n = (t.type === "book" ? t.chapters[ua(t.chapters, this.pos).index]?.start ?? 0 : 0) + this.engine.time - this.pos, (n < 0 || n > 10) && (n = 0)), t.type === "podcast" && !t.dur && this.engine.duration && (this.items = {
-			...this.items,
-			[t.id]: {
-				...t,
-				dur: Math.round(this.engine.duration)
-			}
-		});
-		let r = Pi(t) ? this.durOf(t.id) || 2 ** 53 - 1 : 0, i = pa({
+		if (Pi(t) && this.engine.active) {
+			let e = this.fitToAudio(t), r = e.type === "book" ? e.chapters[this.fileIdx]?.start ?? 0 : 0;
+			n = this.engine.settled ? r + this.engine.time - this.pos : 0;
+		}
+		let r = Pi(t) ? this.durOf(t.id) || 2 ** 53 - 1 : 0, i = ma({
 			pos: this.pos,
 			speed: this.speed,
 			sleep: this.sleep
@@ -4282,7 +4309,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 			dur: r,
 			chapters: t.type === "book" ? [] : t.chapters
 		} : null, e, n);
-		if (this.pos = i.ended ? this.pos : i.pos, this.sleep = i.sleep, this.playing = i.playing, i.reason === "timer" && this.say("Sleep timer ended. Sweet dreams."), i.reason === "chapter" && this.say("Sleep timer: paused at end of chapter"), this.sync(), this.playing && (this.stats = _a(this.stats, ga(/* @__PURE__ */ new Date()), t.type, e)), this.playing && t.type === "podcast") {
+		if (this.pos = i.ended ? this.pos : i.pos, this.sleep = i.sleep, this.playing = i.playing, i.reason === "timer" && this.say("Sleep timer ended. Sweet dreams."), i.reason === "chapter" && this.say("Sleep timer: paused at end of chapter"), this.sync(), this.playing && (this.stats = va(this.stats, _a(/* @__PURE__ */ new Date()), t.type, e)), this.playing && t.type === "podcast") {
 			let e = this.showPrefsOf(t.show).outro, n = this.durOf(t.id);
 			if (e && n > e + 30 && this.pos >= n - e) {
 				this.ended();
@@ -4290,6 +4317,27 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 			}
 		}
 		Date.now() - this.lastSaved > 1e4 && (this.lastSaved = Date.now(), Pi(t) && this.saveCurrent(), this.scheduleSave());
+	}
+	fitToAudio(e) {
+		let t = this.engine.settled ? this.engine.duration : 0;
+		if (!t) return e;
+		let n = e;
+		if (e.type === "podcast") Math.abs(t - (e.dur || 0)) >= 2 && (n = {
+			...e,
+			dur: Math.round(t)
+		});
+		else if (e.chapters[this.fileIdx]?.url === this.engine.url) {
+			let { chapters: r, delta: i } = da(e.chapters, this.fileIdx, t);
+			i && (n = {
+				...e,
+				chapters: r,
+				dur: e.dur ? Math.max(0, e.dur + i) : e.dur
+			});
+		}
+		return n !== e && (this.items = {
+			...this.items,
+			[e.id]: n
+		}), n;
 	}
 	playNext(e) {
 		this.queue = oa(this.queue, e), this.upAuto = this.upAuto.filter((t) => t !== e), this.say(`Playing next: ${this.items[e]?.title ?? ""}`), this.scheduleSave();
@@ -4467,13 +4515,13 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 				else if (t.type === "podcast") this.engine.load(t.url, this.pos);
 				else {
 					let { index: e, offset: n } = ua(t.chapters, this.pos), r = t.chapters[e];
-					r?.url ? this.engine.load(r.url, n) : this.loadedId = null;
+					r?.url ? (this.fileIdx = e, this.engine.load(r.url, n)) : this.loadedId = null;
 				}
 			}
 			this.engine.apply({
 				playing: this.playing,
 				rate: this.live ? 1 : this.speed,
-				volume: this.muted ? 0 : this.volume * ha(this.sleep)
+				volume: this.muted ? 0 : this.volume * ga(this.sleep)
 			}), this.mediaSession(e);
 		}
 	}
@@ -4568,7 +4616,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	}
 	readLocal() {
 		try {
-			return Ia(JSON.parse(localStorage.getItem(this.localKey) ?? "null"));
+			return La(JSON.parse(localStorage.getItem(this.localKey) ?? "null"));
 		} catch {
 			return null;
 		}
@@ -4576,7 +4624,7 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	async restore() {
 		let e = null, t = !0;
 		if (this.host.storage) try {
-			e = Ia(await this.host.storage.get(this.storageKey)) ?? Ia(await this.host.storage.get(this.legacyKey));
+			e = La(await this.host.storage.get(this.storageKey)) ?? La(await this.host.storage.get(this.legacyKey));
 		} catch {
 			t = !1;
 		}
@@ -4595,14 +4643,14 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 			...this.favorites,
 			...this.saved,
 			...this.items
-		}, this.history = (e.history ?? []).filter((e) => this.items[e.id]), this.stats = e.stats ?? {}, this.addedAt = e.addedAt ?? {}, this.showPrefs = e.showPrefs ?? {}, this.autoQueued = e.autoQueued ?? [], this.playlists = e.playlists ?? [], this.upAuto = (e.upAuto ?? []).filter((e) => this.queue.includes(e)), this.upFrom = this.upAuto.length ? e.upFrom ?? "" : "", e.podGenre && wa.some((t) => t.label === e.podGenre) && (this.podGenre = e.podGenre), this.prefs = {
-			...Ea,
+		}, this.history = (e.history ?? []).filter((e) => this.items[e.id]), this.stats = e.stats ?? {}, this.addedAt = e.addedAt ?? {}, this.showPrefs = e.showPrefs ?? {}, this.autoQueued = e.autoQueued ?? [], this.playlists = e.playlists ?? [], this.upAuto = (e.upAuto ?? []).filter((e) => this.queue.includes(e)), this.upFrom = this.upAuto.length ? e.upFrom ?? "" : "", e.podGenre && Ta.some((t) => t.label === e.podGenre) && (this.podGenre = e.podGenre), this.prefs = {
+			...Da,
 			...e.prefs ?? {}
 		}, e.now && this.items[e.now] && !this.now && (this.now = e.now, this.pos = e.pos ?? 0, this.speed = this.speedFor(e.now));
 		let t = this.item;
 		t?.type === "book" && this.ensureBook(t.id), Object.keys(this.subscribed).length && this.loadNewEpisodes();
 	}
-}, Ia = (e) => e && typeof e == "object" && e.v === 1 ? e : null, Q = {
+}, La = (e) => e && typeof e == "object" && e.v === 1 ? e : null, Q = {
 	play: "M8 5v14l11-7z",
 	pause: "M7 5h4v14H7zM13 5h4v14h-4z",
 	stop: "M6.5 6.5h11v11h-11z",
@@ -4634,16 +4682,16 @@ var Sa = (e) => e < 3e4 ? 0 : e < 3e5 ? 3 : e < 36e5 ? 10 : 20, Ca = [
 	list: "M8 6h12M8 12h12M8 18h8M4 6h.01M4 12h.01M4 18h.01",
 	trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
 	flame: "M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-8.5z"
-}, La = /* @__PURE__ */ kr("<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path></path></svg>"), Ra = /* @__PURE__ */ kr("<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path></path></svg>");
+}, Ra = /* @__PURE__ */ kr("<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path></path></svg>"), za = /* @__PURE__ */ kr("<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path></path></svg>");
 function $(e, t) {
 	let n = ji(t, "size", 3, 16), r = ji(t, "stroke", 3, 0);
 	var i = jr(), a = L(i), o = (e) => {
-		var i = La(), a = R(i);
+		var i = Ra(), a = R(i);
 		B(() => {
 			Z(i, "width", n()), Z(i, "height", n()), Z(i, "stroke-width", r()), Z(a, "d", t.d);
 		}), K(e, i);
 	}, s = (e) => {
-		var r = Ra(), i = R(r);
+		var r = za(), i = R(r);
 		B(() => {
 			Z(r, "width", n()), Z(r, "height", n()), Z(i, "d", t.d);
 		}), K(e, r);
@@ -4654,13 +4702,13 @@ function $(e, t) {
 }
 //#endregion
 //#region src/components/TopBar.svelte
-var za = /* @__PURE__ */ G("<header class=\"bar svelte-1h259us\"><span class=\"by svelte-1h259us\">Powered by OndaCast</span> <div class=\"spacer svelte-1h259us\"></div> <label class=\"search svelte-1h259us\"><!> <input type=\"search\" placeholder=\"Search stations, shows, books\" aria-label=\"Search stations, shows and books\" class=\"svelte-1h259us\"/></label> <button class=\"gear svelte-1h259us\" data-pop=\"\" aria-haspopup=\"dialog\" aria-label=\"Playback preferences\" title=\"Playback preferences\"><!></button></header>"), Ba = {
+var Ba = /* @__PURE__ */ G("<header class=\"bar svelte-1h259us\"><span class=\"by svelte-1h259us\">Powered by OndaCast</span> <div class=\"spacer svelte-1h259us\"></div> <label class=\"search svelte-1h259us\"><!> <input type=\"search\" placeholder=\"Search stations, shows, books\" aria-label=\"Search stations, shows and books\" class=\"svelte-1h259us\"/></label> <button class=\"gear svelte-1h259us\" data-pop=\"\" aria-haspopup=\"dialog\" aria-label=\"Playback preferences\" title=\"Playback preferences\"><!></button></header>"), Va = {
 	hash: "svelte-1h259us",
 	code: ".bar.svelte-1h259us {height:36px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--tm-panel-surface);border-bottom:1px solid var(--tm-fg-6);}.by.svelte-1h259us {font-size:11px;color:var(--tm-muted);}.spacer.svelte-1h259us {flex:1;}.gear.svelte-1h259us {width:26px;height:26px;border:0;border-radius:7px;background:none;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;}.gear.svelte-1h259us:hover, .gear[aria-expanded='true'].svelte-1h259us {background:var(--tm-fg-8);color:var(--tm-fg);}.search.svelte-1h259us {display:flex;align-items:center;gap:8px;height:24px;padding:0 10px;border-radius:7px;background:var(--tm-fg-6);width:220px;box-sizing:border-box;color:var(--tm-muted);}.search.svelte-1h259us:focus-within {box-shadow:0 0 0 1px var(--tm-accent);}input.svelte-1h259us {flex:1;min-width:0;border:0;background:none;outline:none;color:var(--tm-fg);font:inherit;font-size:11.5px;padding:0;}input.svelte-1h259us::placeholder {color:var(--tm-muted);opacity:1;}input.svelte-1h259us::-webkit-search-cancel-button {display:none;}"
 };
-function Va(e, t) {
-	Ue(t, !0), $r(e, Ba);
-	var n = za(), r = z(I(n), 4), i = I(r);
+function Ha(e, t) {
+	Ue(t, !0), $r(e, Va);
+	var n = Ba(), r = z(I(n), 4), i = I(r);
 	$(i, {
 		get d() {
 			return Q.search;
@@ -4690,22 +4738,22 @@ br([
 ]);
 //#endregion
 //#region src/components/Cover.svelte
-var Ha = /* @__PURE__ */ G("<img alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\" class=\"svelte-2fjyqn\"/>"), Ua = /* @__PURE__ */ G("<div><!></div>"), Wa = {
+var Ua = /* @__PURE__ */ G("<img alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\" class=\"svelte-2fjyqn\"/>"), Wa = /* @__PURE__ */ G("<div><!></div>"), Ga = {
 	hash: "svelte-2fjyqn",
 	code: ".cover.svelte-2fjyqn {flex:none;display:grid;place-items:center;overflow:hidden;font-family:ui-monospace, Menlo, monospace;font-weight:600;color:rgba(255, 255, 255, .75);}.cover.fill.svelte-2fjyqn {flex:1;}img.svelte-2fjyqn {width:100%;height:100%;object-fit:cover;display:block;}"
 };
-function Ga(e, t) {
-	Ue(t, !0), $r(e, Wa);
+function Ka(e, t) {
+	Ue(t, !0), $r(e, Ga);
 	let n = ji(t, "radius", 3, 8), r = ji(t, "mark", 3, ""), i = ji(t, "font", 3, 11), a = ji(t, "fill", 3, !1), o = /* @__PURE__ */ N(!1);
 	gn(() => {
 		t.art, P(o, !1);
 	});
-	var s = Ua();
+	var s = Wa();
 	let c, l;
 	var u = I(s), d = (e) => {
 		var n = jr();
 		Ur(L(n), () => t.art, (e) => {
-			var n = Ha();
+			var n = Ua();
 			B(() => Z(n, "src", t.art)), yr("error", n, () => P(o, !0)), _r(n), K(e, n);
 		}), K(e, n);
 	}, f = (e) => {
@@ -4726,12 +4774,12 @@ function Ga(e, t) {
 }
 //#endregion
 //#region src/components/Sidebar.svelte
-var Ka = /* @__PURE__ */ G("<span class=\"count svelte-181dlmc\"> </span>"), qa = /* @__PURE__ */ G("<button><!><span class=\"label svelte-181dlmc\"> </span> <!></button>"), Ja = /* @__PURE__ */ G("<span class=\"eq svelte-181dlmc\" aria-hidden=\"true\"><i class=\"svelte-181dlmc\"></i><i class=\"svelte-181dlmc\"></i><i class=\"svelte-181dlmc\"></i></span>"), Ya = /* @__PURE__ */ G("<button><!> <span class=\"title svelte-181dlmc\"> </span> <!></button>"), Xa = /* @__PURE__ */ G("<div class=\"heading svelte-181dlmc\">Favorite stations</div> <!>", 1), Za = /* @__PURE__ */ G("<nav class=\"side svelte-181dlmc\" aria-label=\"TEND Media\"><!> <!> <div class=\"spacer svelte-181dlmc\"></div> <button class=\"keys svelte-181dlmc\"><!>Keyboard shortcuts<kbd class=\"svelte-181dlmc\">?</kbd></button></nav>"), Qa = {
+var qa = /* @__PURE__ */ G("<span class=\"count svelte-181dlmc\"> </span>"), Ja = /* @__PURE__ */ G("<button><!><span class=\"label svelte-181dlmc\"> </span> <!></button>"), Ya = /* @__PURE__ */ G("<span class=\"eq svelte-181dlmc\" aria-hidden=\"true\"><i class=\"svelte-181dlmc\"></i><i class=\"svelte-181dlmc\"></i><i class=\"svelte-181dlmc\"></i></span>"), Xa = /* @__PURE__ */ G("<button><!> <span class=\"title svelte-181dlmc\"> </span> <!></button>"), Za = /* @__PURE__ */ G("<div class=\"heading svelte-181dlmc\">Favorite stations</div> <!>", 1), Qa = /* @__PURE__ */ G("<nav class=\"side svelte-181dlmc\" aria-label=\"TEND Media\"><!> <!> <div class=\"spacer svelte-181dlmc\"></div> <button class=\"keys svelte-181dlmc\"><!>Keyboard shortcuts<kbd class=\"svelte-181dlmc\">?</kbd></button></nav>"), $a = {
 	hash: "svelte-181dlmc",
 	code: ".side.svelte-181dlmc {width:188px;flex:none;padding:18px 12px;display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--tm-fg-6);box-sizing:border-box;overflow:auto;}.tab.svelte-181dlmc {display:flex;align-items:center;gap:11px;height:36px;flex:none;padding:0 10px;border:0;border-radius:9px;background:transparent;color:var(--tm-fg);font-size:13px;font-weight:500;cursor:pointer;text-align:left;}.tab.svelte-181dlmc:hover {background:var(--tm-fg-6);}.tab.on.svelte-181dlmc {background:var(--tm-accent-12);color:var(--tm-accent);}.heading.svelte-181dlmc {margin:22px 10px 8px;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tm-muted);}.show.svelte-181dlmc {display:flex;align-items:center;gap:10px;padding:6px 10px;font-size:12.5px;color:var(--tm-fg);border:0;border-radius:8px;background:none;cursor:pointer;text-align:left;}.show.svelte-181dlmc:hover {background:var(--tm-fg-4);}.show.on.svelte-181dlmc {background:var(--tm-fg-6);}.title.svelte-181dlmc {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.label.svelte-181dlmc {flex:1;}.count.svelte-181dlmc {font-size:10px;font-weight:700;min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:grid;place-items:center;background:var(--tm-accent);color:var(--tm-on-accent);}.eq.svelte-181dlmc {display:flex;align-items:flex-end;gap:2px;height:12px;flex:none;}.eq.svelte-181dlmc i:where(.svelte-181dlmc) {width:3px;background:var(--tm-accent);border-radius:1px; animation: svelte-181dlmc-eq 1s ease-in-out infinite;}.eq.svelte-181dlmc i:where(.svelte-181dlmc):nth-child(2) {animation-delay:-.3s;}.eq.svelte-181dlmc i:where(.svelte-181dlmc):nth-child(3) {animation-delay:-.6s;}\n  @keyframes svelte-181dlmc-eq { 0%, 100% { height: 4px; } 50% { height: 12px; } }\n  @media (prefers-reduced-motion: reduce) {.eq.svelte-181dlmc i:where(.svelte-181dlmc) { animation: none;height:8px;} }.keys.svelte-181dlmc {display:flex;align-items:center;gap:8px;padding:8px 10px;border:0;border-radius:9px;background:none;color:var(--tm-muted);font-size:11.5px;cursor:pointer;text-align:left;}.keys.svelte-181dlmc:hover {background:var(--tm-fg-6);color:var(--tm-fg);}kbd.svelte-181dlmc {margin-left:auto;font:600 10px ui-monospace, Menlo, monospace;padding:1px 6px;border-radius:4px;border:1px solid var(--tm-fg-16);}.spacer.svelte-181dlmc {flex:1;min-height:12px;}"
 };
-function $a(e, t) {
-	Ue(t, !0), $r(e, Qa);
+function eo(e, t) {
+	Ue(t, !0), $r(e, $a);
 	let n = ji(t, "store", 7), r = [
 		[
 			"home",
@@ -4759,11 +4807,11 @@ function $a(e, t) {
 			Q.book
 		]
 	], i = /* @__PURE__ */ j(() => Object.values(n().favorites).sort((e, t) => n().lastPlayed(t.id) - n().lastPlayed(e.id)).slice(0, 6)), a = /* @__PURE__ */ j(() => Object.keys(n().subscribed).reduce((e, t) => e + n().newCount(t), 0));
-	var o = Za(), s = I(o);
+	var o = Qa(), s = I(o);
 	Y(s, 17, () => r, Wr, (e, t) => {
 		var r = /* @__PURE__ */ j(() => m(U(t), 3));
 		let i = () => U(r)[0], o = () => U(r)[1], s = () => U(r)[2];
-		var c = qa();
+		var c = Ja();
 		let l;
 		var u = I(c);
 		$(u, {
@@ -4774,7 +4822,7 @@ function $a(e, t) {
 			stroke: 1.7
 		});
 		var d = z(u), f = R(d, !0), p = z(d, 2), h = (e) => {
-			var t = Ka(), n = R(t, !0);
+			var t = qa(), n = R(t, !0);
 			B(() => {
 				Z(t, "aria-label", `${U(a) ?? ""} new episodes`), q(n, U(a));
 			}), K(e, t);
@@ -4788,13 +4836,13 @@ function $a(e, t) {
 		}), K(e, c);
 	});
 	var c = z(s, 2), l = (e) => {
-		var t = Xa();
+		var t = Za();
 		Y(z(L(t), 2), 17, () => U(i), (e) => e.id, (e, t) => {
 			let r = /* @__PURE__ */ j(() => n().isPlaying(U(t).id));
-			var i = Ya();
+			var i = Xa();
 			let a;
 			var o = I(i);
-			Ga(o, {
+			Ka(o, {
 				get hue() {
 					return U(t).hue;
 				},
@@ -4809,7 +4857,7 @@ function $a(e, t) {
 				}
 			});
 			var s = z(o, 2), c = R(s, !0), l = z(s, 2), u = (e) => {
-				K(e, Ja());
+				K(e, Ya());
 			};
 			J(l, (e) => {
 				U(r) && e(u);
@@ -4833,17 +4881,17 @@ function $a(e, t) {
 br(["click"]);
 //#endregion
 //#region src/focus.ts
-function eo(e) {
+function to(e) {
 	e.isConnected ? e.focus() : requestAnimationFrame(() => e.focus());
 }
 //#endregion
 //#region src/components/ItemMenu.svelte
-var to = /* @__PURE__ */ G("<button role=\"menuitem\" class=\"svelte-8mcf8g\"><!>Play next</button> <button role=\"menuitem\" class=\"svelte-8mcf8g\"><!>Add to Up next</button>", 1), no = /* @__PURE__ */ G("<span class=\"in svelte-8mcf8g\">Added</span>"), ro = /* @__PURE__ */ G("<button role=\"menuitem\" class=\"svelte-8mcf8g\"><!><span class=\"nm svelte-8mcf8g\"> </span><!></button>"), io = /* @__PURE__ */ G("<form class=\"newform svelte-8mcf8g\"><input maxlength=\"80\" placeholder=\"Playlist name\" aria-label=\"New playlist name\" class=\"svelte-8mcf8g\"/> <button type=\"submit\" class=\"svelte-8mcf8g\">Create</button></form>"), ao = /* @__PURE__ */ G("<button role=\"menuitem\" class=\"svelte-8mcf8g\"><!>New playlist…</button>"), oo = /* @__PURE__ */ G("<div role=\"menu\"><!> <div class=\"sep svelte-8mcf8g\">Add to playlist</div> <!> <!> <div class=\"rule svelte-8mcf8g\"></div> <button role=\"menuitem\" class=\"svelte-8mcf8g\"><!> </button></div>"), so = /* @__PURE__ */ G("<span class=\"anchor svelte-8mcf8g\"><button class=\"dots svelte-8mcf8g\" data-pop=\"\" aria-haspopup=\"menu\">•••</button> <!></span>"), co = {
+var no = /* @__PURE__ */ G("<button role=\"menuitem\" class=\"svelte-8mcf8g\"><!>Play next</button> <button role=\"menuitem\" class=\"svelte-8mcf8g\"><!>Add to Up next</button>", 1), ro = /* @__PURE__ */ G("<span class=\"in svelte-8mcf8g\">Added</span>"), io = /* @__PURE__ */ G("<button role=\"menuitem\" class=\"svelte-8mcf8g\"><!><span class=\"nm svelte-8mcf8g\"> </span><!></button>"), ao = /* @__PURE__ */ G("<form class=\"newform svelte-8mcf8g\"><input maxlength=\"80\" placeholder=\"Playlist name\" aria-label=\"New playlist name\" class=\"svelte-8mcf8g\"/> <button type=\"submit\" class=\"svelte-8mcf8g\">Create</button></form>"), oo = /* @__PURE__ */ G("<button role=\"menuitem\" class=\"svelte-8mcf8g\"><!>New playlist…</button>"), so = /* @__PURE__ */ G("<div role=\"menu\"><!> <div class=\"sep svelte-8mcf8g\">Add to playlist</div> <!> <!> <div class=\"rule svelte-8mcf8g\"></div> <button role=\"menuitem\" class=\"svelte-8mcf8g\"><!> </button></div>"), co = /* @__PURE__ */ G("<span class=\"anchor svelte-8mcf8g\"><button class=\"dots svelte-8mcf8g\" data-pop=\"\" aria-haspopup=\"menu\">•••</button> <!></span>"), lo = {
 	hash: "svelte-8mcf8g",
 	code: ".anchor.svelte-8mcf8g {position:relative;display:inline-flex;flex:none;}.dots.svelte-8mcf8g {width:30px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--tm-muted);cursor:pointer;font-size:11px;letter-spacing:1px;}.dots.svelte-8mcf8g:hover, .dots[aria-expanded='true'].svelte-8mcf8g {background:var(--tm-fg-8);color:var(--tm-fg);}.menu.svelte-8mcf8g {right:0;top:32px;width:230px;padding:6px;z-index:8;}.menu.left.svelte-8mcf8g {left:0;right:auto;}.menu.svelte-8mcf8g button:where(.svelte-8mcf8g) {display:flex;align-items:center;gap:9px;width:100%;height:32px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--tm-fg);font-size:12px;cursor:pointer;text-align:left;}.menu.svelte-8mcf8g button:where(.svelte-8mcf8g):hover:not(:disabled) {background:var(--tm-fg-8);}.menu.svelte-8mcf8g button:where(.svelte-8mcf8g):disabled {opacity:.55;cursor:default;}.nm.svelte-8mcf8g {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.in.svelte-8mcf8g {font-size:10.5px;color:var(--tm-accent);}.sep.svelte-8mcf8g {font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--tm-muted);padding:8px 10px 4px;}.rule.svelte-8mcf8g {height:1px;background:var(--tm-fg-8);margin:4px 0;}.newform.svelte-8mcf8g {display:flex;gap:6px;padding:4px 6px;}.newform.svelte-8mcf8g input:where(.svelte-8mcf8g) {flex:1;min-width:0;height:28px;padding:0 8px;border-radius:7px;border:1px solid var(--tm-fg-14);background:var(--tm-fg-4);color:var(--tm-fg);font:inherit;font-size:12px;outline:none;}.newform.svelte-8mcf8g input:where(.svelte-8mcf8g):focus {border-color:var(--tm-accent);}.newform.svelte-8mcf8g button:where(.svelte-8mcf8g) {width:auto;height:28px;padding:0 10px;border-radius:7px;background:var(--tm-accent);color:var(--tm-on-accent);font-weight:650;justify-content:center;}.newform.svelte-8mcf8g button:where(.svelte-8mcf8g):hover {background:var(--tm-accent);}"
 };
-function lo(e, t) {
-	Ue(t, !0), $r(e, co);
+function uo(e, t) {
+	Ue(t, !0), $r(e, lo);
 	let n = ji(t, "store", 7), r = ji(t, "align", 3, "right"), i = /* @__PURE__ */ j(() => n().items[t.id]), a = /* @__PURE__ */ j(() => n().pop === "item" && n().popItem === t.id), o = /* @__PURE__ */ j(() => n().isDone(t.id)), s = /* @__PURE__ */ j(() => t.id === n().now), c = /* @__PURE__ */ N(!1), l = /* @__PURE__ */ N(""), u = () => {
 		n().pop = null, n().popItem = null, P(c, !1);
 	};
@@ -4857,11 +4905,11 @@ function lo(e, t) {
 		n().playlists = [e, ...n().playlists], n().say(`Saved to “${e.name}”`), n().scheduleSave(), u();
 	}
 	var f = jr(), p = L(f), m = (e) => {
-		var f = so(), p = I(f), m = z(p, 2), h = (e) => {
-			var i = oo();
+		var f = co(), p = I(f), m = z(p, 2), h = (e) => {
+			var i = so();
 			let a;
 			var f = I(i), p = (e) => {
-				var r = to(), i = L(r);
+				var r = no(), i = L(r);
 				$(I(i), {
 					get d() {
 						return Q.playNext;
@@ -4887,7 +4935,7 @@ function lo(e, t) {
 			});
 			var m = z(f, 4);
 			Y(m, 17, () => n().playlists, (e) => e.id, (e, r) => {
-				var i = ro(), a = I(i);
+				var i = io(), a = I(i);
 				$(a, {
 					get d() {
 						return Q.list;
@@ -4896,7 +4944,7 @@ function lo(e, t) {
 					stroke: 1.8
 				});
 				var o = z(a), s = R(o, !0), c = z(o), l = (e) => {
-					K(e, no());
+					K(e, ro());
 				}, d = /* @__PURE__ */ j(() => U(r).ids.includes(t.id));
 				J(c, (e) => {
 					U(d) && e(l);
@@ -4907,14 +4955,14 @@ function lo(e, t) {
 				}), K(e, i);
 			});
 			var h = z(m, 2), g = (e) => {
-				var t = io(), n = I(t);
-				yi(n), ei(n, (e) => eo?.(e)), yn(() => Ti(n, () => U(l), (e) => P(l, e))), A(2), k(t), yr("submit", t, (e) => {
+				var t = ao(), n = I(t);
+				yi(n), ei(n, (e) => to?.(e)), yn(() => Ti(n, () => U(l), (e) => P(l, e))), A(2), k(t), yr("submit", t, (e) => {
 					e.preventDefault(), d();
 				}), W("keydown", n, (e) => {
 					e.key === "Escape" && (e.stopPropagation(), P(c, !1));
 				}), K(e, t);
 			}, _ = (e) => {
-				var t = ao();
+				var t = oo();
 				$(I(t), {
 					get d() {
 						return Q.plus;
@@ -4958,22 +5006,22 @@ function lo(e, t) {
 br(["click", "keydown"]);
 //#endregion
 //#region src/components/ItemRow.svelte
-var uo = /* @__PURE__ */ G("<button class=\"icon svelte-ee3n05\" title=\"Play next\"><!></button> <button class=\"icon svelte-ee3n05\" title=\"Add to queue\"><!></button>", 1), fo = /* @__PURE__ */ G("<div><!> <div class=\"text svelte-ee3n05\"><div> </div> <div class=\"meta svelte-ee3n05\"> </div></div> <!> <!> <button class=\"play svelte-ee3n05\"><!></button></div>"), po = {
+var fo = /* @__PURE__ */ G("<button class=\"icon svelte-ee3n05\" title=\"Play next\"><!></button> <button class=\"icon svelte-ee3n05\" title=\"Add to queue\"><!></button>", 1), po = /* @__PURE__ */ G("<div><!> <div class=\"text svelte-ee3n05\"><div> </div> <div class=\"meta svelte-ee3n05\"> </div></div> <!> <!> <button class=\"play svelte-ee3n05\"><!></button></div>"), mo = {
 	hash: "svelte-ee3n05",
 	code: ".row.svelte-ee3n05 {display:flex;align-items:center;gap:14px;padding:10px 8px;border-radius:10px;}.row.svelte-ee3n05:hover {background:var(--tm-fg-5);}.row.cur.svelte-ee3n05 {background:var(--tm-accent-8);}.text.svelte-ee3n05 {flex:1;min-width:0;}.title.svelte-ee3n05 {font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.cur.svelte-ee3n05 .title:where(.svelte-ee3n05) {color:var(--tm-accent);}.title.done.svelte-ee3n05 {color:var(--tm-muted);}.meta.svelte-ee3n05 {font-size:11.5px;color:var(--tm-muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.icon.svelte-ee3n05 {width:32px;height:32px;flex:none;border:0;border-radius:8px;background:transparent;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;}.icon.svelte-ee3n05:hover {background:var(--tm-fg-8);color:var(--tm-fg);}.play.svelte-ee3n05 {width:34px;height:34px;flex:none;border:0;border-radius:17px;background:var(--tm-accent);color:var(--tm-on-accent);cursor:pointer;display:grid;place-items:center;}"
 };
-function mo(e, t) {
-	Ue(t, !0), $r(e, po);
+function ho(e, t) {
+	Ue(t, !0), $r(e, mo);
 	let n = ji(t, "from", 3, ""), r = /* @__PURE__ */ j(() => t.store.items[t.id]), i = /* @__PURE__ */ j(() => t.id === t.store.now), a = /* @__PURE__ */ j(() => U(r) ? U(r).type === "podcast" ? [
 		U(r).sub,
 		Wi(U(r).date),
 		t.store.lenOf(t.id)
 	].filter(Boolean).join(" · ") : U(r).type === "radio" ? `${Ni.radio} · ${U(r).sub}` : `${Ni.book} · ${U(r).sub}` : "");
 	var o = jr(), s = L(o), c = (e) => {
-		var o = fo();
+		var o = po();
 		let s;
 		var c = I(o);
-		Ga(c, {
+		Ka(c, {
 			get hue() {
 				return U(r).hue;
 			},
@@ -4990,7 +5038,7 @@ function mo(e, t) {
 		var f = R(u, !0), p = R(z(u, 2), !0);
 		k(l);
 		var m = z(l, 2), h = (e) => {
-			var n = uo(), i = L(n);
+			var n = fo(), i = L(n);
 			$(I(i), {
 				get d() {
 					return Q.playNext;
@@ -5011,7 +5059,7 @@ function mo(e, t) {
 			U(r).type !== "radio" && !U(i) && e(h);
 		});
 		var g = z(m, 2), _ = (e) => {
-			lo(e, {
+			uo(e, {
 				get store() {
 					return t.store;
 				},
@@ -5044,18 +5092,18 @@ function mo(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/Status.svelte
-var ho = /* @__PURE__ */ G("<div class=\"line svelte-hcghuu\" role=\"status\"><span class=\"spin svelte-hcghuu\" aria-hidden=\"true\"></span>Loading…</div>"), go = /* @__PURE__ */ G("<button class=\"svelte-hcghuu\">Try again</button>"), _o = /* @__PURE__ */ G("<div class=\"line svelte-hcghuu\" role=\"alert\"> <!></div>"), vo = /* @__PURE__ */ G("<div class=\"line svelte-hcghuu\"> </div>"), yo = {
+var go = /* @__PURE__ */ G("<div class=\"line svelte-hcghuu\" role=\"status\"><span class=\"spin svelte-hcghuu\" aria-hidden=\"true\"></span>Loading…</div>"), _o = /* @__PURE__ */ G("<button class=\"svelte-hcghuu\">Try again</button>"), vo = /* @__PURE__ */ G("<div class=\"line svelte-hcghuu\" role=\"alert\"> <!></div>"), yo = /* @__PURE__ */ G("<div class=\"line svelte-hcghuu\"> </div>"), bo = {
 	hash: "svelte-hcghuu",
 	code: ".line.svelte-hcghuu {display:flex;align-items:center;gap:10px;padding:18px 8px;font-size:12.5px;color:var(--tm-muted);}button.svelte-hcghuu {border:0;background:none;color:var(--tm-accent);font-size:12.5px;cursor:pointer;padding:0;}.spin.svelte-hcghuu {width:14px;height:14px;border-radius:50%;border:2px solid var(--tm-fg-16);border-top-color:var(--tm-accent); animation: svelte-hcghuu-spin .8s linear infinite;}\n  @keyframes svelte-hcghuu-spin { to { transform: rotate(360deg); } }\n  @media (prefers-reduced-motion: reduce) {.spin.svelte-hcghuu { animation: none;} }"
 };
-function bo(e, t) {
-	$r(e, yo);
+function xo(e, t) {
+	$r(e, bo);
 	let n = ji(t, "empty", 3, ""), r = ji(t, "error", 3, "OndaCast could not be reached.");
 	var i = jr(), a = L(i), o = (e) => {
-		K(e, ho());
+		K(e, go());
 	}, s = (e) => {
-		var n = _o(), i = I(n, !0), a = z(i), o = (e) => {
-			var n = go();
+		var n = vo(), i = I(n, !0), a = z(i), o = (e) => {
+			var n = _o();
 			W("click", n, function(...e) {
 				t.retry?.apply(this, e);
 			}), K(e, n);
@@ -5064,7 +5112,7 @@ function bo(e, t) {
 			t.retry && e(o);
 		}), k(n), B(() => q(i, r())), K(e, n);
 	}, c = (e) => {
-		var t = vo(), r = R(t, !0);
+		var t = yo(), r = R(t, !0);
 		B(() => q(r, n())), K(e, t);
 	};
 	J(a, (e) => {
@@ -5074,19 +5122,19 @@ function bo(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/HomeView.svelte
-var xo = /* @__PURE__ */ G("<button class=\"card svelte-oxdkf2\"><!> <span class=\"ctext svelte-oxdkf2\"><span class=\"kind svelte-oxdkf2\"> </span> <span class=\"ctitle svelte-oxdkf2\"> </span> <span class=\"bar svelte-oxdkf2\"><span class=\"svelte-oxdkf2\"></span></span> <span class=\"left svelte-oxdkf2\"> </span></span></button>"), So = /* @__PURE__ */ G("<div class=\"continue svelte-oxdkf2\"></div>"), Co = /* @__PURE__ */ G("<div class=\"start svelte-oxdkf2\"><button class=\"svelte-oxdkf2\">Tune in to live radio</button> <button class=\"svelte-oxdkf2\">Find a podcast</button> <button class=\"svelte-oxdkf2\">Start an audiobook</button></div>"), wo = /* @__PURE__ */ G("<button><span class=\"banner svelte-oxdkf2\"><!><span class=\"live svelte-oxdkf2\"><i class=\"svelte-oxdkf2\"></i>LIVE</span></span> <span class=\"stext svelte-oxdkf2\"><span class=\"stitle svelte-oxdkf2\"> </span><span class=\"song svelte-oxdkf2\"> </span></span></button>"), To = /* @__PURE__ */ G("<div class=\"onair svelte-oxdkf2\"></div>"), Eo = /* @__PURE__ */ G("<h1 class=\"h1 svelte-oxdkf2\"> </h1> <p class=\"lede svelte-oxdkf2\">Pick up where you left off across radio, podcasts and books.</p> <!> <div class=\"section svelte-oxdkf2\"><h2 class=\"svelte-oxdkf2\">On air now</h2><button class=\"link svelte-oxdkf2\">All stations</button></div> <!> <h2 class=\"h2 svelte-oxdkf2\">New from your shows</h2> <!>", 1), Do = {
+var So = /* @__PURE__ */ G("<button class=\"card svelte-oxdkf2\"><!> <span class=\"ctext svelte-oxdkf2\"><span class=\"kind svelte-oxdkf2\"> </span> <span class=\"ctitle svelte-oxdkf2\"> </span> <span class=\"bar svelte-oxdkf2\"><span class=\"svelte-oxdkf2\"></span></span> <span class=\"left svelte-oxdkf2\"> </span></span></button>"), Co = /* @__PURE__ */ G("<div class=\"continue svelte-oxdkf2\"></div>"), wo = /* @__PURE__ */ G("<div class=\"start svelte-oxdkf2\"><button class=\"svelte-oxdkf2\">Tune in to live radio</button> <button class=\"svelte-oxdkf2\">Find a podcast</button> <button class=\"svelte-oxdkf2\">Start an audiobook</button></div>"), To = /* @__PURE__ */ G("<button><span class=\"banner svelte-oxdkf2\"><!><span class=\"live svelte-oxdkf2\"><i class=\"svelte-oxdkf2\"></i>LIVE</span></span> <span class=\"stext svelte-oxdkf2\"><span class=\"stitle svelte-oxdkf2\"> </span><span class=\"song svelte-oxdkf2\"> </span></span></button>"), Eo = /* @__PURE__ */ G("<div class=\"onair svelte-oxdkf2\"></div>"), Do = /* @__PURE__ */ G("<h1 class=\"h1 svelte-oxdkf2\"> </h1> <p class=\"lede svelte-oxdkf2\">Pick up where you left off across radio, podcasts and books.</p> <!> <div class=\"section svelte-oxdkf2\"><h2 class=\"svelte-oxdkf2\">On air now</h2><button class=\"link svelte-oxdkf2\">All stations</button></div> <!> <h2 class=\"h2 svelte-oxdkf2\">New from your shows</h2> <!>", 1), Oo = {
 	hash: "svelte-oxdkf2",
 	code: ".h1.svelte-oxdkf2 {font-size:26px;font-weight:650;letter-spacing:-.5px;margin:0;}.lede.svelte-oxdkf2 {font-size:13px;color:var(--tm-muted);margin:4px 0 0;}.continue.svelte-oxdkf2 {display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:12px;margin-top:20px;}.card.svelte-oxdkf2 {display:flex;gap:12px;padding:12px;border:0;border-radius:14px;background:var(--tm-fg-4);color:inherit;cursor:pointer;align-items:center;text-align:left;font:inherit;}.card.svelte-oxdkf2:hover {background:var(--tm-fg-8);}.ctext.svelte-oxdkf2 {min-width:0;flex:1;display:flex;flex-direction:column;gap:4px;}.kind.svelte-oxdkf2 {font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--tm-accent);font-weight:600;}.ctitle.svelte-oxdkf2 {font-size:13px;font-weight:600;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.bar.svelte-oxdkf2 {height:3px;border-radius:2px;background:var(--tm-fg-10);margin-top:3px;display:block;}.bar.svelte-oxdkf2 span:where(.svelte-oxdkf2) {display:block;height:3px;border-radius:2px;background:var(--tm-accent);}.left.svelte-oxdkf2 {font-size:11px;color:var(--tm-muted);}.start.svelte-oxdkf2 {display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;}.start.svelte-oxdkf2 button:where(.svelte-oxdkf2) {height:34px;padding:0 16px;border-radius:17px;border:1px solid var(--tm-fg-14);background:var(--tm-fg-4);color:var(--tm-fg);font-size:12.5px;font-weight:600;cursor:pointer;}.start.svelte-oxdkf2 button:where(.svelte-oxdkf2):hover {border-color:var(--tm-accent);}.section.svelte-oxdkf2 {display:flex;align-items:baseline;justify-content:space-between;margin:28px 0 12px;}h2.svelte-oxdkf2 {font-size:15px;font-weight:650;margin:0;}.h2.svelte-oxdkf2 {margin:28px 0 8px;}.link.svelte-oxdkf2 {border:0;background:none;color:var(--tm-accent);font-size:12px;cursor:pointer;padding:0;}.onair.svelte-oxdkf2 {display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:12px;}.station.svelte-oxdkf2 {border:0;padding:0;border-radius:14px;overflow:hidden;background:var(--tm-fg-4);color:inherit;cursor:pointer;text-align:left;font:inherit;display:flex;flex-direction:column;}.station.svelte-oxdkf2:hover {background:var(--tm-fg-8);}.station.cur.svelte-oxdkf2 {box-shadow:inset 0 0 0 1px var(--tm-accent);}.banner.svelte-oxdkf2 {height:78px;display:flex;width:100%;position:relative;}.live.svelte-oxdkf2 {position:absolute;left:10px;top:10px;display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;letter-spacing:.8px;padding:3px 7px;border-radius:20px;background:rgba(0, 0, 0, .45);color:#fff;}.live.svelte-oxdkf2 i:where(.svelte-oxdkf2) {width:5px;height:5px;border-radius:3px;background:var(--tm-live);}.stext.svelte-oxdkf2 {padding:10px 12px 12px;display:flex;flex-direction:column;min-width:0;}.stitle.svelte-oxdkf2 {font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.song.svelte-oxdkf2 {font-size:11px;color:var(--tm-muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}"
 };
-function Oo(e, t) {
-	Ue(t, !0), $r(e, Do);
+function ko(e, t) {
+	Ue(t, !0), $r(e, Oo);
 	let n = ji(t, "store", 7);
-	var r = Eo(), i = L(r), a = R(i, !0), o = z(i, 4), s = (e) => {
-		var t = So();
+	var r = Do(), i = L(r), a = R(i, !0), o = z(i, 4), s = (e) => {
+		var t = Co();
 		Y(t, 20, () => n().continueIds, (e) => e, (e, t) => {
 			let r = /* @__PURE__ */ j(() => n().items[t]);
-			var i = xo(), a = I(i);
-			Ga(a, {
+			var i = So(), a = I(i);
+			Ka(a, {
 				get hue() {
 					return U(r).hue;
 				},
@@ -5112,7 +5160,7 @@ function Oo(e, t) {
 			]), W("click", i, () => n().play(t)), K(e, i);
 		}), k(t), K(e, t);
 	}, c = (e) => {
-		var t = Co(), r = I(t), i = z(r, 2), a = z(i, 2);
+		var t = wo(), r = I(t), i = z(r, 2), a = z(i, 2);
 		k(t), W("click", r, () => n().tab = "radio"), W("click", i, () => {
 			n().tab = "pod", n().showSlug = null;
 		}), W("click", a, () => {
@@ -5125,13 +5173,13 @@ function Oo(e, t) {
 	var l = z(o, 2), u = z(I(l));
 	k(l);
 	var d = z(l, 2), f = (e) => {
-		var t = To();
+		var t = Eo();
 		Y(t, 20, () => n().onAirIds, (e) => e, (e, t) => {
 			let r = /* @__PURE__ */ j(() => n().items[t]);
-			var i = wo();
+			var i = To();
 			let a;
 			var o = I(i);
-			Ga(I(o), {
+			Ka(I(o), {
 				get hue() {
 					return U(r).hue;
 				},
@@ -5151,7 +5199,7 @@ function Oo(e, t) {
 			}, [() => n().isPlaying(t) ? "Pause" : "Play", () => U(r).type === "radio" ? n().songOf(U(r).stationId) ? `♪ ${n().songOf(U(r).stationId)}` : U(r).sub : ""]), W("click", i, () => n().play(t)), K(e, i);
 		}), k(t), K(e, t);
 	}, p = (e) => {
-		bo(e, {
+		xo(e, {
 			get status() {
 				return n().radioStatus;
 			},
@@ -5162,7 +5210,7 @@ function Oo(e, t) {
 	J(d, (e) => {
 		n().onAirIds.length ? e(f) : e(p, -1);
 	}), Y(z(d, 4), 16, () => n().newEpisodes, (e) => e, (e, t) => {
-		mo(e, {
+		ho(e, {
 			get store() {
 				return n();
 			},
@@ -5175,7 +5223,7 @@ function Oo(e, t) {
 			from: "your new episodes"
 		});
 	}, (e) => {
-		bo(e, {
+		xo(e, {
 			get status() {
 				return n().newStatus;
 			},
@@ -5187,15 +5235,15 @@ function Oo(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/FavButton.svelte
-var ko = /* @__PURE__ */ G("<button><!></button>"), Ao = {
+var Ao = /* @__PURE__ */ G("<button><!></button>"), jo = {
 	hash: "svelte-18vgx0d",
 	code: ".fav.svelte-18vgx0d {width:32px;height:32px;flex:none;padding:0;border:0;border-radius:50%;background:transparent;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;transition:color .15s, transform .15s, background .15s;}.fav.svelte-18vgx0d:hover {color:var(--tm-fg);background:var(--tm-fg-8);}.fav.on.svelte-18vgx0d {color:var(--tm-live);}.fav.on.svelte-18vgx0d:hover {color:var(--tm-live);}.fav.solid.svelte-18vgx0d {background:rgba(0, 0, 0, .4);color:#fff;}.fav.solid.on.svelte-18vgx0d {color:var(--tm-live);}.fav.svelte-18vgx0d:active {transform:scale(.9);}\n  @media (prefers-reduced-motion: reduce) {.fav.svelte-18vgx0d {transition:none;} }"
 };
-function jo(e, t) {
-	Ue(t, !0), $r(e, Ao);
+function Mo(e, t) {
+	Ue(t, !0), $r(e, jo);
 	let n = ji(t, "size", 3, 16), r = ji(t, "solid", 3, !1), i = /* @__PURE__ */ j(() => t.store.items[t.id]), a = /* @__PURE__ */ j(() => t.store.isFavorite(t.id)), o = /* @__PURE__ */ j(() => U(i) ? U(i).type === "radio" ? U(a) ? "Remove from favorite stations" : "Add to favorite stations" : U(i).type === "book" ? U(a) ? "Remove from My Media" : "Save to My Media" : U(a) ? `Unsubscribe from ${U(i).sub}` : `Subscribe to ${U(i).sub}` : "");
 	var s = jr(), c = L(s), l = (e) => {
-		var i = ko();
+		var i = Ao();
 		let s;
 		var c = I(i);
 		{
@@ -5228,19 +5276,19 @@ function jo(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/WeekCard.svelte
-var Mo = /* @__PURE__ */ G("<span class=\"streak svelte-155zco6\"><!> </span>"), No = /* @__PURE__ */ G("<span class=\"tip svelte-155zco6\"> </span>"), Po = /* @__PURE__ */ G("<div class=\"col svelte-155zco6\" role=\"presentation\"><span class=\"track svelte-155zco6\"><span></span> <!></span> <span> </span></div>"), Fo = /* @__PURE__ */ G("<div class=\"svelte-155zco6\"><dt class=\"svelte-155zco6\"> </dt><dd class=\"svelte-155zco6\"> </dd></div>"), Io = /* @__PURE__ */ G("<tr><th scope=\"row\"> </th><td> </td></tr>"), Lo = /* @__PURE__ */ G("<section class=\"week svelte-155zco6\" aria-label=\"Your listening this week\"><div class=\"hero svelte-155zco6\"><span class=\"eyebrow svelte-155zco6\">Your week</span> <strong class=\"svelte-155zco6\"> </strong> <span class=\"sub svelte-155zco6\">listened in the last 7 days</span> <!></div> <div class=\"chart svelte-155zco6\" role=\"img\" aria-label=\"Minutes listened per day, last seven days\"></div> <dl class=\"split svelte-155zco6\"></dl> <table class=\"sr svelte-155zco6\"><caption>Minutes listened per day</caption><tbody></tbody></table></section>"), Ro = {
+var No = /* @__PURE__ */ G("<span class=\"streak svelte-155zco6\"><!> </span>"), Po = /* @__PURE__ */ G("<span class=\"tip svelte-155zco6\"> </span>"), Fo = /* @__PURE__ */ G("<div class=\"col svelte-155zco6\" role=\"presentation\"><span class=\"track svelte-155zco6\"><span></span> <!></span> <span> </span></div>"), Io = /* @__PURE__ */ G("<div class=\"svelte-155zco6\"><dt class=\"svelte-155zco6\"> </dt><dd class=\"svelte-155zco6\"> </dd></div>"), Lo = /* @__PURE__ */ G("<tr><th scope=\"row\"> </th><td> </td></tr>"), Ro = /* @__PURE__ */ G("<section class=\"week svelte-155zco6\" aria-label=\"Your listening this week\"><div class=\"hero svelte-155zco6\"><span class=\"eyebrow svelte-155zco6\">Your week</span> <strong class=\"svelte-155zco6\"> </strong> <span class=\"sub svelte-155zco6\">listened in the last 7 days</span> <!></div> <div class=\"chart svelte-155zco6\" role=\"img\" aria-label=\"Minutes listened per day, last seven days\"></div> <dl class=\"split svelte-155zco6\"></dl> <table class=\"sr svelte-155zco6\"><caption>Minutes listened per day</caption><tbody></tbody></table></section>"), zo = {
 	hash: "svelte-155zco6",
 	code: ".week.svelte-155zco6 {display:grid;grid-template-columns:minmax(150px, 1fr) minmax(200px, 1.6fr) minmax(130px, 1fr);grid-template-areas:'hero chart split';gap:14px 22px;align-items:center;padding:18px 20px;border-radius:16px;background:linear-gradient(135deg, var(--tm-accent-12), var(--tm-fg-4));border:1px solid var(--tm-fg-7);}.hero.svelte-155zco6 {grid-area:hero;display:flex;flex-direction:column;gap:2px;min-width:0;}.eyebrow.svelte-155zco6 {font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tm-accent);font-weight:650;}strong.svelte-155zco6 {font-size:30px;font-weight:700;letter-spacing:-.6px;line-height:1.1;}.sub.svelte-155zco6 {font-size:11.5px;color:var(--tm-muted);}.streak.svelte-155zco6 {display:inline-flex;align-items:center;gap:5px;margin-top:8px;width:fit-content;font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;background:var(--tm-fg-8);}.chart.svelte-155zco6 {grid-area:chart;display:grid;grid-template-columns:repeat(7, 1fr);gap:8px;height:120px;padding-top:24px;box-sizing:border-box;align-items:end;}.col.svelte-155zco6 {position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;}.track.svelte-155zco6 {position:relative;flex:1;width:100%;max-width:22px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid var(--tm-fg-12);}.bar.svelte-155zco6 {display:block;width:100%;border-radius:4px 4px 0 0;background:color-mix(in srgb, var(--tm-accent) 55%, transparent);}.bar.today.svelte-155zco6 {background:var(--tm-accent);}.day.svelte-155zco6 {font-size:10px;color:var(--tm-muted);}.day.today.svelte-155zco6 {color:var(--tm-fg);font-weight:650;}.tip.svelte-155zco6 {position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;padding:4px 8px;border-radius:6px;background:var(--tm-fg);color:var(--tm-bg);pointer-events:none;z-index:2;}.split.svelte-155zco6 {grid-area:split;margin:0;display:grid;gap:8px;}.split.svelte-155zco6 div:where(.svelte-155zco6) {display:flex;justify-content:space-between;gap:10px;font-size:12px;}dt.svelte-155zco6 {color:var(--tm-muted);}dd.svelte-155zco6 {margin:0;font-weight:600;font-variant-numeric:tabular-nums;}.sr.svelte-155zco6 {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}\n  /* Medium widths: hero and split on the left, chart on the right. */\n  @container (max-width: 760px) {.week.svelte-155zco6 {grid-template-columns:minmax(150px, 1fr) minmax(180px, 1.3fr);grid-template-areas:'hero chart' 'split chart';align-items:start;}.split.svelte-155zco6 {gap:5px;} }\n  @container (max-width: 420px) {.week.svelte-155zco6 {grid-template-columns:1fr;grid-template-areas:'hero' 'chart' 'split';} }"
 };
-function zo(e, t) {
-	Ue(t, !0), $r(e, Ro);
+function Bo(e, t) {
+	Ue(t, !0), $r(e, zo);
 	let n = /* @__PURE__ */ j(() => t.store.week), r = /* @__PURE__ */ j(() => Math.max(60, ...U(n).days.map((e) => e.seconds))), i = (e) => e < 60 ? e ? "<1 min" : "0 min" : ta(e), a = [
 		["radio", "Radio"],
 		["podcast", "Podcasts"],
 		["book", "Audiobooks"]
 	], o = /* @__PURE__ */ N(-1);
-	var s = Lo(), c = I(s), l = z(I(c), 2), u = R(l, !0), d = z(l, 4), f = (e) => {
-		var t = Mo(), r = I(t);
+	var s = Ro(), c = I(s), l = z(I(c), 2), u = R(l, !0), d = z(l, 4), f = (e) => {
+		var t = No(), r = I(t);
 		$(r, {
 			get d() {
 				return Q.flame;
@@ -5257,10 +5305,10 @@ function zo(e, t) {
 	var p = z(c, 2);
 	Y(p, 23, () => U(n).days, (e) => e.key, (e, t, n) => {
 		let a = /* @__PURE__ */ j(() => U(t).seconds ? Math.max(4, U(t).seconds / U(r) * 100) : 0);
-		var s = Po(), c = I(s), l = I(c);
+		var s = Fo(), c = I(s), l = I(c);
 		let u, d;
 		var f = z(l, 2), p = (e) => {
-			var n = No();
+			var n = Po();
 			let r;
 			var o = R(n);
 			B((e) => {
@@ -5281,14 +5329,14 @@ function zo(e, t) {
 	Y(h, 21, () => a, ([e, t]) => e, (e, t) => {
 		var r = /* @__PURE__ */ j(() => m(U(t), 2));
 		let a = () => U(r)[0], o = () => U(r)[1];
-		var s = Fo(), c = I(s), l = R(c, !0), u = R(z(c), !0);
+		var s = Io(), c = I(s), l = R(c, !0), u = R(z(c), !0);
 		k(s), B((e) => {
 			q(l, o()), q(u, e);
 		}, [() => i(U(n).byKind[a()])]), K(e, s);
 	}), k(h);
 	var g = z(h, 2), _ = z(I(g));
 	Y(_, 21, () => U(n).days, (e) => e.key, (e, t) => {
-		var n = Io(), r = I(n), i = R(r, !0), a = R(z(r), !0);
+		var n = Lo(), r = I(n), i = R(r, !0), a = R(z(r), !0);
 		k(n), B((e) => {
 			q(i, U(t).label), q(a, e);
 		}, [() => Math.round(U(t).seconds / 60)]), K(e, n);
@@ -5296,12 +5344,12 @@ function zo(e, t) {
 }
 //#endregion
 //#region src/components/MyMediaView.svelte
-var Bo = /* @__PURE__ */ G("<button> <span class=\"n svelte-ube16v\"> </span></button>"), Vo = /* @__PURE__ */ G("<div class=\"welcome svelte-ube16v\"><div class=\"wicon svelte-ube16v\"><!></div> <h2 class=\"svelte-ube16v\">Your library starts here</h2> <p class=\"svelte-ube16v\">Tap the heart on a station to keep it here, subscribe to shows, and save audiobooks. Everything you play is remembered, with your place in every episode and book.</p> <div class=\"cta svelte-ube16v\"><button class=\"svelte-ube16v\">Find stations</button> <button class=\"svelte-ube16v\">Browse podcasts</button> <button class=\"svelte-ube16v\">Browse audiobooks</button></div></div>"), Ho = /* @__PURE__ */ G("<button class=\"rcard svelte-ube16v\"><!> <span class=\"rtext svelte-ube16v\"><span class=\"kind svelte-ube16v\"> </span> <span class=\"rtitle svelte-ube16v\"> </span> <span class=\"prog svelte-ube16v\"><span class=\"svelte-ube16v\"></span></span> <span class=\"meta svelte-ube16v\"> </span></span> <span class=\"rplay svelte-ube16v\"><!></span></button>"), Uo = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Continue listening</h2><span class=\"svelte-ube16v\"> </span></div> <div class=\"resume svelte-ube16v\"></div></section>"), Wo = /* @__PURE__ */ G("<form><input class=\"rename svelte-ube16v\" maxlength=\"80\" aria-label=\"Playlist name\"/></form>"), Go = /* @__PURE__ */ G("<button class=\"plname svelte-ube16v\" title=\"Rename\"> </button>"), Ko = /* @__PURE__ */ G("<div><!> <button class=\"pltitle svelte-ube16v\"> <small class=\"svelte-ube16v\"> </small></button> <button class=\"plrm svelte-ube16v\"><!></button></div>"), qo = /* @__PURE__ */ G("<p class=\"none svelte-ube16v\">This playlist is empty. Use ••• on any episode or book to add to it.</p>"), Jo = /* @__PURE__ */ G("<div class=\"plitems svelte-ube16v\"></div>"), Yo = /* @__PURE__ */ G("<div><div class=\"plhead svelte-ube16v\"><button class=\"mosaic svelte-ube16v\"><!> <span class=\"mplay svelte-ube16v\"><!></span></button> <div class=\"pltext svelte-ube16v\"><!> <span class=\"plmeta svelte-ube16v\"> </span></div> <button class=\"plbtn primary svelte-ube16v\"><!>Play</button> <button class=\"plbtn svelte-ube16v\" title=\"Shuffle\"><!></button> <button class=\"plbtn svelte-ube16v\"><!></button> <button><!></button></div> <!></div>"), Xo = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Playlists</h2><span class=\"svelte-ube16v\"> </span></div> <div class=\"pls svelte-ube16v\"></div></section>"), Zo = /* @__PURE__ */ G("<button class=\"all svelte-ube16v\">See all</button>"), Qo = /* @__PURE__ */ G("<div><button class=\"tbody svelte-ube16v\"><span class=\"banner svelte-ube16v\"><!> <span class=\"live svelte-ube16v\"><i class=\"svelte-ube16v\"></i>LIVE</span> <span class=\"tplay svelte-ube16v\"><!></span></span> <span class=\"ttext svelte-ube16v\"><span class=\"ttitle svelte-ube16v\"> </span><span class=\"tsub svelte-ube16v\"> </span></span></button> <span class=\"tfav svelte-ube16v\"><!></span></div>"), $o = /* @__PURE__ */ G("<div class=\"tiles svelte-ube16v\"></div>"), es = /* @__PURE__ */ G("<button class=\"link svelte-ube16v\">Find stations</button>"), ts = /* @__PURE__ */ G("<p class=\"none svelte-ube16v\"> <!></p>"), ns = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Favorite stations</h2><span class=\"svelte-ube16v\"> </span><!></div> <!></section>"), rs = /* @__PURE__ */ G("<span class=\"badge svelte-ube16v\"> </span>"), is = /* @__PURE__ */ G("<button class=\"card svelte-ube16v\"><span class=\"art svelte-ube16v\"><!><!></span> <span class=\"ctitle svelte-ube16v\"> </span> <span class=\"csub svelte-ube16v\"> </span></button>"), as = /* @__PURE__ */ G("<div class=\"cards svelte-ube16v\"></div>"), os = /* @__PURE__ */ G("<button class=\"link svelte-ube16v\">Browse podcasts</button>"), ss = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Your shows</h2><span class=\"svelte-ube16v\"> </span><!></div> <!></section>"), cs = /* @__PURE__ */ G("<span class=\"bprog svelte-ube16v\"><span class=\"svelte-ube16v\"></span></span>"), ls = /* @__PURE__ */ G("<div class=\"bwrap svelte-ube16v\"><button class=\"card svelte-ube16v\"><span class=\"art tall svelte-ube16v\"><!> <!></span> <span class=\"ctitle svelte-ube16v\"> </span> <span> </span></button> <span class=\"bfav svelte-ube16v\"><!></span></div>"), us = /* @__PURE__ */ G("<div class=\"cards books svelte-ube16v\"></div>"), ds = /* @__PURE__ */ G("<button class=\"link svelte-ube16v\">Browse audiobooks</button>"), fs = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Audiobooks</h2><span class=\"svelte-ube16v\"> </span><!></div> <!></section>"), ps = /* @__PURE__ */ G("<div><!> <button class=\"htext svelte-ube16v\"><span class=\"htitle svelte-ube16v\"> </span> <span class=\"hmeta svelte-ube16v\"> </span></button> <!> <!> <button class=\"hplay svelte-ube16v\"><!></button></div>"), ms = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Recently played</h2><span class=\"svelte-ube16v\"> </span><button class=\"all svelte-ube16v\">Clear history</button></div> <div class=\"hist svelte-ube16v\"></div></section>"), hs = /* @__PURE__ */ G("<!> <!> <!> <!> <!> <!>", 1), gs = /* @__PURE__ */ G("<div class=\"head svelte-ube16v\"><div><h1 class=\"h1 svelte-ube16v\">My Media</h1> <p class=\"lede svelte-ube16v\">Your stations, shows and books, and everything you have been listening to.</p></div> <label class=\"filter svelte-ube16v\"><!> <input type=\"search\" placeholder=\"Filter your library\" aria-label=\"Filter your library\" class=\"svelte-ube16v\"/></label></div> <!> <div class=\"bar svelte-ube16v\"><div class=\"kinds svelte-ube16v\" role=\"group\" aria-label=\"Show\"></div> <label class=\"sort svelte-ube16v\">Sort <select aria-label=\"Sort\" class=\"svelte-ube16v\"><option>Recently played</option><option>Recently added</option><option>Title A–Z</option></select></label></div> <!>", 1), _s = {
+var Vo = /* @__PURE__ */ G("<button> <span class=\"n svelte-ube16v\"> </span></button>"), Ho = /* @__PURE__ */ G("<div class=\"welcome svelte-ube16v\"><div class=\"wicon svelte-ube16v\"><!></div> <h2 class=\"svelte-ube16v\">Your library starts here</h2> <p class=\"svelte-ube16v\">Tap the heart on a station to keep it here, subscribe to shows, and save audiobooks. Everything you play is remembered, with your place in every episode and book.</p> <div class=\"cta svelte-ube16v\"><button class=\"svelte-ube16v\">Find stations</button> <button class=\"svelte-ube16v\">Browse podcasts</button> <button class=\"svelte-ube16v\">Browse audiobooks</button></div></div>"), Uo = /* @__PURE__ */ G("<button class=\"rcard svelte-ube16v\"><!> <span class=\"rtext svelte-ube16v\"><span class=\"kind svelte-ube16v\"> </span> <span class=\"rtitle svelte-ube16v\"> </span> <span class=\"prog svelte-ube16v\"><span class=\"svelte-ube16v\"></span></span> <span class=\"meta svelte-ube16v\"> </span></span> <span class=\"rplay svelte-ube16v\"><!></span></button>"), Wo = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Continue listening</h2><span class=\"svelte-ube16v\"> </span></div> <div class=\"resume svelte-ube16v\"></div></section>"), Go = /* @__PURE__ */ G("<form><input class=\"rename svelte-ube16v\" maxlength=\"80\" aria-label=\"Playlist name\"/></form>"), Ko = /* @__PURE__ */ G("<button class=\"plname svelte-ube16v\" title=\"Rename\"> </button>"), qo = /* @__PURE__ */ G("<div><!> <button class=\"pltitle svelte-ube16v\"> <small class=\"svelte-ube16v\"> </small></button> <button class=\"plrm svelte-ube16v\"><!></button></div>"), Jo = /* @__PURE__ */ G("<p class=\"none svelte-ube16v\">This playlist is empty. Use ••• on any episode or book to add to it.</p>"), Yo = /* @__PURE__ */ G("<div class=\"plitems svelte-ube16v\"></div>"), Xo = /* @__PURE__ */ G("<div><div class=\"plhead svelte-ube16v\"><button class=\"mosaic svelte-ube16v\"><!> <span class=\"mplay svelte-ube16v\"><!></span></button> <div class=\"pltext svelte-ube16v\"><!> <span class=\"plmeta svelte-ube16v\"> </span></div> <button class=\"plbtn primary svelte-ube16v\"><!>Play</button> <button class=\"plbtn svelte-ube16v\" title=\"Shuffle\"><!></button> <button class=\"plbtn svelte-ube16v\"><!></button> <button><!></button></div> <!></div>"), Zo = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Playlists</h2><span class=\"svelte-ube16v\"> </span></div> <div class=\"pls svelte-ube16v\"></div></section>"), Qo = /* @__PURE__ */ G("<button class=\"all svelte-ube16v\">See all</button>"), $o = /* @__PURE__ */ G("<div><button class=\"tbody svelte-ube16v\"><span class=\"banner svelte-ube16v\"><!> <span class=\"live svelte-ube16v\"><i class=\"svelte-ube16v\"></i>LIVE</span> <span class=\"tplay svelte-ube16v\"><!></span></span> <span class=\"ttext svelte-ube16v\"><span class=\"ttitle svelte-ube16v\"> </span><span class=\"tsub svelte-ube16v\"> </span></span></button> <span class=\"tfav svelte-ube16v\"><!></span></div>"), es = /* @__PURE__ */ G("<div class=\"tiles svelte-ube16v\"></div>"), ts = /* @__PURE__ */ G("<button class=\"link svelte-ube16v\">Find stations</button>"), ns = /* @__PURE__ */ G("<p class=\"none svelte-ube16v\"> <!></p>"), rs = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Favorite stations</h2><span class=\"svelte-ube16v\"> </span><!></div> <!></section>"), is = /* @__PURE__ */ G("<span class=\"badge svelte-ube16v\"> </span>"), as = /* @__PURE__ */ G("<button class=\"card svelte-ube16v\"><span class=\"art svelte-ube16v\"><!><!></span> <span class=\"ctitle svelte-ube16v\"> </span> <span class=\"csub svelte-ube16v\"> </span></button>"), os = /* @__PURE__ */ G("<div class=\"cards svelte-ube16v\"></div>"), ss = /* @__PURE__ */ G("<button class=\"link svelte-ube16v\">Browse podcasts</button>"), cs = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Your shows</h2><span class=\"svelte-ube16v\"> </span><!></div> <!></section>"), ls = /* @__PURE__ */ G("<span class=\"bprog svelte-ube16v\"><span class=\"svelte-ube16v\"></span></span>"), us = /* @__PURE__ */ G("<div class=\"bwrap svelte-ube16v\"><button class=\"card svelte-ube16v\"><span class=\"art tall svelte-ube16v\"><!> <!></span> <span class=\"ctitle svelte-ube16v\"> </span> <span> </span></button> <span class=\"bfav svelte-ube16v\"><!></span></div>"), ds = /* @__PURE__ */ G("<div class=\"cards books svelte-ube16v\"></div>"), fs = /* @__PURE__ */ G("<button class=\"link svelte-ube16v\">Browse audiobooks</button>"), ps = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Audiobooks</h2><span class=\"svelte-ube16v\"> </span><!></div> <!></section>"), ms = /* @__PURE__ */ G("<div><!> <button class=\"htext svelte-ube16v\"><span class=\"htitle svelte-ube16v\"> </span> <span class=\"hmeta svelte-ube16v\"> </span></button> <!> <!> <button class=\"hplay svelte-ube16v\"><!></button></div>"), hs = /* @__PURE__ */ G("<section class=\"svelte-ube16v\"><div class=\"sh svelte-ube16v\"><h2 class=\"svelte-ube16v\">Recently played</h2><span class=\"svelte-ube16v\"> </span><button class=\"all svelte-ube16v\">Clear history</button></div> <div class=\"hist svelte-ube16v\"></div></section>"), gs = /* @__PURE__ */ G("<!> <!> <!> <!> <!> <!>", 1), _s = /* @__PURE__ */ G("<div class=\"head svelte-ube16v\"><div><h1 class=\"h1 svelte-ube16v\">My Media</h1> <p class=\"lede svelte-ube16v\">Your stations, shows and books, and everything you have been listening to.</p></div> <label class=\"filter svelte-ube16v\"><!> <input type=\"search\" placeholder=\"Filter your library\" aria-label=\"Filter your library\" class=\"svelte-ube16v\"/></label></div> <!> <div class=\"bar svelte-ube16v\"><div class=\"kinds svelte-ube16v\" role=\"group\" aria-label=\"Show\"></div> <label class=\"sort svelte-ube16v\">Sort <select aria-label=\"Sort\" class=\"svelte-ube16v\"><option>Recently played</option><option>Recently added</option><option>Title A–Z</option></select></label></div> <!>", 1), vs = {
 	hash: "svelte-ube16v",
 	code: ".head.svelte-ube16v {display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;}.h1.svelte-ube16v {font-size:26px;font-weight:650;letter-spacing:-.5px;margin:0;}.lede.svelte-ube16v {font-size:13px;color:var(--tm-muted);margin:4px 0 0;}.filter.svelte-ube16v {display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:9px;background:var(--tm-fg-6);color:var(--tm-muted);width:220px;flex:none;}.filter.svelte-ube16v:focus-within {box-shadow:0 0 0 1px var(--tm-accent);}.filter.svelte-ube16v input:where(.svelte-ube16v) {flex:1;min-width:0;border:0;background:none;outline:none;color:var(--tm-fg);font:inherit;font-size:12px;}.bar.svelte-ube16v {display:flex;align-items:center;justify-content:space-between;gap:12px;margin:20px 0 4px;flex-wrap:wrap;}.kinds.svelte-ube16v {display:flex;gap:8px;flex-wrap:wrap;}.chip.svelte-ube16v {height:30px;padding:0 12px 0 14px;border-radius:15px;border:1px solid var(--tm-fg-16);background:transparent;color:var(--tm-fg);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:7px;}.chip.svelte-ube16v .n:where(.svelte-ube16v) {font-size:10.5px;min-width:18px;padding:1px 6px;border-radius:10px;background:var(--tm-fg-8);font-variant-numeric:tabular-nums;}.chip.on.svelte-ube16v {border-color:var(--tm-accent);background:var(--tm-accent);color:var(--tm-on-accent);}.chip.on.svelte-ube16v .n:where(.svelte-ube16v) {background:color-mix(in srgb, var(--tm-on-accent) 18%, transparent);}.sort.svelte-ube16v {display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tm-muted);}select.svelte-ube16v {height:30px;border-radius:8px;border:1px solid var(--tm-fg-14);background:var(--tm-panel);color:var(--tm-fg);font:inherit;font-size:12px;padding:0 8px;}section.svelte-ube16v {margin-top:24px;}.sh.svelte-ube16v {display:flex;align-items:baseline;gap:8px;margin-bottom:12px;}.sh.svelte-ube16v h2:where(.svelte-ube16v) {font-size:15px;font-weight:650;margin:0;}.sh.svelte-ube16v > span:where(.svelte-ube16v) {font-size:11px;color:var(--tm-muted);font-variant-numeric:tabular-nums;}.all.svelte-ube16v, .link.svelte-ube16v {margin-left:auto;border:0;background:none;color:var(--tm-accent);font-size:12px;cursor:pointer;padding:0;font:inherit;font-size:12px;}.link.svelte-ube16v {margin-left:4px;}.none.svelte-ube16v {font-size:12.5px;color:var(--tm-muted);margin:0;padding:14px 16px;border-radius:12px;background:var(--tm-fg-4);}.resume.svelte-ube16v {display:grid;grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));gap:10px;}.rcard.svelte-ube16v {display:flex;align-items:center;gap:12px;padding:10px;border:0;border-radius:14px;background:var(--tm-fg-4);color:inherit;cursor:pointer;text-align:left;font:inherit;}.rcard.svelte-ube16v:hover {background:var(--tm-fg-8);}.rtext.svelte-ube16v {flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}.kind.svelte-ube16v {font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--tm-accent);font-weight:650;}.rtitle.svelte-ube16v {font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.prog.svelte-ube16v, .bprog.svelte-ube16v {display:block;height:3px;border-radius:2px;background:var(--tm-fg-10);}.prog.svelte-ube16v span:where(.svelte-ube16v), .bprog.svelte-ube16v span:where(.svelte-ube16v) {display:block;height:3px;border-radius:2px;background:var(--tm-accent);}.meta.svelte-ube16v {font-size:11px;color:var(--tm-muted);}.rplay.svelte-ube16v {width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--tm-accent);color:var(--tm-on-accent);flex:none;}.tiles.svelte-ube16v {display:grid;grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));gap:12px;}.tile.svelte-ube16v {position:relative;border-radius:14px;overflow:hidden;background:var(--tm-fg-4);}.tile.svelte-ube16v:hover {background:var(--tm-fg-8);}.tile.cur.svelte-ube16v {box-shadow:inset 0 0 0 1px var(--tm-accent);}.tbody.svelte-ube16v {display:flex;flex-direction:column;width:100%;border:0;padding:0;background:none;color:inherit;cursor:pointer;text-align:left;font:inherit;}.banner.svelte-ube16v {height:86px;display:flex;width:100%;position:relative;}.live.svelte-ube16v {position:absolute;left:8px;top:8px;display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.8px;padding:3px 7px;border-radius:20px;background:rgba(0, 0, 0, .45);color:#fff;}.live.svelte-ube16v i:where(.svelte-ube16v) {width:5px;height:5px;border-radius:3px;background:var(--tm-live);}.tplay.svelte-ube16v {position:absolute;right:8px;bottom:8px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--tm-accent);color:var(--tm-on-accent);box-shadow:0 6px 16px rgba(0, 0, 0, .35);opacity:0;transform:translateY(4px);transition:opacity .15s, transform .15s;}.tile.svelte-ube16v:hover .tplay:where(.svelte-ube16v), .tile.cur.svelte-ube16v .tplay:where(.svelte-ube16v), .tbody.svelte-ube16v:focus-visible .tplay:where(.svelte-ube16v) {opacity:1;transform:none;}.tfav.svelte-ube16v {position:absolute;right:6px;top:6px;}.ttext.svelte-ube16v {padding:9px 11px 11px;display:flex;flex-direction:column;min-width:0;}.ttitle.svelte-ube16v {font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.tsub.svelte-ube16v {font-size:11px;color:var(--tm-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.cards.svelte-ube16v {display:grid;grid-template-columns:repeat(auto-fill, minmax(124px, 1fr));gap:16px;}.card.svelte-ube16v {display:flex;flex-direction:column;gap:3px;border:0;padding:0;background:none;color:inherit;cursor:pointer;text-align:left;font:inherit;min-width:0;width:100%;}.art.svelte-ube16v {position:relative;display:flex;aspect-ratio:1;border-radius:12px;overflow:hidden;box-shadow:0 10px 24px rgba(0, 0, 0, .28);margin-bottom:6px;transition:transform .15s;}.art.tall.svelte-ube16v {aspect-ratio:.72;border-radius:5px 10px 10px 5px;}.card.svelte-ube16v:hover .art:where(.svelte-ube16v) {transform:translateY(-2px);}.badge.svelte-ube16v {position:absolute;left:8px;top:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--tm-accent);color:var(--tm-on-accent);}.bprog.svelte-ube16v {position:absolute;left:8px;right:8px;bottom:8px;background:rgba(0, 0, 0, .45);}.ctitle.svelte-ube16v {font-size:12.5px;font-weight:600;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;}.csub.svelte-ube16v {font-size:11px;color:var(--tm-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.csub.done.svelte-ube16v {color:var(--tm-accent);}.bwrap.svelte-ube16v {position:relative;}.bfav.svelte-ube16v {position:absolute;right:6px;top:6px;}.hist.svelte-ube16v {display:flex;flex-direction:column;}.hrow.svelte-ube16v {display:flex;align-items:center;gap:12px;padding:8px;border-radius:10px;}.hrow.svelte-ube16v:hover {background:var(--tm-fg-5);}.hrow.cur.svelte-ube16v {background:var(--tm-accent-8);}.htext.svelte-ube16v {flex:1;min-width:0;display:flex;flex-direction:column;border:0;padding:0;background:none;color:inherit;cursor:pointer;text-align:left;font:inherit;}.htitle.svelte-ube16v {font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.hmeta.svelte-ube16v {font-size:11px;color:var(--tm-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.hplay.svelte-ube16v {width:30px;height:30px;flex:none;border:0;border-radius:50%;background:var(--tm-fg-8);color:var(--tm-fg);cursor:pointer;display:grid;place-items:center;}.hplay.svelte-ube16v:hover {background:var(--tm-accent);color:var(--tm-on-accent);}.pls.svelte-ube16v {display:grid;gap:8px;}.pl.svelte-ube16v {border-radius:14px;background:var(--tm-fg-4);}.pl.open.svelte-ube16v {background:var(--tm-fg-6);}.plhead.svelte-ube16v {display:flex;align-items:center;gap:10px;padding:10px;}.mosaic.svelte-ube16v {position:relative;width:52px;height:52px;flex:none;border:0;padding:0;border-radius:10px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;background:var(--tm-fg-8);cursor:pointer;}.mosaic.svelte-ube16v > .cover {width:100% !important;height:100% !important;}.mplay.svelte-ube16v {position:absolute;inset:0;display:grid;place-items:center;background:rgba(0, 0, 0, .45);color:#fff;opacity:0;transition:opacity .15s;}.mosaic.svelte-ube16v:hover .mplay:where(.svelte-ube16v), .mosaic.svelte-ube16v:focus-visible .mplay:where(.svelte-ube16v) {opacity:1;}.pltext.svelte-ube16v {flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}.plname.svelte-ube16v {border:0;padding:0;background:none;color:var(--tm-fg);font:inherit;font-size:13px;font-weight:650;text-align:left;cursor:text;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.rename.svelte-ube16v {width:100%;height:26px;padding:0 8px;border-radius:7px;border:1px solid var(--tm-accent);background:var(--tm-fg-4);color:var(--tm-fg);font:inherit;font-size:13px;outline:none;}.plmeta.svelte-ube16v {font-size:11px;color:var(--tm-muted);}.plbtn.svelte-ube16v {height:30px;min-width:30px;padding:0 8px;border:0;border-radius:8px;background:var(--tm-fg-6);color:var(--tm-fg);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:600;flex:none;}.plbtn.svelte-ube16v:hover {background:var(--tm-fg-12);}.plbtn.primary.svelte-ube16v {background:var(--tm-accent);color:var(--tm-on-accent);padding:0 12px;}.plbtn.danger.svelte-ube16v {background:color-mix(in srgb, var(--tm-live) 25%, transparent);color:var(--tm-live);}.plitems.svelte-ube16v {padding:0 10px 10px 72px;display:flex;flex-direction:column;}.plrow.svelte-ube16v {display:flex;align-items:center;gap:10px;padding:5px 6px;border-radius:8px;}.plrow.svelte-ube16v:hover {background:var(--tm-fg-5);}.plrow.cur.svelte-ube16v .pltitle:where(.svelte-ube16v) {color:var(--tm-accent);}.pltitle.svelte-ube16v {flex:1;min-width:0;display:flex;flex-direction:column;border:0;padding:0;background:none;color:var(--tm-fg);font:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}.pltitle.svelte-ube16v small:where(.svelte-ube16v) {font-size:10.5px;font-weight:400;color:var(--tm-muted);}.plrm.svelte-ube16v {width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;}.plrm.svelte-ube16v:hover {background:var(--tm-fg-8);color:var(--tm-fg);}.welcome.svelte-ube16v {margin-top:26px;padding:34px 28px;border-radius:18px;text-align:center;background:var(--tm-fg-4);border:1px dashed var(--tm-fg-14);}.wicon.svelte-ube16v {width:54px;height:54px;margin:0 auto 12px;border-radius:16px;display:grid;place-items:center;background:var(--tm-accent-12);color:var(--tm-accent);}.welcome.svelte-ube16v h2:where(.svelte-ube16v) {font-size:17px;margin:0;}.welcome.svelte-ube16v p:where(.svelte-ube16v) {font-size:12.5px;color:var(--tm-muted);max-width:440px;margin:8px auto 0;line-height:1.55;}.cta.svelte-ube16v {display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:18px;}.cta.svelte-ube16v button:where(.svelte-ube16v) {height:32px;padding:0 16px;border-radius:16px;border:1px solid var(--tm-fg-14);background:var(--tm-panel);color:var(--tm-fg);font-size:12px;font-weight:600;cursor:pointer;}.cta.svelte-ube16v button:where(.svelte-ube16v):hover {border-color:var(--tm-accent);}\n  @media (prefers-reduced-motion: reduce) {.art.svelte-ube16v, .tplay.svelte-ube16v {transition:none;} }"
 };
-function vs(e, t) {
-	Ue(t, !0), $r(e, _s);
+function ys(e, t) {
+	Ue(t, !0), $r(e, vs);
 	let n = ji(t, "store", 7), r = [
 		["all", "All"],
 		["radio", "Radio"],
@@ -5343,7 +5391,7 @@ function vs(e, t) {
 	let T = (e) => {
 		n().libKind = e;
 	};
-	var E = gs(), ee = L(E), te = z(I(ee), 2), ne = I(te);
+	var E = _s(), ee = L(E), te = z(I(ee), 2), ne = I(te);
 	$(ne, {
 		get d() {
 			return Q.search;
@@ -5354,14 +5402,14 @@ function vs(e, t) {
 	var re = z(ne, 2);
 	yi(re), k(te), k(ee);
 	var ie = z(ee, 2);
-	zo(ie, { get store() {
+	Bo(ie, { get store() {
 		return n();
 	} });
 	var ae = z(ie, 2), oe = I(ae);
 	Y(oe, 21, () => r, ([e, t]) => e, (e, t) => {
 		var r = /* @__PURE__ */ j(() => m(U(t), 2));
 		let i = () => U(r)[0], o = () => U(r)[1];
-		var s = Bo();
+		var s = Vo();
 		let c;
 		var l = I(s, !0), u = R(z(l), !0);
 		k(s), B((e) => {
@@ -5375,7 +5423,7 @@ function vs(e, t) {
 	var de = z(ue);
 	de.value = de.__value = "title", k(ce), di(ce), k(se), k(ae);
 	var fe = z(ae, 2), pe = (e) => {
-		var t = Vo(), r = I(t);
+		var t = Ho(), r = I(t);
 		$(I(r), {
 			get d() {
 				return Q.library;
@@ -5390,14 +5438,14 @@ function vs(e, t) {
 			n().tab = "book", n().bookId = null;
 		}), K(e, t);
 	}, me = (e) => {
-		var t = hs(), r = L(t), i = (e) => {
-			var t = Uo(), r = I(t), i = R(z(I(r)), !0);
+		var t = gs(), r = L(t), i = (e) => {
+			var t = Wo(), r = I(t), i = R(z(I(r)), !0);
 			k(r);
 			var a = z(r, 2);
 			Y(a, 20, () => l(U(g)), (e) => e, (e, t) => {
 				let r = /* @__PURE__ */ j(() => n().items[t]);
-				var i = Ho(), a = I(i);
-				Ga(a, {
+				var i = Uo(), a = I(i);
+				Ka(a, {
 					get hue() {
 						return U(r).hue;
 					},
@@ -5438,16 +5486,16 @@ function vs(e, t) {
 			U(g).length && e(i);
 		});
 		var a = z(r, 2), s = (e) => {
-			var t = Xo(), r = I(t), i = R(z(I(r)), !0);
+			var t = Zo(), r = I(t), i = R(z(I(r)), !0);
 			k(r);
 			var a = z(r, 2);
 			Y(a, 21, () => U(y), (e) => e.id, (e, t) => {
 				let r = /* @__PURE__ */ j(() => U(t).ids.map((e) => n().items[e]).filter(Boolean)), i = /* @__PURE__ */ j(() => n().playlistDuration(U(t)));
-				var a = Yo();
+				var a = Xo();
 				let o;
 				var s = I(a), c = I(s), l = I(c);
 				Y(l, 17, () => U(r).slice(0, 4), (e) => e.id, (e, t) => {
-					Ga(e, {
+					Ka(e, {
 						get hue() {
 							return U(t).hue;
 						},
@@ -5470,8 +5518,8 @@ function vs(e, t) {
 					size: 14
 				}), k(u), k(c);
 				var d = z(c, 2), f = I(d), p = (e) => {
-					var r = Wo(), i = I(r);
-					yi(i), ei(i, (e) => eo?.(e)), yn(() => Ti(i, () => U(S), (e) => P(S, e))), k(r), yr("submit", r, (e) => {
+					var r = Go(), i = I(r);
+					yi(i), ei(i, (e) => to?.(e)), yn(() => Ti(i, () => U(S), (e) => P(S, e))), k(r), yr("submit", r, (e) => {
 						e.preventDefault(), n().renamePlaylist(U(t).id, U(S)), P(x, null);
 					}), yr("blur", i, () => {
 						n().renamePlaylist(U(t).id, U(S)), P(x, null);
@@ -5479,7 +5527,7 @@ function vs(e, t) {
 						e.key === "Escape" && (e.stopPropagation(), P(x, null));
 					}), K(e, r);
 				}, m = (e) => {
-					var n = Go(), r = R(n, !0);
+					var n = Ko(), r = R(n, !0);
 					B(() => q(r, U(t).name)), W("click", n, () => {
 						P(x, U(t).id, !0), P(S, U(t).name, !0);
 					}), K(e, n);
@@ -5526,12 +5574,12 @@ function vs(e, t) {
 					stroke: 1.8
 				}), k(w), k(s);
 				var E = z(s, 2), ee = (e) => {
-					var i = Jo();
+					var i = Yo();
 					Y(i, 21, () => U(r), (e) => e.id, (e, r) => {
-						var i = Ko();
+						var i = qo();
 						let a;
 						var o = I(i);
-						Ga(o, {
+						Ka(o, {
 							get hue() {
 								return U(r).hue;
 							},
@@ -5558,7 +5606,7 @@ function vs(e, t) {
 							a = X(i, 1, "plrow svelte-ube16v", null, a, { cur: U(r).id === n().now }), q(c, U(r).title), q(l, `${Ni[U(r).type] ?? ""}${e ?? ""}`), Z(u, "aria-label", `Remove ${U(r).title ?? ""} from ${U(t).name ?? ""}`);
 						}, [() => n().lenOf(U(r).id) ? ` · ${n().lenOf(U(r).id)}` : ""]), W("click", s, () => n().play(U(r).id)), W("click", u, () => n().removeFromPlaylist(U(t).id, U(r).id)), K(e, i);
 					}, (e) => {
-						K(e, qo());
+						K(e, Jo());
 					}), k(i), K(e, i);
 				};
 				J(E, (e) => {
@@ -5576,21 +5624,21 @@ function vs(e, t) {
 			n().libKind === "all" && U(y).length && e(s);
 		});
 		var u = z(a, 2), d = (e) => {
-			var t = ns(), r = I(t), i = z(I(r)), a = R(i, !0), s = z(i), c = (e) => {
-				var t = Zo();
+			var t = rs(), r = I(t), i = z(I(r)), a = R(i, !0), s = z(i), c = (e) => {
+				var t = Qo();
 				W("click", t, () => T("radio")), K(e, t);
 			};
 			J(s, (e) => {
 				n().libKind === "all" && U(f).length > 8 && e(c);
 			}), k(r);
 			var u = z(r, 2), d = (e) => {
-				var t = $o();
+				var t = es();
 				Y(t, 21, () => l(U(f)), (e) => e.id, (e, t) => {
 					let r = /* @__PURE__ */ j(() => n().isPlaying(U(t).id)), i = /* @__PURE__ */ j(() => n().songOf(U(t).stationId));
-					var a = Qo();
+					var a = $o();
 					let o;
 					var s = I(a), c = I(s), l = I(c);
-					Ga(l, {
+					Ka(l, {
 						get hue() {
 							return U(t).hue;
 						},
@@ -5618,7 +5666,7 @@ function vs(e, t) {
 					var f = z(c, 2), p = I(f), m = R(p, !0), h = R(z(p), !0);
 					k(f), k(s);
 					var g = z(s, 2);
-					jo(I(g), {
+					Mo(I(g), {
 						get store() {
 							return n();
 						},
@@ -5632,8 +5680,8 @@ function vs(e, t) {
 					}), W("click", s, () => U(r) ? n().stop() : n().play(U(t).id)), K(e, a);
 				}), k(t), K(e, t);
 			}, p = (e) => {
-				var t = ts(), r = I(t), i = z(r), a = (e) => {
-					var t = es();
+				var t = ns(), r = I(t), i = z(r), a = (e) => {
+					var t = ts();
 					W("click", t, () => n().tab = "radio"), K(e, t);
 				};
 				J(i, (e) => {
@@ -5648,19 +5696,19 @@ function vs(e, t) {
 			U(m) && e(d);
 		});
 		var v = z(u, 2), E = (e) => {
-			var t = ss(), r = I(t), i = z(I(r)), a = R(i, !0), s = z(i), c = (e) => {
-				var t = Zo();
+			var t = cs(), r = I(t), i = z(I(r)), a = R(i, !0), s = z(i), c = (e) => {
+				var t = Qo();
 				W("click", t, () => T("podcast")), K(e, t);
 			};
 			J(s, (e) => {
 				n().libKind === "all" && U(p).length > 8 && e(c);
 			}), k(r);
 			var u = z(r, 2), d = (e) => {
-				var t = as();
+				var t = os();
 				Y(t, 21, () => l(U(p)), (e) => e.slug, (e, t) => {
 					let r = /* @__PURE__ */ j(() => n().newCount(U(t).slug));
-					var i = is(), a = I(i), o = I(a);
-					Ga(o, {
+					var i = as(), a = I(i), o = I(a);
+					Ka(o, {
 						get hue() {
 							return U(t).hue;
 						},
@@ -5675,7 +5723,7 @@ function vs(e, t) {
 						font: 18
 					});
 					var s = z(o), c = (e) => {
-						var t = rs(), n = R(t);
+						var t = is(), n = R(t);
 						B(() => q(n, `${U(r) ?? ""} new`)), K(e, t);
 					};
 					J(s, (e) => {
@@ -5687,8 +5735,8 @@ function vs(e, t) {
 					}), W("click", i, () => n().openShow(U(t).slug)), K(e, i);
 				}), k(t), K(e, t);
 			}, f = (e) => {
-				var t = ts(), r = I(t), i = z(r), a = (e) => {
-					var t = os();
+				var t = ns(), r = I(t), i = z(r), a = (e) => {
+					var t = ss();
 					W("click", t, () => {
 						n().tab = "pod", n().showSlug = null;
 					}), K(e, t);
@@ -5705,19 +5753,19 @@ function vs(e, t) {
 			U(ee) && e(E);
 		});
 		var te = z(v, 2), ne = (e) => {
-			var t = fs(), r = I(t), i = z(I(r)), a = R(i, !0), s = z(i), c = (e) => {
-				var t = Zo();
+			var t = ps(), r = I(t), i = z(I(r)), a = R(i, !0), s = z(i), c = (e) => {
+				var t = Qo();
 				W("click", t, () => T("book")), K(e, t);
 			};
 			J(s, (e) => {
 				n().libKind === "all" && U(h).length > 8 && e(c);
 			}), k(r);
 			var u = z(r, 2), d = (e) => {
-				var t = us();
+				var t = ds();
 				Y(t, 21, () => l(U(h)), (e) => e.id, (e, t) => {
 					let r = /* @__PURE__ */ j(() => w(U(t)));
-					var i = ls(), a = I(i), o = I(a), s = I(o);
-					Ga(s, {
+					var i = us(), a = I(i), o = I(a), s = I(o);
+					Ka(s, {
 						get hue() {
 							return U(t).hue;
 						},
@@ -5732,7 +5780,7 @@ function vs(e, t) {
 						font: 18
 					});
 					var c = z(s, 2), l = (e) => {
-						var t = cs(), n = I(t);
+						var t = ls(), n = I(t);
 						let i;
 						k(t), B(() => i = si(n, "", i, { width: `${U(r).pct ?? ""}%` })), K(e, t);
 					};
@@ -5744,7 +5792,7 @@ function vs(e, t) {
 					var m = R(f, !0);
 					k(a);
 					var h = z(a, 2);
-					jo(I(h), {
+					Mo(I(h), {
 						get store() {
 							return n();
 						},
@@ -5758,8 +5806,8 @@ function vs(e, t) {
 					}), W("click", a, () => n().openBook(U(t).id)), K(e, i);
 				}), k(t), K(e, t);
 			}, f = (e) => {
-				var t = ts(), r = I(t), i = z(r), a = (e) => {
-					var t = ds();
+				var t = ns(), r = I(t), i = z(r), a = (e) => {
+					var t = fs();
 					W("click", t, () => {
 						n().tab = "book", n().bookId = null;
 					}), K(e, t);
@@ -5776,15 +5824,15 @@ function vs(e, t) {
 			U(re) && e(ne);
 		});
 		var ie = z(te, 2), ae = (e) => {
-			var t = ms(), r = I(t), i = z(I(r)), a = R(i, !0), o = z(i);
+			var t = hs(), r = I(t), i = z(I(r)), a = R(i, !0), o = z(i);
 			k(r);
 			var s = z(r, 2);
 			Y(s, 21, () => l(U(_)), (e) => e.id, (e, t) => {
 				let r = /* @__PURE__ */ j(() => n().items[U(t).id]);
-				var i = ps();
+				var i = ms();
 				let a;
 				var o = I(i);
-				Ga(o, {
+				Ka(o, {
 					get hue() {
 						return U(r).hue;
 					},
@@ -5801,7 +5849,7 @@ function vs(e, t) {
 				var s = z(o, 2), c = I(s), l = R(c, !0), u = R(z(c, 2));
 				k(s);
 				var d = z(s, 2);
-				jo(d, {
+				Mo(d, {
 					get store() {
 						return n();
 					},
@@ -5811,7 +5859,7 @@ function vs(e, t) {
 					size: 14
 				});
 				var f = z(d, 2);
-				lo(f, {
+				uo(f, {
 					get store() {
 						return n();
 					},
@@ -5849,21 +5897,21 @@ function vs(e, t) {
 br(["click", "keydown"]);
 //#endregion
 //#region src/components/RadioView.svelte
-var ys = /* @__PURE__ */ G("<button> </button>"), bs = /* @__PURE__ */ G("<div class=\"song svelte-1c0iuue\"> </div>"), xs = /* @__PURE__ */ G("<div><!> <div class=\"text svelte-1c0iuue\"><div class=\"title svelte-1c0iuue\"> </div> <div class=\"sub svelte-1c0iuue\"> </div> <!></div> <!> <button class=\"play svelte-1c0iuue\"><!></button></div>"), Ss = /* @__PURE__ */ G("<button class=\"more svelte-1c0iuue\">Show more stations</button>"), Cs = /* @__PURE__ */ G("<h1 class=\"h1 svelte-1c0iuue\">Radio</h1> <p class=\"lede svelte-1c0iuue\">Live stations from OndaCast, most listened first. Search above for any station by name, city or genre.</p> <div class=\"genres svelte-1c0iuue\" role=\"group\" aria-label=\"Genre\"></div> <div class=\"grid svelte-1c0iuue\"></div> <!> <!>", 1), ws = {
+var bs = /* @__PURE__ */ G("<button> </button>"), xs = /* @__PURE__ */ G("<div class=\"song svelte-1c0iuue\"> </div>"), Ss = /* @__PURE__ */ G("<div><!> <div class=\"text svelte-1c0iuue\"><div class=\"title svelte-1c0iuue\"> </div> <div class=\"sub svelte-1c0iuue\"> </div> <!></div> <!> <button class=\"play svelte-1c0iuue\"><!></button></div>"), Cs = /* @__PURE__ */ G("<button class=\"more svelte-1c0iuue\">Show more stations</button>"), ws = /* @__PURE__ */ G("<h1 class=\"h1 svelte-1c0iuue\">Radio</h1> <p class=\"lede svelte-1c0iuue\">Live stations from OndaCast, most listened first. Search above for any station by name, city or genre.</p> <div class=\"genres svelte-1c0iuue\" role=\"group\" aria-label=\"Genre\"></div> <div class=\"grid svelte-1c0iuue\"></div> <!> <!>", 1), Ts = {
 	hash: "svelte-1c0iuue",
 	code: ".h1.svelte-1c0iuue {font-size:26px;font-weight:650;letter-spacing:-.5px;margin:0;}.lede.svelte-1c0iuue {font-size:13px;color:var(--tm-muted);margin:4px 0 0;}.genres.svelte-1c0iuue {display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;}.chip.svelte-1c0iuue {height:30px;padding:0 14px;border-radius:15px;border:1px solid var(--tm-fg-16);background:transparent;color:var(--tm-fg);font-size:12px;font-weight:500;cursor:pointer;}.chip.on.svelte-1c0iuue {border-color:var(--tm-accent);background:var(--tm-accent);color:var(--tm-on-accent);}.grid.svelte-1c0iuue {display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;margin-top:18px;}.row.svelte-1c0iuue {display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;min-width:0;}.row.svelte-1c0iuue:hover {background:var(--tm-fg-7);}.row.cur.svelte-1c0iuue {background:var(--tm-accent-8);}.text.svelte-1c0iuue {flex:1;min-width:0;}.title.svelte-1c0iuue {font-size:13.5px;font-weight:600;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;}.cur.svelte-1c0iuue .title:where(.svelte-1c0iuue) {color:var(--tm-accent);}.sub.svelte-1c0iuue {font-size:11.5px;color:var(--tm-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.song.svelte-1c0iuue {font-size:11.5px;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85;}.more.svelte-1c0iuue {display:block;margin:18px auto 0;height:32px;padding:0 18px;border-radius:16px;border:1px solid var(--tm-fg-14);background:transparent;color:var(--tm-fg);font-size:12px;cursor:pointer;}.more.svelte-1c0iuue:hover {background:var(--tm-fg-6);}.play.svelte-1c0iuue {width:36px;height:36px;border:0;border-radius:18px;background:var(--tm-accent);color:var(--tm-on-accent);cursor:pointer;display:grid;place-items:center;flex:none;}"
 };
-function Ts(e, t) {
-	Ue(t, !0), $r(e, ws);
+function Es(e, t) {
+	Ue(t, !0), $r(e, Ts);
 	let n = ji(t, "store", 7), r = /* @__PURE__ */ j(() => n().stationList);
 	gn(() => {
 		n().radioStatus === "idle" && n().loadRadio();
 	}), gn(() => {
 		U(r).status === "idle" && n().loadStations(n().genre);
 	});
-	var i = Cs(), a = z(L(i), 4);
-	Y(a, 21, () => Ca, (e) => e.label, (e, t) => {
-		var r = ys();
+	var i = ws(), a = z(L(i), 4);
+	Y(a, 21, () => wa, (e) => e.label, (e, t) => {
+		var r = bs();
 		let i;
 		var a = R(r, !0);
 		B(() => {
@@ -5873,10 +5921,10 @@ function Ts(e, t) {
 	var o = z(a, 2);
 	Y(o, 21, () => n().stations, (e) => e.id, (e, t) => {
 		let r = /* @__PURE__ */ j(() => n().songOf(U(t).stationId)), i = /* @__PURE__ */ j(() => n().isPlaying(U(t).id));
-		var a = xs();
+		var a = Ss();
 		let o;
 		var s = I(a);
-		Ga(s, {
+		Ka(s, {
 			get hue() {
 				return U(t).hue;
 			},
@@ -5891,14 +5939,14 @@ function Ts(e, t) {
 			font: 12
 		});
 		var c = z(s, 2), l = I(c), u = R(l, !0), d = z(l, 2), f = R(d, !0), p = z(d, 2), m = (e) => {
-			var t = bs(), n = R(t);
+			var t = xs(), n = R(t);
 			B(() => q(n, `♪ ${U(r) ?? ""}`)), K(e, t);
 		};
 		J(p, (e) => {
 			U(r) && e(m);
 		}), k(c);
 		var h = z(c, 2);
-		jo(h, {
+		Mo(h, {
 			get store() {
 				return n();
 			},
@@ -5921,7 +5969,7 @@ function Ts(e, t) {
 		}), W("click", g, () => U(i) ? n().stop() : n().play(U(t).id)), K(e, a);
 	}), k(o);
 	var s = z(o, 2), c = (e) => {
-		var t = Ss();
+		var t = Cs();
 		W("click", t, () => n().loadStations(n().genre, !0)), K(e, t);
 	};
 	J(s, (e) => {
@@ -5930,7 +5978,7 @@ function Ts(e, t) {
 	var l = z(s, 2), u = (e) => {
 		{
 			let t = /* @__PURE__ */ j(() => U(r).status === "idle" ? "loading" : U(r).status);
-			bo(e, {
+			xo(e, {
 				get status() {
 					return U(t);
 				},
@@ -5946,18 +5994,18 @@ function Ts(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/Grid.svelte
-var Es = /* @__PURE__ */ G("<button class=\"card svelte-1cebjac\"><span><!></span> <span class=\"title svelte-1cebjac\"> </span> <span class=\"sub svelte-1cebjac\"> </span></button>"), Ds = /* @__PURE__ */ G("<div class=\"grid svelte-1cebjac\"></div>"), Os = {
+var Ds = /* @__PURE__ */ G("<button class=\"card svelte-1cebjac\"><span><!></span> <span class=\"title svelte-1cebjac\"> </span> <span class=\"sub svelte-1cebjac\"> </span></button>"), Os = /* @__PURE__ */ G("<div class=\"grid svelte-1cebjac\"></div>"), ks = {
 	hash: "svelte-1cebjac",
 	code: ".grid.svelte-1cebjac {display:grid;grid-template-columns:repeat(auto-fill, minmax(118px, 1fr));gap:16px 14px;margin-top:16px;}.card.svelte-1cebjac {display:flex;flex-direction:column;gap:3px;padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;min-width:0;}.art.svelte-1cebjac {display:flex;aspect-ratio:1;border-radius:12px;overflow:hidden;box-shadow:0 10px 24px rgba(0, 0, 0, .28);margin-bottom:6px;transition:transform .15s;}.art.tall.svelte-1cebjac {aspect-ratio:0.72;}.card.svelte-1cebjac:hover .art:where(.svelte-1cebjac) {transform:translateY(-2px);}.title.svelte-1cebjac {font-size:12.5px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}.sub.svelte-1cebjac {font-size:11px;color:var(--tm-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}\n  @media (prefers-reduced-motion: reduce) {.art.svelte-1cebjac {transition:none;} }"
 };
-function ks(e, t) {
-	Ue(t, !0), $r(e, Os);
+function As(e, t) {
+	Ue(t, !0), $r(e, ks);
 	let n = ji(t, "tall", 3, !1);
-	var r = Ds();
+	var r = Os();
 	Y(r, 21, () => t.cards, (e) => e.key, (e, r) => {
-		var i = Es(), a = I(i);
+		var i = Ds(), a = I(i);
 		let o;
-		Ga(I(a), {
+		Ka(I(a), {
 			get hue() {
 				return U(r).hue;
 			},
@@ -5980,12 +6028,12 @@ function ks(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/PodcastView.svelte
-var As = /* @__PURE__ */ G("<button> </button>"), js = /* @__PURE__ */ G("<div class=\"genres svelte-1phe8yx\" role=\"group\" aria-label=\"Category\"></div>"), Ms = /* @__PURE__ */ G("<b class=\"svelte-1phe8yx\"> </b>"), Ns = /* @__PURE__ */ G("<button class=\"chipshow svelte-1phe8yx\"><!><span class=\"svelte-1phe8yx\"> </span><!></button>"), Ps = /* @__PURE__ */ G("<div class=\"strip svelte-1phe8yx\" aria-label=\"Your shows\"></div>"), Fs = /* @__PURE__ */ G("<button class=\"more svelte-1phe8yx\">Show more</button>"), Is = /* @__PURE__ */ G("<h1 class=\"h1 svelte-1phe8yx\">Podcasts</h1> <p class=\"lede svelte-1phe8yx\"> </p> <!> <!> <!> <!> <!>", 1), Ls = /* @__PURE__ */ G("<div class=\"author svelte-1phe8yx\"> </div>"), Rs = /* @__PURE__ */ G("<div class=\"tm-pop pop svelte-1phe8yx\" role=\"dialog\"><div class=\"ptitle svelte-1phe8yx\"> </div> <div class=\"plabel svelte-1phe8yx\">Skip intro</div> <div class=\"opts svelte-1phe8yx\"></div> <div class=\"plabel svelte-1phe8yx\">Skip outro</div> <div class=\"opts svelte-1phe8yx\"></div> <div class=\"plabel svelte-1phe8yx\">Speed for this show</div> <div class=\"opts svelte-1phe8yx\"></div> <label class=\"trow svelte-1phe8yx\"><span class=\"svelte-1phe8yx\"><b class=\"svelte-1phe8yx\">Add new episodes to Up next</b><small class=\"svelte-1phe8yx\">When this show publishes, its new episodes queue up for you.</small></span> <input type=\"checkbox\" role=\"switch\" class=\"svelte-1phe8yx\"/></label></div>"), zs = /* @__PURE__ */ G("<div class=\"hero svelte-1phe8yx\"><div class=\"art svelte-1phe8yx\"><!></div> <div class=\"info svelte-1phe8yx\"><div class=\"eyebrow svelte-1phe8yx\"> </div> <h1 class=\"svelte-1phe8yx\"> </h1> <!> <p class=\"desc svelte-1phe8yx\"> </p> <div class=\"actions svelte-1phe8yx\"><button class=\"primary svelte-1phe8yx\"><!>Latest episode</button> <button> </button> <span class=\"anchor svelte-1phe8yx\"><button class=\"sub icon svelte-1phe8yx\" data-pop=\"\" aria-haspopup=\"dialog\" title=\"Show settings\" aria-label=\"Show settings\"><!>Settings</button> <!></span></div></div></div>"), Bs = /* @__PURE__ */ G("<div class=\"tm-pop menu svelte-1phe8yx\" role=\"menu\"><button role=\"menuitem\" class=\"svelte-1phe8yx\"><!>Play unplayed</button> <button role=\"menuitem\" class=\"svelte-1phe8yx\"><!>Queue unplayed</button> <button role=\"menuitem\" class=\"svelte-1phe8yx\"><!>Mark all as played</button> <button role=\"menuitem\" class=\"svelte-1phe8yx\"><!>Mark all as unplayed</button></div>"), Vs = /* @__PURE__ */ G("<button> <span class=\"svelte-1phe8yx\"> </span></button>"), Hs = /* @__PURE__ */ G("<span class=\"loaded svelte-1phe8yx\"> </span>"), Us = /* @__PURE__ */ G("<div class=\"prog svelte-1phe8yx\"><span class=\"bar svelte-1phe8yx\"><span class=\"svelte-1phe8yx\"></span></span><span class=\"left svelte-1phe8yx\"> </span></div>"), Ws = /* @__PURE__ */ G("<p class=\"notes svelte-1phe8yx\"> </p>"), Gs = /* @__PURE__ */ G("<button class=\"notes-toggle svelte-1phe8yx\"> </button> <!>", 1), Ks = /* @__PURE__ */ G("<span class=\"eq svelte-1phe8yx\" aria-hidden=\"true\"><i class=\"svelte-1phe8yx\"></i><i class=\"svelte-1phe8yx\"></i><i class=\"svelte-1phe8yx\"></i></span>"), qs = /* @__PURE__ */ G("<span class=\"nowtag svelte-1phe8yx\"><!>Now playing</span>"), Js = /* @__PURE__ */ G("<button class=\"pill svelte-1phe8yx\">Play next</button> <button class=\"pill svelte-1phe8yx\">Queue</button>", 1), Ys = /* @__PURE__ */ G("<div><button class=\"playbtn svelte-1phe8yx\"><!></button> <div class=\"text svelte-1phe8yx\"><div class=\"date svelte-1phe8yx\"> </div> <div> </div> <!> <!></div> <!> <!> <button><!></button></div>"), Xs = /* @__PURE__ */ G("<button class=\"more svelte-1phe8yx\"> </button>"), Zs = /* @__PURE__ */ G("<button class=\"back svelte-1phe8yx\">‹ All podcasts</button> <!> <div class=\"listhead svelte-1phe8yx\"><span class=\"lt svelte-1phe8yx\">Episodes</span> <div class=\"seg svelte-1phe8yx\" role=\"group\" aria-label=\"Order\"><button>Newest</button> <button>Oldest</button></div> <span class=\"spacer svelte-1phe8yx\"></span> <label class=\"find svelte-1phe8yx\"><!><input type=\"search\" placeholder=\"Find an episode\" aria-label=\"Find an episode\" class=\"svelte-1phe8yx\"/></label> <span class=\"anchor svelte-1phe8yx\"><button class=\"more-btn svelte-1phe8yx\" data-pop=\"\" aria-haspopup=\"menu\" aria-label=\"Episode actions\">•••</button> <!></span></div> <div class=\"filters svelte-1phe8yx\" role=\"group\" aria-label=\"Filter episodes\"><!> <!></div> <!> <!> <!>", 1), Qs = {
+var js = /* @__PURE__ */ G("<button> </button>"), Ms = /* @__PURE__ */ G("<div class=\"genres svelte-1phe8yx\" role=\"group\" aria-label=\"Category\"></div>"), Ns = /* @__PURE__ */ G("<b class=\"svelte-1phe8yx\"> </b>"), Ps = /* @__PURE__ */ G("<button class=\"chipshow svelte-1phe8yx\"><!><span class=\"svelte-1phe8yx\"> </span><!></button>"), Fs = /* @__PURE__ */ G("<div class=\"strip svelte-1phe8yx\" aria-label=\"Your shows\"></div>"), Is = /* @__PURE__ */ G("<button class=\"more svelte-1phe8yx\">Show more</button>"), Ls = /* @__PURE__ */ G("<h1 class=\"h1 svelte-1phe8yx\">Podcasts</h1> <p class=\"lede svelte-1phe8yx\"> </p> <!> <!> <!> <!> <!>", 1), Rs = /* @__PURE__ */ G("<div class=\"author svelte-1phe8yx\"> </div>"), zs = /* @__PURE__ */ G("<div class=\"tm-pop pop svelte-1phe8yx\" role=\"dialog\"><div class=\"ptitle svelte-1phe8yx\"> </div> <div class=\"plabel svelte-1phe8yx\">Skip intro</div> <div class=\"opts svelte-1phe8yx\"></div> <div class=\"plabel svelte-1phe8yx\">Skip outro</div> <div class=\"opts svelte-1phe8yx\"></div> <div class=\"plabel svelte-1phe8yx\">Speed for this show</div> <div class=\"opts svelte-1phe8yx\"></div> <label class=\"trow svelte-1phe8yx\"><span class=\"svelte-1phe8yx\"><b class=\"svelte-1phe8yx\">Add new episodes to Up next</b><small class=\"svelte-1phe8yx\">When this show publishes, its new episodes queue up for you.</small></span> <input type=\"checkbox\" role=\"switch\" class=\"svelte-1phe8yx\"/></label></div>"), Bs = /* @__PURE__ */ G("<div class=\"hero svelte-1phe8yx\"><div class=\"art svelte-1phe8yx\"><!></div> <div class=\"info svelte-1phe8yx\"><div class=\"eyebrow svelte-1phe8yx\"> </div> <h1 class=\"svelte-1phe8yx\"> </h1> <!> <p class=\"desc svelte-1phe8yx\"> </p> <div class=\"actions svelte-1phe8yx\"><button class=\"primary svelte-1phe8yx\"><!>Latest episode</button> <button> </button> <span class=\"anchor svelte-1phe8yx\"><button class=\"sub icon svelte-1phe8yx\" data-pop=\"\" aria-haspopup=\"dialog\" title=\"Show settings\" aria-label=\"Show settings\"><!>Settings</button> <!></span></div></div></div>"), Vs = /* @__PURE__ */ G("<div class=\"tm-pop menu svelte-1phe8yx\" role=\"menu\"><button role=\"menuitem\" class=\"svelte-1phe8yx\"><!>Play unplayed</button> <button role=\"menuitem\" class=\"svelte-1phe8yx\"><!>Queue unplayed</button> <button role=\"menuitem\" class=\"svelte-1phe8yx\"><!>Mark all as played</button> <button role=\"menuitem\" class=\"svelte-1phe8yx\"><!>Mark all as unplayed</button></div>"), Hs = /* @__PURE__ */ G("<button> <span class=\"svelte-1phe8yx\"> </span></button>"), Us = /* @__PURE__ */ G("<span class=\"loaded svelte-1phe8yx\"> </span>"), Ws = /* @__PURE__ */ G("<div class=\"prog svelte-1phe8yx\"><span class=\"bar svelte-1phe8yx\"><span class=\"svelte-1phe8yx\"></span></span><span class=\"left svelte-1phe8yx\"> </span></div>"), Gs = /* @__PURE__ */ G("<p class=\"notes svelte-1phe8yx\"> </p>"), Ks = /* @__PURE__ */ G("<button class=\"notes-toggle svelte-1phe8yx\"> </button> <!>", 1), qs = /* @__PURE__ */ G("<span class=\"eq svelte-1phe8yx\" aria-hidden=\"true\"><i class=\"svelte-1phe8yx\"></i><i class=\"svelte-1phe8yx\"></i><i class=\"svelte-1phe8yx\"></i></span>"), Js = /* @__PURE__ */ G("<span class=\"nowtag svelte-1phe8yx\"><!>Now playing</span>"), Ys = /* @__PURE__ */ G("<button class=\"pill svelte-1phe8yx\">Play next</button> <button class=\"pill svelte-1phe8yx\">Queue</button>", 1), Xs = /* @__PURE__ */ G("<div><button class=\"playbtn svelte-1phe8yx\"><!></button> <div class=\"text svelte-1phe8yx\"><div class=\"date svelte-1phe8yx\"> </div> <div> </div> <!> <!></div> <!> <!> <button><!></button></div>"), Zs = /* @__PURE__ */ G("<button class=\"more svelte-1phe8yx\"> </button>"), Qs = /* @__PURE__ */ G("<button class=\"back svelte-1phe8yx\">‹ All podcasts</button> <!> <div class=\"listhead svelte-1phe8yx\"><span class=\"lt svelte-1phe8yx\">Episodes</span> <div class=\"seg svelte-1phe8yx\" role=\"group\" aria-label=\"Order\"><button>Newest</button> <button>Oldest</button></div> <span class=\"spacer svelte-1phe8yx\"></span> <label class=\"find svelte-1phe8yx\"><!><input type=\"search\" placeholder=\"Find an episode\" aria-label=\"Find an episode\" class=\"svelte-1phe8yx\"/></label> <span class=\"anchor svelte-1phe8yx\"><button class=\"more-btn svelte-1phe8yx\" data-pop=\"\" aria-haspopup=\"menu\" aria-label=\"Episode actions\">•••</button> <!></span></div> <div class=\"filters svelte-1phe8yx\" role=\"group\" aria-label=\"Filter episodes\"><!> <!></div> <!> <!> <!>", 1), $s = {
 	hash: "svelte-1phe8yx",
 	code: ".genres.svelte-1phe8yx {display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 6px;}.chip.svelte-1phe8yx {height:30px;padding:0 14px;border-radius:15px;border:1px solid var(--tm-fg-16);background:transparent;color:var(--tm-fg);font-size:12px;font-weight:500;cursor:pointer;}.chip.svelte-1phe8yx:hover {border-color:var(--tm-accent);}.chip.on.svelte-1phe8yx {border-color:var(--tm-accent);background:var(--tm-accent);color:var(--tm-on-accent);}.h1.svelte-1phe8yx {font-size:26px;font-weight:650;letter-spacing:-.5px;margin:0;}.lede.svelte-1phe8yx {font-size:13px;color:var(--tm-muted);margin:4px 0 0;}.more.svelte-1phe8yx {display:block;margin:16px auto 0;height:32px;padding:0 18px;border-radius:16px;border:1px solid var(--tm-fg-14);background:transparent;color:var(--tm-fg);font-size:12px;cursor:pointer;}.back.svelte-1phe8yx {border:0;background:none;color:var(--tm-muted);font-size:12px;cursor:pointer;padding:0;margin:-8px 0 14px;}.back.svelte-1phe8yx:hover {color:var(--tm-fg);}.hero.svelte-1phe8yx {display:flex;gap:22px;align-items:flex-end;}.art.svelte-1phe8yx {border-radius:16px;box-shadow:0 18px 40px rgba(0, 0, 0, .35);flex:none;}.info.svelte-1phe8yx {flex:1;min-width:0;}.eyebrow.svelte-1phe8yx {font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tm-accent);font-weight:600;}h1.svelte-1phe8yx {font-size:28px;font-weight:700;letter-spacing:-.6px;margin:4px 0 0;line-height:1.15;}.author.svelte-1phe8yx {font-size:12.5px;margin-top:4px;}.desc.svelte-1phe8yx {font-size:12.5px;color:var(--tm-muted);margin:4px 0 0;text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}.actions.svelte-1phe8yx {display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}.actions.svelte-1phe8yx button:where(.svelte-1phe8yx) {height:34px;border-radius:17px;cursor:pointer;}.primary.svelte-1phe8yx {padding:0 16px;border:0;background:var(--tm-accent);color:var(--tm-on-accent);font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:7px;}.primary.svelte-1phe8yx:disabled {opacity:.5;cursor:default;}.sub.svelte-1phe8yx {padding:0 16px;border:1px solid var(--tm-fg-18);background:transparent;color:var(--tm-fg);font-size:12.5px;font-weight:600;}.sub.on.svelte-1phe8yx {border-color:var(--tm-accent);background:var(--tm-accent-12);}.listhead.svelte-1phe8yx {display:flex;align-items:center;gap:10px;margin:26px 0 8px;font-size:12px;color:var(--tm-muted);flex-wrap:wrap;}.lt.svelte-1phe8yx {color:var(--tm-fg);font-weight:650;font-size:14px;}.seg.svelte-1phe8yx {display:flex;padding:2px;border-radius:9px;background:var(--tm-fg-6);}.seg.svelte-1phe8yx button:where(.svelte-1phe8yx) {height:26px;padding:0 12px;border:0;border-radius:7px;background:none;color:var(--tm-muted);font-size:11.5px;font-weight:600;cursor:pointer;}.seg.svelte-1phe8yx button.on:where(.svelte-1phe8yx) {background:var(--tm-panel);color:var(--tm-fg);box-shadow:0 1px 3px rgba(0, 0, 0, .25);}.find.svelte-1phe8yx {display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:8px;background:var(--tm-fg-6);width:180px;}.find.svelte-1phe8yx:focus-within {box-shadow:0 0 0 1px var(--tm-accent);}.find.svelte-1phe8yx input:where(.svelte-1phe8yx) {flex:1;min-width:0;border:0;background:none;outline:none;color:var(--tm-fg);font:inherit;font-size:12px;}.anchor.svelte-1phe8yx {position:relative;display:inline-flex;}.more-btn.svelte-1phe8yx {width:30px;height:28px;border:0;border-radius:8px;background:var(--tm-fg-6);color:var(--tm-fg);cursor:pointer;font-size:11px;letter-spacing:1px;}.more-btn.svelte-1phe8yx:hover, .more-btn[aria-expanded='true'].svelte-1phe8yx {background:var(--tm-fg-12);}.menu.svelte-1phe8yx {right:0;top:34px;width:210px;padding:6px;}.menu.svelte-1phe8yx button:where(.svelte-1phe8yx) {display:flex;align-items:center;gap:9px;width:100%;height:32px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--tm-fg);font-size:12px;cursor:pointer;text-align:left;}.menu.svelte-1phe8yx button:where(.svelte-1phe8yx):hover {background:var(--tm-fg-8);}.pop.svelte-1phe8yx {left:0;top:40px;width:380px;max-width:calc(100cqw - 40px);}.ptitle.svelte-1phe8yx {font-size:13px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.plabel.svelte-1phe8yx {font-size:11px;color:var(--tm-muted);margin:12px 0 6px;}.opts.svelte-1phe8yx {display:flex;flex-wrap:wrap;gap:5px;}.opt.svelte-1phe8yx {min-width:38px;height:28px;padding:0 8px;border:0;border-radius:7px;background:var(--tm-fg-6);color:var(--tm-fg);font-size:11px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums;}.opt.svelte-1phe8yx:hover {background:var(--tm-fg-10);}.opt.sel.svelte-1phe8yx {background:var(--tm-accent);color:var(--tm-on-accent);}.trow.svelte-1phe8yx {display:flex;align-items:center;gap:12px;margin-top:14px;cursor:pointer;}.trow.svelte-1phe8yx span:where(.svelte-1phe8yx) {flex:1;display:flex;flex-direction:column;gap:2px;font-size:12px;}.trow.svelte-1phe8yx small:where(.svelte-1phe8yx) {font-size:11px;color:var(--tm-muted);line-height:1.35;}.trow.svelte-1phe8yx input:where(.svelte-1phe8yx) {appearance:none;width:34px;height:20px;flex:none;border-radius:10px;background:var(--tm-fg-16);position:relative;cursor:pointer;margin:0;}.trow.svelte-1phe8yx input:where(.svelte-1phe8yx)::after {content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--tm-fg);transition:transform .15s;}.trow.svelte-1phe8yx input:where(.svelte-1phe8yx):checked {background:var(--tm-accent);}.trow.svelte-1phe8yx input:where(.svelte-1phe8yx):checked::after {transform:translateX(14px);background:var(--tm-on-accent);}.sub.icon.svelte-1phe8yx {display:flex;align-items:center;gap:6px;}.filters.svelte-1phe8yx {display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:4px;}.fchip.svelte-1phe8yx {height:26px;padding:0 10px;border-radius:13px;border:1px solid var(--tm-fg-14);background:transparent;color:var(--tm-fg);font-size:11.5px;cursor:pointer;display:flex;align-items:center;gap:6px;}.fchip.svelte-1phe8yx span:where(.svelte-1phe8yx) {font-size:10px;color:var(--tm-muted);font-variant-numeric:tabular-nums;}.fchip.on.svelte-1phe8yx {background:var(--tm-accent-14);border-color:var(--tm-accent);color:var(--tm-accent);}.fchip.on.svelte-1phe8yx span:where(.svelte-1phe8yx) {color:inherit;}.loaded.svelte-1phe8yx {font-size:11px;color:var(--tm-muted);margin-left:4px;}.notes-toggle.svelte-1phe8yx {border:0;padding:0;margin-top:6px;background:none;color:var(--tm-accent);font-size:11.5px;cursor:pointer;}.notes.svelte-1phe8yx {font-size:12px;line-height:1.55;color:var(--tm-muted);margin:6px 0 0;white-space:pre-line;max-width:640px;}.strip.svelte-1phe8yx {display:flex;gap:8px;overflow-x:auto;margin-top:16px;padding-bottom:4px;scrollbar-width:thin;}.chipshow.svelte-1phe8yx {display:flex;align-items:center;gap:8px;height:40px;padding:0 12px 0 6px;flex:none;border:1px solid var(--tm-fg-10);border-radius:12px;background:var(--tm-fg-4);color:var(--tm-fg);font-size:12px;font-weight:600;cursor:pointer;max-width:240px;}.chipshow.svelte-1phe8yx:hover {border-color:var(--tm-accent);}.chipshow.svelte-1phe8yx span:where(.svelte-1phe8yx) {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.chipshow.svelte-1phe8yx b:where(.svelte-1phe8yx) {font-size:10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:grid;place-items:center;background:var(--tm-accent);color:var(--tm-on-accent);}.spacer.svelte-1phe8yx {flex:1;}.ep.svelte-1phe8yx {display:flex;align-items:center;gap:14px;padding:14px 8px;border-top:1px solid var(--tm-fg-6);}.ep.cur.svelte-1phe8yx {background:var(--tm-accent-8);}.playbtn.svelte-1phe8yx {width:36px;height:36px;border-radius:18px;border:1px solid var(--tm-fg-18);background:transparent;color:var(--tm-fg);cursor:pointer;display:grid;place-items:center;flex:none;}.playbtn.svelte-1phe8yx:hover {background:var(--tm-accent);color:var(--tm-on-accent);border-color:var(--tm-accent);}.text.svelte-1phe8yx {flex:1;min-width:0;}.date.svelte-1phe8yx {font-size:11px;color:var(--tm-muted);}.title.svelte-1phe8yx {font-size:13.5px;font-weight:600;margin-top:2px;}.cur.svelte-1phe8yx .title:where(.svelte-1phe8yx) {color:var(--tm-accent);}.title.done.svelte-1phe8yx {color:var(--tm-muted);}.prog.svelte-1phe8yx {display:flex;align-items:center;gap:8px;margin-top:6px;}.bar.svelte-1phe8yx {width:70px;height:3px;border-radius:2px;background:var(--tm-fg-10);display:block;}.bar.svelte-1phe8yx span:where(.svelte-1phe8yx) {display:block;height:3px;border-radius:2px;background:var(--tm-accent);}.left.svelte-1phe8yx {font-size:11px;color:var(--tm-muted);}.nowtag.svelte-1phe8yx {display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:650;color:var(--tm-accent);flex:none;padding:0 6px;}.eq.svelte-1phe8yx {display:flex;align-items:flex-end;gap:2px;height:12px;}.eq.svelte-1phe8yx i:where(.svelte-1phe8yx) {width:3px;background:var(--tm-accent);border-radius:1px; animation: svelte-1phe8yx-eq 1s ease-in-out infinite;}.eq.svelte-1phe8yx i:where(.svelte-1phe8yx):nth-child(2) {animation-delay:-.3s;}.eq.svelte-1phe8yx i:where(.svelte-1phe8yx):nth-child(3) {animation-delay:-.6s;}\n  @keyframes svelte-1phe8yx-eq { 0%, 100% { height: 4px; } 50% { height: 12px; } }\n  @media (prefers-reduced-motion: reduce) {.eq.svelte-1phe8yx i:where(.svelte-1phe8yx) { animation: none;height:8px;} }.pill.svelte-1phe8yx {height:28px;padding:0 10px;border:0;border-radius:7px;background:var(--tm-fg-6);color:var(--tm-fg);font-size:11.5px;cursor:pointer;flex:none;}.pill.svelte-1phe8yx:hover {background:var(--tm-fg-12);}.mark.svelte-1phe8yx {width:28px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;flex:none;}.mark.done.svelte-1phe8yx {color:var(--tm-accent);}.mark.svelte-1phe8yx:hover {background:var(--tm-fg-8);}"
 };
-function $s(e, t) {
-	Ue(t, !0), $r(e, Qs);
+function ec(e, t) {
+	Ue(t, !0), $r(e, $s);
 	let n = ji(t, "store", 7), r = /* @__PURE__ */ j(() => n().show), i = /* @__PURE__ */ j(() => !!U(r) && !!n().subscribed[U(r).slug]), a = /* @__PURE__ */ j(() => n().showSlug ? n().showEpisodes[n().showSlug] : void 0), o = /* @__PURE__ */ j(() => n().showSlug ? n().epOrder[n().showSlug] ?? "new" : "new"), s = /* @__PURE__ */ j(() => U(r) ? n().showPrefsOf(U(r).slug) : null), c = /* @__PURE__ */ j(() => U(r) ? n().speeds[`show:${U(r).slug}`] ?? 1 : 1), l = /* @__PURE__ */ j(() => n().podGenre === "All" ? null : n().podGenreList), u = /* @__PURE__ */ j(() => (U(l) ? U(l).slugs : n().podcastBrowse.slugs).map((e) => n().shows[e]).filter(Boolean).map((e) => ({
 		key: e.slug,
 		title: e.title,
@@ -6024,10 +6072,10 @@ function $s(e, t) {
 		t?.type === "podcast" && t.show === U(r).slug ? n().setSpeed(e) : n().scheduleSave();
 	}
 	var x = jr(), S = L(x), C = (e) => {
-		var t = Is(), r = z(L(t), 2), i = R(r), a = z(r, 2), o = (e) => {
-			var t = js();
-			Y(t, 21, () => wa, (e) => e.label, (e, t) => {
-				var r = As();
+		var t = Ls(), r = z(L(t), 2), i = R(r), a = z(r, 2), o = (e) => {
+			var t = Ms();
+			Y(t, 21, () => Ta, (e) => e.label, (e, t) => {
+				var r = js();
 				let i;
 				var a = R(r, !0);
 				B(() => {
@@ -6041,11 +6089,11 @@ function $s(e, t) {
 			n().podcastGenres && e(o);
 		});
 		var s = z(a, 2), c = (e) => {
-			var t = Ps();
+			var t = Fs();
 			Y(t, 21, () => U(d), (e) => e.slug, (e, t) => {
 				let r = /* @__PURE__ */ j(() => n().newCount(U(t).slug));
-				var i = Ns(), a = I(i);
-				Ga(a, {
+				var i = Ps(), a = I(i);
+				Ka(a, {
 					get hue() {
 						return U(t).hue;
 					},
@@ -6060,7 +6108,7 @@ function $s(e, t) {
 					}
 				});
 				var o = z(a), s = R(o, !0), c = z(o), l = (e) => {
-					var t = Ms(), n = R(t, !0);
+					var t = Ns(), n = R(t, !0);
 					B(() => q(n, U(r))), K(e, t);
 				};
 				J(c, (e) => {
@@ -6072,7 +6120,7 @@ function $s(e, t) {
 			U(d).length && e(c);
 		});
 		var f = z(s, 2);
-		ks(f, {
+		As(f, {
 			get cards() {
 				return U(u);
 			},
@@ -6081,7 +6129,7 @@ function $s(e, t) {
 		var p = z(f, 2), m = (e) => {
 			{
 				let t = /* @__PURE__ */ j(() => U(l).status === "idle" ? "loading" : U(l).status);
-				bo(e, {
+				xo(e, {
 					get status() {
 						return U(t);
 					},
@@ -6090,7 +6138,7 @@ function $s(e, t) {
 				});
 			}
 		}, h = (e) => {
-			bo(e, {
+			xo(e, {
 				get status() {
 					return n().podcastBrowse.status;
 				},
@@ -6101,16 +6149,16 @@ function $s(e, t) {
 			U(l) ? e(m) : e(h, -1);
 		});
 		var g = z(p, 2), _ = (e) => {
-			var t = Fs();
+			var t = Is();
 			W("click", t, () => n().loadPodcastBrowse(!0)), K(e, t);
 		};
 		J(g, (e) => {
 			!U(l) && n().podcastBrowse.cursor && n().podcastBrowse.status === "ready" && e(_);
 		}), B(() => q(i, `${U(l) ? `The most popular ${n().podGenre} shows on OndaCast.` : "Recently updated shows on OndaCast."} Subscribe and new episodes land in Listen now.`)), K(e, t);
 	}, w = (e) => {
-		var t = Zs(), l = L(t), u = z(l, 2), d = (e) => {
-			var t = zs(), a = I(t);
-			Ga(I(a), {
+		var t = Qs(), l = L(t), u = z(l, 2), d = (e) => {
+			var t = Bs(), a = I(t);
+			Ka(I(a), {
 				get hue() {
 					return U(r).hue;
 				},
@@ -6125,7 +6173,7 @@ function $s(e, t) {
 				font: 20
 			}), k(a);
 			var o = z(a, 2), l = I(o), u = R(l), d = z(l, 2), m = R(d, !0), h = z(d, 2), g = (e) => {
-				var t = Ls(), n = R(t, !0);
+				var t = Rs(), n = R(t, !0);
 				B(() => q(n, U(r).author)), K(e, t);
 			};
 			J(h, (e) => {
@@ -6149,9 +6197,9 @@ function $s(e, t) {
 				stroke: 1.6
 			}), A(), k(ee);
 			var te = z(ee, 2), ne = (e) => {
-				var t = Rs(), a = I(t), o = R(a, !0), l = z(a, 4);
-				Y(l, 21, () => Aa, Wr, (e, t) => {
-					var i = As();
+				var t = zs(), a = I(t), o = R(a, !0), l = z(a, 4);
+				Y(l, 21, () => ja, Wr, (e, t) => {
+					var i = js();
 					let a;
 					var o = R(i, !0);
 					B((e) => {
@@ -6159,8 +6207,8 @@ function $s(e, t) {
 					}, [() => y(U(t))]), W("click", i, () => n().setShowPref(U(r).slug, "intro", U(t))), K(e, i);
 				}), k(l);
 				var u = z(l, 4);
-				Y(u, 21, () => ja, Wr, (e, t) => {
-					var i = As();
+				Y(u, 21, () => Ma, Wr, (e, t) => {
+					var i = js();
 					let a;
 					var o = R(i, !0);
 					B((e) => {
@@ -6168,8 +6216,8 @@ function $s(e, t) {
 					}, [() => y(U(t))]), W("click", i, () => n().setShowPref(U(r).slug, "outro", U(t))), K(e, i);
 				}), k(u);
 				var d = z(u, 4);
-				Y(d, 21, () => Ma, Wr, (e, t) => {
-					var n = As();
+				Y(d, 21, () => Na, Wr, (e, t) => {
+					var n = js();
 					let r;
 					var i = R(n);
 					B((e) => {
@@ -6208,7 +6256,7 @@ function $s(e, t) {
 		var ne = z(te);
 		yi(ne), k(ee);
 		var re = z(ee, 2), ie = I(re), ae = z(ie, 2), oe = (e) => {
-			var t = Bs(), i = I(t);
+			var t = Vs(), i = I(t);
 			$(I(i), {
 				get d() {
 					return Q.play;
@@ -6255,7 +6303,7 @@ function $s(e, t) {
 		Y(ce, 17, () => g, ([e, t]) => e, (e, t) => {
 			var r = /* @__PURE__ */ j(() => m(U(t), 2));
 			let i = () => U(r)[0], a = () => U(r)[1];
-			var o = Vs();
+			var o = Hs();
 			let s;
 			var c = I(o, !0), l = R(z(c), !0);
 			k(o), B(() => {
@@ -6263,7 +6311,7 @@ function $s(e, t) {
 			}), W("click", o, () => n().epFilter = i()), K(e, o);
 		});
 		var le = z(ce, 2), ue = (e) => {
-			var t = Hs(), n = R(t);
+			var t = Us(), n = R(t);
 			B(() => q(n, `${U(f).length ?? ""} loaded`)), K(e, t);
 		};
 		J(le, (e) => {
@@ -6272,7 +6320,7 @@ function $s(e, t) {
 		var de = z(se, 2);
 		Y(de, 17, () => n().episodes, (e) => e.id, (e, t) => {
 			let r = /* @__PURE__ */ j(() => n().isDone(U(t).id));
-			var i = Ys();
+			var i = Xs();
 			let a;
 			var o = I(i), s = I(o);
 			{
@@ -6288,7 +6336,7 @@ function $s(e, t) {
 			var c = z(o, 2), l = I(c), u = R(l, !0), d = z(l, 2);
 			let f;
 			var p = R(d, !0), m = z(d, 2), h = (e) => {
-				var i = Us(), a = I(i), o = I(a);
+				var i = Ws(), a = I(i), o = I(a);
 				let s;
 				k(a);
 				var c = R(z(a), !0);
@@ -6300,8 +6348,8 @@ function $s(e, t) {
 				U(g) && e(h);
 			});
 			var y = z(m, 2), b = (e) => {
-				var n = Gs(), r = L(n), i = R(r, !0), a = z(r, 2), o = (e) => {
-					var n = Ws(), r = R(n, !0);
+				var n = Ks(), r = L(n), i = R(r, !0), a = z(r, 2), o = (e) => {
+					var n = Gs(), r = R(n, !0);
 					B(() => q(r, U(t).desc)), K(e, n);
 				};
 				J(a, (e) => {
@@ -6317,21 +6365,21 @@ function $s(e, t) {
 				U(t).desc && e(b);
 			}), k(c);
 			var x = z(c, 2), S = (e) => {
-				var t = qs(), r = I(t), i = (e) => {
-					K(e, Ks());
+				var t = Js(), r = I(t), i = (e) => {
+					K(e, qs());
 				};
 				J(r, (e) => {
 					n().playing && e(i);
 				}), A(), k(t), K(e, t);
 			}, C = (e) => {
-				var r = Js(), i = L(r), a = z(i, 2);
+				var r = Ys(), i = L(r), a = z(i, 2);
 				W("click", i, () => n().playNext(U(t).id)), W("click", a, () => n().addToQueue(U(t).id)), K(e, r);
 			};
 			J(x, (e) => {
 				U(t).id === n().now ? e(S) : e(C, -1);
 			});
 			var w = z(x, 2);
-			lo(w, {
+			uo(w, {
 				get store() {
 					return n();
 				},
@@ -6354,7 +6402,7 @@ function $s(e, t) {
 		var fe = z(de, 2);
 		{
 			let e = /* @__PURE__ */ j(() => U(a)?.status ?? "loading"), t = /* @__PURE__ */ j(() => U(a)?.status === "ready" && !n().episodes.length ? U(f).length ? "No episodes match. Change the filter or load more." : "This show has no playable episodes yet." : "");
-			bo(fe, {
+			xo(fe, {
 				get status() {
 					return U(e);
 				},
@@ -6365,7 +6413,7 @@ function $s(e, t) {
 			});
 		}
 		var pe = z(fe, 2), me = (e) => {
-			var t = Xs(), r = R(t, !0);
+			var t = Zs(), r = R(t, !0);
 			B(() => q(r, U(o) === "new" ? "Older episodes" : "Newer episodes")), W("click", t, () => n().showSlug && n().loadShow(n().showSlug, !0)), K(e, t);
 		};
 		J(pe, (e) => {
@@ -6381,12 +6429,12 @@ function $s(e, t) {
 br(["click", "change"]);
 //#endregion
 //#region src/components/BookView.svelte
-var ec = /* @__PURE__ */ G("<span class=\"sbar svelte-965svo\"><span class=\"svelte-965svo\"></span></span>"), tc = /* @__PURE__ */ G("<button class=\"shelfitem svelte-965svo\"><span class=\"scover svelte-965svo\"><!></span> <span class=\"stext svelte-965svo\"><span class=\"stitle svelte-965svo\"> </span><span class=\"smeta svelte-965svo\"> </span> <!></span></button>"), nc = /* @__PURE__ */ G("<div class=\"shelf svelte-965svo\"></div>"), rc = /* @__PURE__ */ G("<button class=\"more svelte-965svo\">Show more</button>"), ic = /* @__PURE__ */ G("<h1 class=\"h1 svelte-965svo\">Audiobooks</h1> <p class=\"lede svelte-965svo\">Public-domain classics read by LibriVox volunteers, via OndaCast.</p> <!> <!> <!> <!>", 1), ac = /* @__PURE__ */ G("<div class=\"prog svelte-965svo\"><span class=\"bar svelte-965svo\"><span class=\"svelte-965svo\"></span></span><span class=\"left svelte-965svo\"> </span></div>"), oc = /* @__PURE__ */ G("<div class=\"where svelte-965svo\"> </div>"), sc = /* @__PURE__ */ G("<div class=\"tm-pop menu svelte-965svo\" role=\"menu\"><button role=\"menuitem\" class=\"svelte-965svo\"><!> </button> <button role=\"menuitem\" class=\"svelte-965svo\"><!>Start over</button></div>"), cc = /* @__PURE__ */ G("<button class=\"link svelte-965svo\"> </button>"), lc = /* @__PURE__ */ G("<p> </p> <!>", 1), uc = /* @__PURE__ */ G("<form class=\"noteform svelte-965svo\"><input maxlength=\"500\" placeholder=\"Add a note\" class=\"svelte-965svo\"/> <button type=\"submit\" class=\"svelte-965svo\">Save</button></form>"), dc = /* @__PURE__ */ G("<button class=\"note svelte-965svo\"> </button>"), fc = /* @__PURE__ */ G("<button class=\"addnote svelte-965svo\">Add a note</button>"), pc = /* @__PURE__ */ G("<div class=\"mrow svelte-965svo\"><div class=\"mbody svelte-965svo\"><button class=\"mjump svelte-965svo\"> <span class=\"svelte-965svo\"> </span></button> <!></div> <button class=\"rm svelte-965svo\"><!></button></div>"), mc = /* @__PURE__ */ G("<h2 class=\"svelte-965svo\">Bookmarks</h2> <!>", 1), hc = /* @__PURE__ */ G("<label class=\"find svelte-965svo\"><!><input type=\"search\" placeholder=\"Find a chapter\" aria-label=\"Find a chapter\" class=\"svelte-965svo\"/></label>"), gc = /* @__PURE__ */ G("<label class=\"hide svelte-965svo\"><input type=\"checkbox\" class=\"svelte-965svo\"/>Hide finished</label>"), _c = /* @__PURE__ */ G("<button><span class=\"n svelte-965svo\"> </span> <span class=\"title svelte-965svo\"> </span> <span class=\"state svelte-965svo\"> </span></button>"), vc = /* @__PURE__ */ G("<div class=\"hero svelte-965svo\"><div class=\"cover svelte-965svo\"><!></div> <div class=\"info svelte-965svo\"><div class=\"eyebrow svelte-965svo\">Audiobook · Public domain</div> <h1 class=\"svelte-965svo\"> </h1> <p class=\"sub svelte-965svo\"> </p> <!> <!> <div class=\"actions svelte-965svo\"><button class=\"primary svelte-965svo\"><!> </button> <button><!> </button> <button class=\"ghost svelte-965svo\">Add bookmark</button> <span class=\"anchor svelte-965svo\"><button class=\"ghost dots svelte-965svo\" data-pop=\"\" aria-haspopup=\"menu\" aria-label=\"More actions\">•••</button> <!></span></div></div></div> <!> <!> <div class=\"chead svelte-965svo\"><h2 class=\"svelte-965svo\">Chapters</h2> <span class=\"spacer svelte-965svo\"></span> <!> <!></div> <!>", 1), yc = /* @__PURE__ */ G("<button class=\"back svelte-965svo\">‹ All audiobooks</button> <!> <!>", 1), bc = {
+var tc = /* @__PURE__ */ G("<span class=\"sbar svelte-965svo\"><span class=\"svelte-965svo\"></span></span>"), nc = /* @__PURE__ */ G("<button class=\"shelfitem svelte-965svo\"><span class=\"scover svelte-965svo\"><!></span> <span class=\"stext svelte-965svo\"><span class=\"stitle svelte-965svo\"> </span><span class=\"smeta svelte-965svo\"> </span> <!></span></button>"), rc = /* @__PURE__ */ G("<div class=\"shelf svelte-965svo\"></div>"), ic = /* @__PURE__ */ G("<button class=\"more svelte-965svo\">Show more</button>"), ac = /* @__PURE__ */ G("<h1 class=\"h1 svelte-965svo\">Audiobooks</h1> <p class=\"lede svelte-965svo\">Public-domain classics read by LibriVox volunteers, via OndaCast.</p> <!> <!> <!> <!>", 1), oc = /* @__PURE__ */ G("<div class=\"prog svelte-965svo\"><span class=\"bar svelte-965svo\"><span class=\"svelte-965svo\"></span></span><span class=\"left svelte-965svo\"> </span></div>"), sc = /* @__PURE__ */ G("<div class=\"where svelte-965svo\"> </div>"), cc = /* @__PURE__ */ G("<div class=\"tm-pop menu svelte-965svo\" role=\"menu\"><button role=\"menuitem\" class=\"svelte-965svo\"><!> </button> <button role=\"menuitem\" class=\"svelte-965svo\"><!>Start over</button></div>"), lc = /* @__PURE__ */ G("<button class=\"link svelte-965svo\"> </button>"), uc = /* @__PURE__ */ G("<p> </p> <!>", 1), dc = /* @__PURE__ */ G("<form class=\"noteform svelte-965svo\"><input maxlength=\"500\" placeholder=\"Add a note\" class=\"svelte-965svo\"/> <button type=\"submit\" class=\"svelte-965svo\">Save</button></form>"), fc = /* @__PURE__ */ G("<button class=\"note svelte-965svo\"> </button>"), pc = /* @__PURE__ */ G("<button class=\"addnote svelte-965svo\">Add a note</button>"), mc = /* @__PURE__ */ G("<div class=\"mrow svelte-965svo\"><div class=\"mbody svelte-965svo\"><button class=\"mjump svelte-965svo\"> <span class=\"svelte-965svo\"> </span></button> <!></div> <button class=\"rm svelte-965svo\"><!></button></div>"), hc = /* @__PURE__ */ G("<h2 class=\"svelte-965svo\">Bookmarks</h2> <!>", 1), gc = /* @__PURE__ */ G("<label class=\"find svelte-965svo\"><!><input type=\"search\" placeholder=\"Find a chapter\" aria-label=\"Find a chapter\" class=\"svelte-965svo\"/></label>"), _c = /* @__PURE__ */ G("<label class=\"hide svelte-965svo\"><input type=\"checkbox\" class=\"svelte-965svo\"/>Hide finished</label>"), vc = /* @__PURE__ */ G("<button><span class=\"n svelte-965svo\"> </span> <span class=\"title svelte-965svo\"> </span> <span class=\"state svelte-965svo\"> </span></button>"), yc = /* @__PURE__ */ G("<div class=\"hero svelte-965svo\"><div class=\"cover svelte-965svo\"><!></div> <div class=\"info svelte-965svo\"><div class=\"eyebrow svelte-965svo\">Audiobook · Public domain</div> <h1 class=\"svelte-965svo\"> </h1> <p class=\"sub svelte-965svo\"> </p> <!> <!> <div class=\"actions svelte-965svo\"><button class=\"primary svelte-965svo\"><!> </button> <button><!> </button> <button class=\"ghost svelte-965svo\">Add bookmark</button> <span class=\"anchor svelte-965svo\"><button class=\"ghost dots svelte-965svo\" data-pop=\"\" aria-haspopup=\"menu\" aria-label=\"More actions\">•••</button> <!></span></div></div></div> <!> <!> <div class=\"chead svelte-965svo\"><h2 class=\"svelte-965svo\">Chapters</h2> <span class=\"spacer svelte-965svo\"></span> <!> <!></div> <!>", 1), bc = /* @__PURE__ */ G("<button class=\"back svelte-965svo\">‹ All audiobooks</button> <!> <!>", 1), xc = {
 	hash: "svelte-965svo",
 	code: ".h1.svelte-965svo {font-size:26px;font-weight:650;letter-spacing:-.5px;margin:0;}.lede.svelte-965svo {font-size:13px;color:var(--tm-muted);margin:4px 0 0;}.more.svelte-965svo {display:block;margin:16px auto 0;height:32px;padding:0 18px;border-radius:16px;border:1px solid var(--tm-fg-14);background:transparent;color:var(--tm-fg);font-size:12px;cursor:pointer;}.back.svelte-965svo {border:0;background:none;color:var(--tm-muted);font-size:12px;cursor:pointer;padding:0;margin:-8px 0 14px;}.back.svelte-965svo:hover {color:var(--tm-fg);}.hero.svelte-965svo {display:flex;gap:24px;}.cover.svelte-965svo {width:120px;height:176px;border-radius:6px 12px 12px 6px;flex:none;overflow:hidden;display:flex;box-shadow:0 18px 40px rgba(0, 0, 0, .4), inset 6px 0 0 rgba(0, 0, 0, .18);}.info.svelte-965svo {flex:1;min-width:0;padding-top:6px;}.eyebrow.svelte-965svo {font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tm-accent);font-weight:600;}h1.svelte-965svo {font-size:28px;font-weight:700;letter-spacing:-.6px;margin:4px 0 0;line-height:1.15;}.sub.svelte-965svo {font-size:13px;color:var(--tm-muted);margin:4px 0 0;}.prog.svelte-965svo {display:flex;align-items:center;gap:10px;margin-top:16px;}.bar.svelte-965svo {flex:1;max-width:260px;height:4px;border-radius:2px;background:var(--tm-fg-10);display:block;}.bar.svelte-965svo span:where(.svelte-965svo) {display:block;height:4px;border-radius:2px;background:var(--tm-accent);}.left.svelte-965svo {font-size:12px;}.actions.svelte-965svo {display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}.where.svelte-965svo {font-size:11.5px;color:var(--tm-muted);margin-top:6px;}.anchor.svelte-965svo {position:relative;display:inline-flex;}.dots.svelte-965svo {width:38px;justify-content:center;letter-spacing:1px;padding:0 !important;}.menu.svelte-965svo {left:0;top:40px;width:210px;padding:6px;}.menu.svelte-965svo button:where(.svelte-965svo) {display:flex;align-items:center;gap:9px;width:100%;height:32px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--tm-fg);font-size:12px;cursor:pointer;text-align:left;}.menu.svelte-965svo button:where(.svelte-965svo):hover {background:var(--tm-fg-8);}.desc.svelte-965svo {font-size:12.5px;line-height:1.6;color:var(--tm-muted);margin:20px 0 0;max-width:720px;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}.desc.open.svelte-965svo {display:block;}.link.svelte-965svo {border:0;background:none;padding:0;color:var(--tm-accent);font-size:12px;cursor:pointer;margin-top:4px;}.mbody.svelte-965svo {flex:1;min-width:0;}.note.svelte-965svo, .addnote.svelte-965svo {display:block;border:0;background:none;padding:0 8px 9px;text-align:left;font:inherit;font-size:12px;cursor:pointer;}.note.svelte-965svo {color:var(--tm-fg);font-style:italic;}.addnote.svelte-965svo {color:var(--tm-muted);}.addnote.svelte-965svo:hover {color:var(--tm-accent);}.noteform.svelte-965svo {display:flex;gap:6px;padding:0 8px 9px;}.noteform.svelte-965svo input:where(.svelte-965svo) {flex:1;min-width:0;height:28px;padding:0 8px;border-radius:7px;border:1px solid var(--tm-fg-14);background:var(--tm-fg-4);color:var(--tm-fg);font:inherit;font-size:12px;outline:none;}.noteform.svelte-965svo input:where(.svelte-965svo):focus {border-color:var(--tm-accent);}.noteform.svelte-965svo button:where(.svelte-965svo) {height:28px;padding:0 12px;border:0;border-radius:7px;background:var(--tm-accent);color:var(--tm-on-accent);font-size:11.5px;font-weight:650;cursor:pointer;}.chead.svelte-965svo {display:flex;align-items:center;gap:10px;margin:26px 0 6px;}.chead.svelte-965svo h2:where(.svelte-965svo) {margin:0;}.spacer.svelte-965svo {flex:1;}.find.svelte-965svo {display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:8px;background:var(--tm-fg-6);width:170px;color:var(--tm-muted);}.find.svelte-965svo input:where(.svelte-965svo) {flex:1;min-width:0;border:0;background:none;outline:none;color:var(--tm-fg);font:inherit;font-size:12px;}.hide.svelte-965svo {display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tm-muted);cursor:pointer;}.hide.svelte-965svo input:where(.svelte-965svo) {accent-color:var(--tm-accent);}.shelf.svelte-965svo {display:flex;gap:10px;overflow-x:auto;margin-top:16px;padding-bottom:4px;scrollbar-width:thin;}.shelfitem.svelte-965svo {display:flex;gap:10px;align-items:center;flex:none;width:230px;padding:8px;border:1px solid var(--tm-fg-10);border-radius:12px;background:var(--tm-fg-4);color:inherit;cursor:pointer;text-align:left;font:inherit;}.shelfitem.svelte-965svo:hover {border-color:var(--tm-accent);}.scover.svelte-965svo {width:36px;height:52px;border-radius:3px 6px 6px 3px;overflow:hidden;display:flex;flex:none;}.stext.svelte-965svo {flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}.stitle.svelte-965svo {font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.smeta.svelte-965svo {font-size:10.5px;color:var(--tm-muted);}.sbar.svelte-965svo {display:block;height:3px;border-radius:2px;background:var(--tm-fg-10);}.sbar.svelte-965svo span:where(.svelte-965svo) {display:block;height:3px;border-radius:2px;background:var(--tm-accent);}.actions.svelte-965svo button:where(.svelte-965svo) {height:34px;border-radius:17px;cursor:pointer;}.actions.svelte-965svo button:where(.svelte-965svo):disabled {opacity:.5;cursor:default;}.primary.svelte-965svo {padding:0 16px;border:0;background:var(--tm-accent);color:var(--tm-on-accent);font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:7px;}.ghost.saved.svelte-965svo {color:var(--tm-live);border-color:color-mix(in srgb, var(--tm-live) 40%, transparent);}.ghost.svelte-965svo {display:flex;align-items:center;gap:6px;padding:0 14px;border:1px solid var(--tm-fg-14);background:transparent;color:var(--tm-fg);font-size:12px;}h2.svelte-965svo {font-size:14px;font-weight:600;margin:26px 0 6px;}.mrow.svelte-965svo {align-items:flex-start;}.mrow.svelte-965svo {display:flex;align-items:center;border-top:1px solid var(--tm-fg-6);}.mjump.svelte-965svo {flex:1;width:100%;display:flex;justify-content:space-between;gap:12px;padding:9px 8px;border:0;background:none;color:var(--tm-fg);font:inherit;font-size:12.5px;cursor:pointer;text-align:left;}.mjump.svelte-965svo span:where(.svelte-965svo) {color:var(--tm-muted);font-size:11px;}.mjump.svelte-965svo:hover {background:var(--tm-fg-4);}.rm.svelte-965svo {width:26px;height:26px;border:0;background:none;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;border-radius:6px;}.rm.svelte-965svo:hover {color:var(--tm-fg);background:var(--tm-fg-8);}.chap.svelte-965svo {display:flex;align-items:center;gap:14px;width:100%;padding:10px 8px;border:0;border-top:1px solid var(--tm-fg-6);background:transparent;color:var(--tm-fg);cursor:pointer;text-align:left;font:inherit;}.chap.svelte-965svo:hover {background:var(--tm-fg-4);}.chap.cur.svelte-965svo {background:var(--tm-accent-7);}.n.svelte-965svo {width:30px;flex:none;font:500 11px ui-monospace, Menlo, monospace;color:var(--tm-muted);}.title.svelte-965svo {flex:1;font-size:13px;min-width:0;}.cur.svelte-965svo .title:where(.svelte-965svo) {color:var(--tm-accent);}.done.svelte-965svo .title:where(.svelte-965svo) {color:var(--tm-muted);}.state.svelte-965svo {font-size:11px;color:var(--tm-muted);flex:none;}"
 };
-function xc(e, t) {
-	Ue(t, !0), $r(e, bc);
+function Sc(e, t) {
+	Ue(t, !0), $r(e, xc);
 	let n = ji(t, "store", 7), r = /* @__PURE__ */ j(() => n().book), i = /* @__PURE__ */ j(() => U(r) ? n().progressOf(U(r).id) : 0), a = /* @__PURE__ */ j(() => U(r) ? n().speedFor(U(r).id) : 1), o = /* @__PURE__ */ j(() => U(r) ? Math.max(0, aa(U(r).chapters, U(i))) : 0), s = /* @__PURE__ */ j(() => !!U(r) && n().isPlaying(U(r).id)), c = /* @__PURE__ */ j(() => U(r) ? n().bookmarks[U(r).id] ?? [] : []), l = /* @__PURE__ */ j(() => n().bookBrowse.ids.map((e) => n().items[e]).filter(Boolean).map((e) => ({
 		key: e.id,
 		title: e.title,
@@ -6408,12 +6456,12 @@ function xc(e, t) {
 		U(r) && n().jumpTo(U(r).id, e);
 	}
 	var S = jr(), C = L(S), w = (e) => {
-		var t = ic(), r = z(L(t), 4), i = (e) => {
-			var t = nc();
+		var t = ac(), r = z(L(t), 4), i = (e) => {
+			var t = rc();
 			Y(t, 21, () => [...U(u), ...U(d)], (e) => e.id, (e, t) => {
 				let r = /* @__PURE__ */ j(() => n().durOf(U(t).id) ? Math.round(n().progressOf(U(t).id) / n().durOf(U(t).id) * 100) : 0);
-				var i = tc(), a = I(i);
-				Ga(I(a), {
+				var i = nc(), a = I(i);
+				Ka(I(a), {
 					get hue() {
 						return U(t).hue;
 					},
@@ -6428,7 +6476,7 @@ function xc(e, t) {
 					font: 12
 				}), k(a);
 				var o = z(a, 2), s = I(o), c = R(s, !0), l = z(s), u = R(l, !0), d = z(l, 2), f = (e) => {
-					var t = ec(), n = I(t);
+					var t = tc(), n = I(t);
 					let i;
 					k(t), B(() => i = si(n, "", i, { width: `${U(r) ?? ""}%` })), K(e, t);
 				};
@@ -6443,7 +6491,7 @@ function xc(e, t) {
 			(U(u).length || U(d).length) && e(i);
 		});
 		var a = z(r, 2);
-		ks(a, {
+		As(a, {
 			get cards() {
 				return U(l);
 			},
@@ -6451,23 +6499,23 @@ function xc(e, t) {
 			open: (e) => n().openBook(e)
 		});
 		var o = z(a, 2);
-		bo(o, {
+		xo(o, {
 			get status() {
 				return n().bookBrowse.status;
 			},
 			retry: () => n().loadBookBrowse()
 		});
 		var s = z(o, 2), c = (e) => {
-			var t = rc();
+			var t = ic();
 			W("click", t, () => n().loadBookBrowse(!0)), K(e, t);
 		};
 		J(s, (e) => {
 			n().bookBrowse.cursor && n().bookBrowse.status === "ready" && e(c);
 		}), K(e, t);
 	}, T = (e) => {
-		var t = yc(), l = L(t), u = z(l, 2), d = (e) => {
-			var t = vc(), l = L(t), u = I(l);
-			Ga(I(u), {
+		var t = bc(), l = L(t), u = z(l, 2), d = (e) => {
+			var t = yc(), l = L(t), u = I(l);
+			Ka(I(u), {
 				get hue() {
 					return U(r).hue;
 				},
@@ -6482,7 +6530,7 @@ function xc(e, t) {
 				font: 22
 			}), k(u);
 			var d = z(u, 2), S = z(I(d), 2), C = R(S, !0), w = z(S, 2), T = R(w, !0), E = z(w, 2), ee = (e) => {
-				var t = ac(), n = I(t), o = I(n);
+				var t = oc(), n = I(t), o = I(n);
 				let s;
 				k(n);
 				var c = R(z(n), !0);
@@ -6494,7 +6542,7 @@ function xc(e, t) {
 				U(r).dur && e(ee);
 			});
 			var te = z(E, 2), ne = (e) => {
-				var t = oc(), n = R(t);
+				var t = sc(), n = R(t);
 				B((e, t) => q(n, `Chapter ${e ?? ""} of ${U(r).chapters.length ?? ""} · ${t ?? ""} left in this chapter`), [() => Li(U(o)), () => ta(U(p) / U(a))]), K(e, t);
 			};
 			J(te, (e) => {
@@ -6530,7 +6578,7 @@ function xc(e, t) {
 			var ue = z(le, 1, !0);
 			k(se);
 			var de = z(se, 2), fe = z(de, 2), pe = I(fe), me = z(pe, 2), he = (e) => {
-				var t = sc(), i = I(t), a = I(i);
+				var t = cc(), i = I(t), a = I(i);
 				$(a, {
 					get d() {
 						return Q.check;
@@ -6556,10 +6604,10 @@ function xc(e, t) {
 				n().pop === "epmenu" && e(he);
 			}), k(fe), k(re), k(d), k(l);
 			var ge = z(l, 2), _e = (e) => {
-				var t = lc(), n = L(t);
+				var t = uc(), n = L(t);
 				let i;
 				var a = R(n, !0), o = z(n, 2), s = (e) => {
-					var t = cc(), n = R(t, !0);
+					var t = lc(), n = R(t, !0);
 					B(() => q(n, U(g) ? "Less" : "More")), W("click", t, () => P(g, !U(g))), K(e, t);
 				};
 				J(o, (e) => {
@@ -6572,24 +6620,24 @@ function xc(e, t) {
 				U(r).desc && e(_e);
 			});
 			var ve = z(ge, 2), ye = (e) => {
-				var t = mc();
+				var t = hc();
 				Y(z(L(t), 2), 17, () => U(c), (e) => e.at, (e, t) => {
-					var i = pc(), a = I(i), o = I(a), s = I(o, !0), c = R(z(s), !0);
+					var i = mc(), a = I(i), o = I(a), s = I(o, !0), c = R(z(s), !0);
 					k(o);
 					var l = z(o, 2), u = (e) => {
-						var i = uc(), a = I(i);
-						yi(a), ei(a, (e) => eo?.(e)), yn(() => Ti(a, () => U(v), (e) => P(v, e))), A(2), k(i), B(() => Z(a, "aria-label", `Note for ${U(t).label ?? ""}`)), yr("submit", i, (e) => {
+						var i = dc(), a = I(i);
+						yi(a), ei(a, (e) => to?.(e)), yn(() => Ti(a, () => U(v), (e) => P(v, e))), A(2), k(i), B(() => Z(a, "aria-label", `Note for ${U(t).label ?? ""}`)), yr("submit", i, (e) => {
 							e.preventDefault(), n().setBookmarkNote(U(r).id, U(t).at, U(v)), P(_, null);
 						}), W("keydown", a, (e) => {
 							e.key === "Escape" && (e.stopPropagation(), P(_, null));
 						}), K(e, i);
 					}, d = (e) => {
-						var n = dc(), r = R(n, !0);
+						var n = fc(), r = R(n, !0);
 						B(() => q(r, U(t).note)), W("click", n, () => {
 							P(_, U(t).at, !0), P(v, U(t).note ?? "", !0);
 						}), K(e, n);
 					}, f = (e) => {
-						var n = fc();
+						var n = pc();
 						W("click", n, () => {
 							P(_, U(t).at, !0), P(v, "");
 						}), K(e, n);
@@ -6613,7 +6661,7 @@ function xc(e, t) {
 				U(c).length && e(ye);
 			});
 			var be = z(ve, 2), D = z(I(be), 4), xe = (e) => {
-				var t = hc(), n = I(t);
+				var t = gc(), n = I(t);
 				$(n, {
 					get d() {
 						return Q.search;
@@ -6628,14 +6676,14 @@ function xc(e, t) {
 				U(r).chapters.length > 12 && e(xe);
 			});
 			var O = z(D, 2), Se = (e) => {
-				var t = gc(), n = I(t);
+				var t = _c(), n = I(t);
 				yi(n), A(), k(t), Ei(n, () => U(m), (e) => P(m, e)), K(e, t);
 			};
 			J(O, (e) => {
 				U(o) > 0 && e(Se);
 			}), k(be), Y(z(be, 2), 17, () => U(y), ({ c: e, i: t }) => t, (e, t) => {
 				let n = () => U(t).c, r = () => U(t).i;
-				var a = _c();
+				var a = vc();
 				let s;
 				var c = I(a), l = R(c, !0), u = z(c, 2), d = R(u, !0), f = R(z(u, 2), !0);
 				k(a), B((e, t) => {
@@ -6659,7 +6707,7 @@ function xc(e, t) {
 		var S = z(u, 2), C = (e) => {
 			{
 				let t = /* @__PURE__ */ j(() => n().bookStatus[n().bookId] ?? "loading");
-				bo(e, {
+				xo(e, {
 					get status() {
 						return U(t);
 					},
@@ -6679,12 +6727,12 @@ function xc(e, t) {
 br(["click", "keydown"]);
 //#endregion
 //#region src/components/SearchView.svelte
-var Sc = /* @__PURE__ */ G("<div class=\"srow svelte-1occquv\"><button class=\"row svelte-1occquv\"><!> <span class=\"text svelte-1occquv\"><span class=\"title svelte-1occquv\"> </span><span class=\"meta svelte-1occquv\"> </span></span> <span class=\"act svelte-1occquv\"><!> </span></button> <span class=\"sfav svelte-1occquv\"><!></span></div>"), Cc = /* @__PURE__ */ G("<button class=\"more svelte-1occquv\">More stations</button>"), wc = /* @__PURE__ */ G("<h2 class=\"svelte-1occquv\">Shows and books</h2>"), Tc = /* @__PURE__ */ G("<h2 class=\"svelte-1occquv\"> </h2> <div class=\"list svelte-1occquv\"></div> <!> <!> <!>", 1), Ec = /* @__PURE__ */ G("<button class=\"row svelte-1occquv\"><!> <span class=\"text svelte-1occquv\"><span class=\"title svelte-1occquv\"> </span><span class=\"meta svelte-1occquv\"> </span></span> <span class=\"act svelte-1occquv\"> </span></button>"), Dc = /* @__PURE__ */ G("<h1 class=\"h1 svelte-1occquv\"> </h1> <!> <div class=\"list svelte-1occquv\"></div> <!>", 1), Oc = {
+var Cc = /* @__PURE__ */ G("<div class=\"srow svelte-1occquv\"><button class=\"row svelte-1occquv\"><!> <span class=\"text svelte-1occquv\"><span class=\"title svelte-1occquv\"> </span><span class=\"meta svelte-1occquv\"> </span></span> <span class=\"act svelte-1occquv\"><!> </span></button> <span class=\"sfav svelte-1occquv\"><!></span></div>"), wc = /* @__PURE__ */ G("<button class=\"more svelte-1occquv\">More stations</button>"), Tc = /* @__PURE__ */ G("<h2 class=\"svelte-1occquv\">Shows and books</h2>"), Ec = /* @__PURE__ */ G("<h2 class=\"svelte-1occquv\"> </h2> <div class=\"list svelte-1occquv\"></div> <!> <!> <!>", 1), Dc = /* @__PURE__ */ G("<button class=\"row svelte-1occquv\"><!> <span class=\"text svelte-1occquv\"><span class=\"title svelte-1occquv\"> </span><span class=\"meta svelte-1occquv\"> </span></span> <span class=\"act svelte-1occquv\"> </span></button>"), Oc = /* @__PURE__ */ G("<h1 class=\"h1 svelte-1occquv\"> </h1> <!> <div class=\"list svelte-1occquv\"></div> <!>", 1), kc = {
 	hash: "svelte-1occquv",
 	code: ".h1.svelte-1occquv {font-size:22px;font-weight:650;letter-spacing:-.4px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.list.svelte-1occquv {margin-top:14px;}.row.svelte-1occquv {display:flex;align-items:center;gap:14px;width:100%;padding:10px 8px;border:0;border-radius:10px;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;}.row.svelte-1occquv:hover {background:var(--tm-fg-5);}.srow.svelte-1occquv {display:flex;align-items:center;}.srow.svelte-1occquv .row:where(.svelte-1occquv) {flex:1;min-width:0;}.sfav.svelte-1occquv {flex:none;margin-left:4px;}.text.svelte-1occquv {flex:1;min-width:0;display:flex;flex-direction:column;}.title.svelte-1occquv {font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.meta.svelte-1occquv {font-size:11.5px;color:var(--tm-muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.act.svelte-1occquv {font-size:11.5px;color:var(--tm-accent);flex:none;display:flex;align-items:center;gap:5px;}h2.svelte-1occquv {font-size:13px;font-weight:650;margin:18px 0 0;color:var(--tm-muted);}.more.svelte-1occquv {display:block;margin:10px auto 4px;height:30px;padding:0 16px;border-radius:15px;border:1px solid var(--tm-fg-14);background:transparent;color:var(--tm-fg);font-size:12px;cursor:pointer;}"
 };
-function kc(e, t) {
-	Ue(t, !0), $r(e, Oc);
+function Ac(e, t) {
+	Ue(t, !0), $r(e, kc);
 	let n = {
 		station: "Radio",
 		podcast: "Podcast",
@@ -6694,12 +6742,12 @@ function kc(e, t) {
 		podcast: "Open",
 		audiobook: "Open"
 	}, i = /* @__PURE__ */ j(() => t.store.stationHits.ids.map((e) => t.store.items[e]).filter((e) => e?.type === "radio")), a = /* @__PURE__ */ j(() => t.store.stationHits.status !== "idle"), o = /* @__PURE__ */ j(() => t.store.search.status === "ready" && !t.store.search.hits.length && (!U(a) || t.store.stationHits.status === "ready" && !U(i).length));
-	var s = Dc(), c = L(s), l = R(c), u = z(c, 2), d = (e) => {
-		var n = Tc(), r = L(n), a = R(r), o = z(r, 2);
+	var s = Oc(), c = L(s), l = R(c), u = z(c, 2), d = (e) => {
+		var n = Ec(), r = L(n), a = R(r), o = z(r, 2);
 		Y(o, 21, () => U(i), (e) => e.id, (e, n) => {
 			let r = /* @__PURE__ */ j(() => t.store.isPlaying(U(n).id));
-			var i = Sc(), a = I(i), o = I(a);
-			Ga(o, {
+			var i = Cc(), a = I(i), o = I(a);
+			Ka(o, {
 				get hue() {
 					return U(n).hue;
 				},
@@ -6726,7 +6774,7 @@ function kc(e, t) {
 			var p = z(f, 1, !0);
 			k(d), k(a);
 			var m = z(a, 2);
-			jo(I(m), {
+			Mo(I(m), {
 				get store() {
 					return t.store;
 				},
@@ -6739,14 +6787,14 @@ function kc(e, t) {
 			}), W("click", a, () => U(r) ? t.store.stop() : t.store.play(U(n).id)), K(e, i);
 		}), k(o);
 		var s = z(o, 2), c = (e) => {
-			var n = Cc();
+			var n = wc();
 			W("click", n, () => t.store.loadStationHits(t.store.search.q, !0)), K(e, n);
 		};
 		J(s, (e) => {
 			t.store.stationHits.more && t.store.stationHits.status === "ready" && e(c);
 		});
 		var l = z(s, 2), u = (e) => {
-			bo(e, {
+			xo(e, {
 				get status() {
 					return t.store.stationHits.status;
 				},
@@ -6757,7 +6805,7 @@ function kc(e, t) {
 			(t.store.stationHits.status === "loading" || t.store.stationHits.status === "error") && e(u);
 		});
 		var d = z(l, 2), f = (e) => {
-			K(e, wc());
+			K(e, Tc());
 		};
 		J(d, (e) => {
 			t.store.search.hits.length && e(f);
@@ -6768,10 +6816,10 @@ function kc(e, t) {
 	});
 	var f = z(u, 2);
 	Y(f, 21, () => t.store.search.hits, (e) => e.kind + e.id, (e, i) => {
-		var a = Ec(), o = I(a);
+		var a = Dc(), o = I(a);
 		{
 			let e = /* @__PURE__ */ j(() => Ri(U(i).slug || U(i).id)), t = /* @__PURE__ */ j(() => zi(U(i).title));
-			Ga(o, {
+			Ka(o, {
 				get hue() {
 					return U(e);
 				},
@@ -6794,7 +6842,7 @@ function kc(e, t) {
 	var p = z(f, 2);
 	{
 		let e = /* @__PURE__ */ j(() => t.store.search.status === "idle" ? "loading" : t.store.search.status), n = /* @__PURE__ */ j(() => U(o) ? "Nothing matches. Try a station, show, book or author." : "");
-		bo(p, {
+		xo(p, {
 			get status() {
 				return U(e);
 			},
@@ -6809,12 +6857,12 @@ function kc(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/NowPlaying.svelte
-var Ac = /* @__PURE__ */ G("<div class=\"blank svelte-1b7bd5u\"></div>"), jc = /* @__PURE__ */ G("<span class=\"kind svelte-1b7bd5u\"> </span>"), Mc = /* @__PURE__ */ G("<div class=\"prog svelte-1b7bd5u\" aria-label=\"Progress\"><span class=\"bar svelte-1b7bd5u\"><span class=\"svelte-1b7bd5u\"></span></span> <span class=\"pct svelte-1b7bd5u\"> </span></div>"), Nc = /* @__PURE__ */ G("<span class=\"badge svelte-1b7bd5u\"> </span>"), Pc = /* @__PURE__ */ G("<button role=\"tab\"> <!></button>"), Fc = /* @__PURE__ */ G("<div class=\"tabs svelte-1b7bd5u\" role=\"tablist\"></div>"), Ic = /* @__PURE__ */ G("<button class=\"q svelte-1b7bd5u\"><!> <span class=\"qtext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></span></button>"), Lc = /* @__PURE__ */ G("<h3 class=\"svelte-1b7bd5u\">Continue listening</h3> <!>", 1), Rc = /* @__PURE__ */ G("<div class=\"empty svelte-1b7bd5u\">Choose a station, an episode or a book. What you are listening to shows here.</div> <!>", 1), zc = /* @__PURE__ */ G("<span class=\"ontext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></span>"), Bc = /* @__PURE__ */ G("<span class=\"ontext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\">This station does not publish song titles right now.</span></span>"), Vc = /* @__PURE__ */ G("<dt class=\"svelte-1b7bd5u\">From</dt><dd class=\"svelte-1b7bd5u\"> </dd>", 1), Hc = /* @__PURE__ */ G("<div class=\"q track svelte-1b7bd5u\"><!> <span class=\"qtext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></span></div>"), Uc = /* @__PURE__ */ G("<h3 class=\"svelte-1b7bd5u\">Recently played</h3> <!>", 1), Wc = /* @__PURE__ */ G("<div class=\"onair svelte-1b7bd5u\"><span class=\"dot svelte-1b7bd5u\" aria-hidden=\"true\"></span> <!></div> <h3 class=\"svelte-1b7bd5u\">Station</h3> <dl class=\"facts svelte-1b7bd5u\"><dt class=\"svelte-1b7bd5u\">Genre</dt><dd class=\"svelte-1b7bd5u\"> </dd> <!></dl> <!>", 1), Gc = /* @__PURE__ */ G("<form class=\"plform svelte-1b7bd5u\"><input maxlength=\"80\" placeholder=\"Playlist name\" aria-label=\"Playlist name\" class=\"svelte-1b7bd5u\"/> <button type=\"submit\" class=\"svelte-1b7bd5u\">Save</button></form>"), Kc = /* @__PURE__ */ G("<div class=\"qbar svelte-1b7bd5u\"><button class=\"svelte-1b7bd5u\"><!>Shuffle</button> <button class=\"svelte-1b7bd5u\"><!>Save as playlist</button> <button class=\"svelte-1b7bd5u\"><!>Clear</button></div> <!>", 1), qc = /* @__PURE__ */ G("<small class=\"svelte-1b7bd5u\">after your picks</small>"), Jc = /* @__PURE__ */ G("<div class=\"qfrom svelte-1b7bd5u\"><span class=\"svelte-1b7bd5u\"> </span><!></div>"), Yc = /* @__PURE__ */ G("<div role=\"listitem\" draggable=\"true\"><span class=\"grip svelte-1b7bd5u\" aria-hidden=\"true\"><!></span> <!> <button class=\"qtext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></button> <span class=\"moves svelte-1b7bd5u\"><button class=\"mv svelte-1b7bd5u\"><!></button> <button class=\"mv svelte-1b7bd5u\"><!></button></span> <button class=\"rm svelte-1b7bd5u\"><!></button></div>"), Xc = /* @__PURE__ */ G("<!> <!>", 1), Zc = /* @__PURE__ */ G("<div class=\"empty svelte-1b7bd5u\">Queue is empty. Use Play next or Queue on any episode, or play one from a show to queue the rest.</div>"), Qc = /* @__PURE__ */ G("<button><span class=\"t svelte-1b7bd5u\"> </span> <span class=\"ctitle svelte-1b7bd5u\"> </span> <span class=\"cstate svelte-1b7bd5u\"> </span></button>"), $c = /* @__PURE__ */ G("<div class=\"empty svelte-1b7bd5u\"> </div>"), el = /* @__PURE__ */ G("<div class=\"q svelte-1b7bd5u\"><button class=\"qtext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></button> <button class=\"rm svelte-1b7bd5u\"><!></button></div>"), tl = /* @__PURE__ */ G("<div class=\"empty svelte-1b7bd5u\">No bookmarks yet. Your place is saved automatically; bookmarks keep moments you want to return to.</div>"), nl = /* @__PURE__ */ G("<button class=\"add svelte-1b7bd5u\"><!>Bookmark this moment</button> <!>", 1), rl = /* @__PURE__ */ G("<dt class=\"svelte-1b7bd5u\">Length</dt><dd class=\"svelte-1b7bd5u\"> </dd>", 1), il = /* @__PURE__ */ G("<dt class=\"svelte-1b7bd5u\">Chapters</dt><dd class=\"svelte-1b7bd5u\"> </dd>", 1), al = /* @__PURE__ */ G("<dl class=\"facts svelte-1b7bd5u\"><dt class=\"svelte-1b7bd5u\">Author</dt><dd class=\"svelte-1b7bd5u\"> </dd> <!> <!> <dt class=\"svelte-1b7bd5u\">Narration</dt><dd class=\"svelte-1b7bd5u\">LibriVox volunteers</dd></dl>"), ol = /* @__PURE__ */ G("<dt class=\"svelte-1b7bd5u\">Published</dt><dd class=\"svelte-1b7bd5u\"> </dd>", 1), sl = /* @__PURE__ */ G("<dl class=\"facts svelte-1b7bd5u\"><dt class=\"svelte-1b7bd5u\">Show</dt><dd class=\"svelte-1b7bd5u\"><button class=\"link svelte-1b7bd5u\"> </button></dd> <!> <!></dl>"), cl = /* @__PURE__ */ G("<p class=\"desc svelte-1b7bd5u\"> </p>"), ll = /* @__PURE__ */ G("<!> <!> <!>", 1), ul = /* @__PURE__ */ G("<button><span class=\"who svelte-1b7bd5u\"> </span> </button>"), dl = /* @__PURE__ */ G("<div></div>"), fl = /* @__PURE__ */ G("<aside class=\"aside svelte-1b7bd5u\" aria-label=\"Now playing\"><div class=\"top svelte-1b7bd5u\"><div><!> <!></div> <div class=\"trow svelte-1b7bd5u\"><div class=\"ttext svelte-1b7bd5u\"><div class=\"title svelte-1b7bd5u\"> </div><div class=\"sub svelte-1b7bd5u\"> </div></div> <!></div> <!></div> <!> <div class=\"body svelte-1b7bd5u\" role=\"tabpanel\"><!></div></aside>"), pl = {
+var jc = /* @__PURE__ */ G("<div class=\"blank svelte-1b7bd5u\"></div>"), Mc = /* @__PURE__ */ G("<span class=\"kind svelte-1b7bd5u\"> </span>"), Nc = /* @__PURE__ */ G("<div class=\"prog svelte-1b7bd5u\" aria-label=\"Progress\"><span class=\"bar svelte-1b7bd5u\"><span class=\"svelte-1b7bd5u\"></span></span> <span class=\"pct svelte-1b7bd5u\"> </span></div>"), Pc = /* @__PURE__ */ G("<span class=\"badge svelte-1b7bd5u\"> </span>"), Fc = /* @__PURE__ */ G("<button role=\"tab\"> <!></button>"), Ic = /* @__PURE__ */ G("<div class=\"tabs svelte-1b7bd5u\" role=\"tablist\"></div>"), Lc = /* @__PURE__ */ G("<button class=\"q svelte-1b7bd5u\"><!> <span class=\"qtext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></span></button>"), Rc = /* @__PURE__ */ G("<h3 class=\"svelte-1b7bd5u\">Continue listening</h3> <!>", 1), zc = /* @__PURE__ */ G("<div class=\"empty svelte-1b7bd5u\">Choose a station, an episode or a book. What you are listening to shows here.</div> <!>", 1), Bc = /* @__PURE__ */ G("<span class=\"ontext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></span>"), Vc = /* @__PURE__ */ G("<span class=\"ontext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\">This station does not publish song titles right now.</span></span>"), Hc = /* @__PURE__ */ G("<dt class=\"svelte-1b7bd5u\">From</dt><dd class=\"svelte-1b7bd5u\"> </dd>", 1), Uc = /* @__PURE__ */ G("<div class=\"q track svelte-1b7bd5u\"><!> <span class=\"qtext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></span></div>"), Wc = /* @__PURE__ */ G("<h3 class=\"svelte-1b7bd5u\">Recently played</h3> <!>", 1), Gc = /* @__PURE__ */ G("<div class=\"onair svelte-1b7bd5u\"><span class=\"dot svelte-1b7bd5u\" aria-hidden=\"true\"></span> <!></div> <h3 class=\"svelte-1b7bd5u\">Station</h3> <dl class=\"facts svelte-1b7bd5u\"><dt class=\"svelte-1b7bd5u\">Genre</dt><dd class=\"svelte-1b7bd5u\"> </dd> <!></dl> <!>", 1), Kc = /* @__PURE__ */ G("<form class=\"plform svelte-1b7bd5u\"><input maxlength=\"80\" placeholder=\"Playlist name\" aria-label=\"Playlist name\" class=\"svelte-1b7bd5u\"/> <button type=\"submit\" class=\"svelte-1b7bd5u\">Save</button></form>"), qc = /* @__PURE__ */ G("<div class=\"qbar svelte-1b7bd5u\"><button class=\"svelte-1b7bd5u\"><!>Shuffle</button> <button class=\"svelte-1b7bd5u\"><!>Save as playlist</button> <button class=\"svelte-1b7bd5u\"><!>Clear</button></div> <!>", 1), Jc = /* @__PURE__ */ G("<small class=\"svelte-1b7bd5u\">after your picks</small>"), Yc = /* @__PURE__ */ G("<div class=\"qfrom svelte-1b7bd5u\"><span class=\"svelte-1b7bd5u\"> </span><!></div>"), Xc = /* @__PURE__ */ G("<div role=\"listitem\" draggable=\"true\"><span class=\"grip svelte-1b7bd5u\" aria-hidden=\"true\"><!></span> <!> <button class=\"qtext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></button> <span class=\"moves svelte-1b7bd5u\"><button class=\"mv svelte-1b7bd5u\"><!></button> <button class=\"mv svelte-1b7bd5u\"><!></button></span> <button class=\"rm svelte-1b7bd5u\"><!></button></div>"), Zc = /* @__PURE__ */ G("<!> <!>", 1), Qc = /* @__PURE__ */ G("<div class=\"empty svelte-1b7bd5u\">Queue is empty. Use Play next or Queue on any episode, or play one from a show to queue the rest.</div>"), $c = /* @__PURE__ */ G("<button><span class=\"t svelte-1b7bd5u\"> </span> <span class=\"ctitle svelte-1b7bd5u\"> </span> <span class=\"cstate svelte-1b7bd5u\"> </span></button>"), el = /* @__PURE__ */ G("<div class=\"empty svelte-1b7bd5u\"> </div>"), tl = /* @__PURE__ */ G("<div class=\"q svelte-1b7bd5u\"><button class=\"qtext svelte-1b7bd5u\"><span class=\"qtitle svelte-1b7bd5u\"> </span><span class=\"qmeta svelte-1b7bd5u\"> </span></button> <button class=\"rm svelte-1b7bd5u\"><!></button></div>"), nl = /* @__PURE__ */ G("<div class=\"empty svelte-1b7bd5u\">No bookmarks yet. Your place is saved automatically; bookmarks keep moments you want to return to.</div>"), rl = /* @__PURE__ */ G("<button class=\"add svelte-1b7bd5u\"><!>Bookmark this moment</button> <!>", 1), il = /* @__PURE__ */ G("<dt class=\"svelte-1b7bd5u\">Length</dt><dd class=\"svelte-1b7bd5u\"> </dd>", 1), al = /* @__PURE__ */ G("<dt class=\"svelte-1b7bd5u\">Chapters</dt><dd class=\"svelte-1b7bd5u\"> </dd>", 1), ol = /* @__PURE__ */ G("<dl class=\"facts svelte-1b7bd5u\"><dt class=\"svelte-1b7bd5u\">Author</dt><dd class=\"svelte-1b7bd5u\"> </dd> <!> <!> <dt class=\"svelte-1b7bd5u\">Narration</dt><dd class=\"svelte-1b7bd5u\">LibriVox volunteers</dd></dl>"), sl = /* @__PURE__ */ G("<dt class=\"svelte-1b7bd5u\">Published</dt><dd class=\"svelte-1b7bd5u\"> </dd>", 1), cl = /* @__PURE__ */ G("<dl class=\"facts svelte-1b7bd5u\"><dt class=\"svelte-1b7bd5u\">Show</dt><dd class=\"svelte-1b7bd5u\"><button class=\"link svelte-1b7bd5u\"> </button></dd> <!> <!></dl>"), ll = /* @__PURE__ */ G("<p class=\"desc svelte-1b7bd5u\"> </p>"), ul = /* @__PURE__ */ G("<!> <!> <!>", 1), dl = /* @__PURE__ */ G("<button><span class=\"who svelte-1b7bd5u\"> </span> </button>"), fl = /* @__PURE__ */ G("<div></div>"), pl = /* @__PURE__ */ G("<aside class=\"aside svelte-1b7bd5u\" aria-label=\"Now playing\"><div class=\"top svelte-1b7bd5u\"><div><!> <!></div> <div class=\"trow svelte-1b7bd5u\"><div class=\"ttext svelte-1b7bd5u\"><div class=\"title svelte-1b7bd5u\"> </div><div class=\"sub svelte-1b7bd5u\"> </div></div> <!></div> <!></div> <!> <div class=\"body svelte-1b7bd5u\" role=\"tabpanel\"><!></div></aside>"), ml = {
 	hash: "svelte-1b7bd5u",
 	code: ".aside.svelte-1b7bd5u {width:300px;flex:none;background:var(--tm-panel-surface);display:flex;flex-direction:column;min-height:0;}.top.svelte-1b7bd5u {padding:20px 20px 14px;}.art.svelte-1b7bd5u {width:100%;aspect-ratio:1.45;border-radius:14px;position:relative;overflow:hidden;display:flex;box-shadow:0 14px 36px rgba(0, 0, 0, .35);}.blank.svelte-1b7bd5u {flex:1;background:var(--tm-fg-6);}.kind.svelte-1b7bd5u {position:absolute;left:12px;top:12px;font-size:9.5px;font-weight:700;letter-spacing:.8px;padding:3px 8px;border-radius:20px;background:rgba(0, 0, 0, .45);color:#fff;}.trow.svelte-1b7bd5u {display:flex;align-items:flex-start;gap:6px;}.ttext.svelte-1b7bd5u {flex:1;min-width:0;}.trow.svelte-1b7bd5u .fav {margin-top:10px;}.title.svelte-1b7bd5u {font-size:15px;font-weight:650;margin-top:14px;line-height:1.3;text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}.sub.svelte-1b7bd5u {font-size:12px;color:var(--tm-muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.tabs.svelte-1b7bd5u {display:flex;gap:0;padding:0 10px;border-bottom:1px solid var(--tm-fg-7);overflow-x:auto;scrollbar-width:none;}.tabs.svelte-1b7bd5u button:where(.svelte-1b7bd5u) {flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 5px;border:0;background:none;color:var(--tm-muted);font-size:11px;font-weight:600;white-space:nowrap;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}.badge.svelte-1b7bd5u {font-size:9.5px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;display:grid;place-items:center;background:var(--tm-fg-10);color:var(--tm-fg);}.tabs.svelte-1b7bd5u button.on:where(.svelte-1b7bd5u) {color:var(--tm-fg);border-bottom-color:var(--tm-accent);}.body.svelte-1b7bd5u {flex:1;min-height:0;overflow:auto;padding:8px 12px 12px;}.q.svelte-1b7bd5u {display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;}.q.svelte-1b7bd5u:hover {background:var(--tm-fg-5);}.qtext.svelte-1b7bd5u {flex:1;min-width:0;display:flex;flex-direction:column;border:0;padding:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;}.track.svelte-1b7bd5u .qtext:where(.svelte-1b7bd5u) {cursor:default;}.qtitle.svelte-1b7bd5u {font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.qmeta.svelte-1b7bd5u {font-size:11px;color:var(--tm-muted);margin-top:2px;}.qbar.svelte-1b7bd5u {display:flex;gap:4px;padding:2px 0 8px;}.qbar.svelte-1b7bd5u button:where(.svelte-1b7bd5u) {display:flex;align-items:center;gap:5px;height:26px;padding:0 8px;border:0;border-radius:7px;background:var(--tm-fg-6);color:var(--tm-fg);font-size:11px;cursor:pointer;}.qbar.svelte-1b7bd5u button:where(.svelte-1b7bd5u):hover:not(:disabled) {background:var(--tm-fg-10);}.qbar.svelte-1b7bd5u button:where(.svelte-1b7bd5u):disabled {opacity:.4;cursor:default;}.plform.svelte-1b7bd5u {display:flex;gap:6px;padding:0 0 8px;}.plform.svelte-1b7bd5u input:where(.svelte-1b7bd5u) {flex:1;min-width:0;height:28px;padding:0 8px;border-radius:7px;border:1px solid var(--tm-fg-14);background:var(--tm-fg-4);color:var(--tm-fg);font:inherit;font-size:12px;outline:none;}.plform.svelte-1b7bd5u input:where(.svelte-1b7bd5u):focus {border-color:var(--tm-accent);}.plform.svelte-1b7bd5u button:where(.svelte-1b7bd5u) {height:28px;padding:0 12px;border:0;border-radius:7px;background:var(--tm-accent);color:var(--tm-on-accent);font-size:11.5px;font-weight:650;cursor:pointer;}.drag.svelte-1b7bd5u {cursor:grab;}.drag.dragging.svelte-1b7bd5u {opacity:.4;}.drag.over.svelte-1b7bd5u {box-shadow:inset 0 2px 0 var(--tm-accent);}.grip.svelte-1b7bd5u {color:var(--tm-muted);opacity:.5;display:grid;flex:none;margin-right:-4px;}.moves.svelte-1b7bd5u {display:flex;flex-direction:column;opacity:0;flex:none;}.q.svelte-1b7bd5u:hover .moves:where(.svelte-1b7bd5u), .moves.svelte-1b7bd5u:focus-within {opacity:1;}.mv.svelte-1b7bd5u {width:20px;height:14px;border:0;padding:0;background:none;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;}.mv.svelte-1b7bd5u:hover:not(:disabled) {color:var(--tm-fg);}.mv.svelte-1b7bd5u:disabled {opacity:.3;cursor:default;}.rm.svelte-1b7bd5u {width:24px;height:24px;border:0;background:none;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;flex:none;border-radius:6px;}.rm.svelte-1b7bd5u:hover {color:var(--tm-fg);background:var(--tm-fg-8);}.qfrom.svelte-1b7bd5u {display:flex;align-items:baseline;gap:6px;padding:10px 6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--tm-muted);}.qfrom.svelte-1b7bd5u span:where(.svelte-1b7bd5u) {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}.qfrom.svelte-1b7bd5u small:where(.svelte-1b7bd5u) {flex:none;font-weight:500;text-transform:none;letter-spacing:0;}.empty.svelte-1b7bd5u {padding:24px 8px;font-size:12px;color:var(--tm-muted);text-align:center;}.art.book.svelte-1b7bd5u {aspect-ratio:0.8;width:62%;margin:0 auto;border-radius:6px 12px 12px 6px;}.prog.svelte-1b7bd5u {display:flex;align-items:center;gap:10px;margin-top:10px;}.bar.svelte-1b7bd5u {flex:1;height:4px;border-radius:2px;background:var(--tm-fg-10);display:block;}.bar.svelte-1b7bd5u span:where(.svelte-1b7bd5u) {display:block;height:4px;border-radius:2px;background:var(--tm-accent);}.pct.svelte-1b7bd5u {font-size:11px;color:var(--tm-muted);flex:none;}h3.svelte-1b7bd5u {font-size:11px;font-weight:650;letter-spacing:.6px;text-transform:uppercase;color:var(--tm-muted);margin:16px 8px 6px;}.onair.svelte-1b7bd5u {display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;background:var(--tm-accent-8);}.dot.svelte-1b7bd5u {width:8px;height:8px;border-radius:50%;background:var(--tm-live);flex:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--tm-live) 25%, transparent);}.ontext.svelte-1b7bd5u {min-width:0;display:flex;flex-direction:column;}.facts.svelte-1b7bd5u {display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:8px 8px 0;font-size:12px;}.facts.svelte-1b7bd5u dt:where(.svelte-1b7bd5u) {color:var(--tm-muted);}.facts.svelte-1b7bd5u dd:where(.svelte-1b7bd5u) {margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;}.link.svelte-1b7bd5u {border:0;padding:0;background:none;color:var(--tm-accent);font:inherit;cursor:pointer;text-align:left;}.desc.svelte-1b7bd5u {font-size:12px;line-height:1.55;color:var(--tm-muted);margin:12px 8px 0;white-space:pre-line;}.add.svelte-1b7bd5u {display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:32px;margin:4px 0 8px;border:1px dashed var(--tm-fg-16);border-radius:9px;background:none;color:var(--tm-fg);font:inherit;font-size:12px;cursor:pointer;}.add.svelte-1b7bd5u:hover {background:var(--tm-fg-5);}button.q.svelte-1b7bd5u {width:100%;border:0;background:none;color:inherit;cursor:pointer;text-align:left;font:inherit;}.q.svelte-1b7bd5u .qtext:where(.svelte-1b7bd5u) {display:flex;flex-direction:column;}.ctitle.svelte-1b7bd5u {flex:1;min-width:0;}.cstate.svelte-1b7bd5u {font-size:11px;color:var(--tm-muted);flex:none;}.chap.done.svelte-1b7bd5u .ctitle:where(.svelte-1b7bd5u) {color:var(--tm-muted);}.chap.svelte-1b7bd5u {display:flex;gap:10px;width:100%;padding:8px;border:0;border-radius:8px;background:transparent;color:var(--tm-fg);cursor:pointer;text-align:left;font:inherit;font-size:12.5px;}.chap.svelte-1b7bd5u:hover {background:var(--tm-fg-5);}.chap.cur.svelte-1b7bd5u {background:var(--tm-accent-8);color:var(--tm-accent);}.t.svelte-1b7bd5u {font:500 11px ui-monospace, Menlo, monospace;color:var(--tm-muted);width:52px;flex:none;padding-top:1px;}.line.svelte-1b7bd5u {display:block;width:100%;padding:7px 8px;border:0;border-radius:8px;background:transparent;cursor:pointer;text-align:left;font:inherit;font-size:13px;line-height:1.5;color:var(--tm-fg-45);}.line.svelte-1b7bd5u:hover {background:var(--tm-fg-4);}.line.cur.svelte-1b7bd5u {color:var(--tm-fg);background:var(--tm-accent-8);}.who.svelte-1b7bd5u {display:block;font:500 10px ui-monospace, Menlo, monospace;color:var(--tm-muted);margin-bottom:2px;}"
 };
-function ml(e, t) {
-	Ue(t, !0), $r(e, pl);
+function hl(e, t) {
+	Ue(t, !0), $r(e, ml);
 	let n = ji(t, "store", 7), r = /* @__PURE__ */ j(() => n().item), i = /* @__PURE__ */ j(() => n().activeRtab), a = /* @__PURE__ */ j(() => U(r)?.type === "radio" ? n().nowPlaying[U(r).stationId] : void 0), o = /* @__PURE__ */ j(() => U(r)?.type === "book" ? U(r) : null), s = /* @__PURE__ */ j(() => U(o) ? n().bookmarks[U(o).id] ?? [] : []), c = /* @__PURE__ */ j(() => U(r) ? n().durOf(U(r).id) : 0), l = /* @__PURE__ */ j(() => n().continueIds.filter((e) => e !== n().now)), u = {
 		onair: "On air",
 		queue: "Up next",
@@ -6844,10 +6892,10 @@ function ml(e, t) {
 		let e = n().transcript;
 		return U(r) ? !e || e.state === "loading" ? "Loading transcript…" : e.state === "queued" || e.state === "running" ? "OndaCast is preparing a transcript. Check back in a few minutes." : e.state === "error" ? "The transcript could not be loaded." : "No transcript for this item yet." : "Nothing is playing.";
 	});
-	var w = fl(), T = I(w), E = I(T);
+	var w = pl(), T = I(w), E = I(T);
 	let ee;
 	var te = I(E), ne = (e) => {
-		Ga(e, {
+		Ka(e, {
 			get hue() {
 				return U(r).hue;
 			},
@@ -6862,13 +6910,13 @@ function ml(e, t) {
 			font: 26
 		});
 	}, re = (e) => {
-		K(e, Ac());
+		K(e, jc());
 	};
 	J(te, (e) => {
 		U(r) ? e(ne) : e(re, -1);
 	});
 	var ie = z(te, 2), ae = (e) => {
-		var t = jc(), r = R(t, !0);
+		var t = Mc(), r = R(t, !0);
 		B(() => q(r, n().kindLabel)), K(e, t);
 	};
 	J(ie, (e) => {
@@ -6877,7 +6925,7 @@ function ml(e, t) {
 	var oe = z(E, 2), se = I(oe), ce = I(se), le = R(ce, !0), ue = R(z(ce), !0);
 	k(se);
 	var de = z(se, 2), fe = (e) => {
-		jo(e, {
+		Mo(e, {
 			get store() {
 				return n();
 			},
@@ -6891,7 +6939,7 @@ function ml(e, t) {
 		U(r) && e(fe);
 	}), k(oe);
 	var pe = z(oe, 2), me = (e) => {
-		var t = Mc(), r = I(t), i = I(r);
+		var t = Nc(), r = I(t), i = I(r);
 		let a;
 		k(r);
 		var o = R(z(r, 2));
@@ -6907,12 +6955,12 @@ function ml(e, t) {
 		U(he) && e(me);
 	}), k(T);
 	var ge = z(T, 2), _e = (e) => {
-		var t = Fc();
+		var t = Ic();
 		Y(t, 20, () => n().rightTabs, (e) => e, (e, t) => {
-			var r = Pc();
+			var r = Fc();
 			let a;
 			var o = I(r, !0), s = z(o), c = (e) => {
-				var n = Nc(), r = R(n, !0);
+				var n = Pc(), r = R(n, !0);
 				B((e) => q(r, e), [() => d(t)]), K(e, n);
 			}, l = /* @__PURE__ */ j(() => d(t));
 			J(s, (e) => {
@@ -6926,13 +6974,13 @@ function ml(e, t) {
 		U(r) && e(_e);
 	});
 	var ve = z(ge, 2), ye = I(ve), be = (e) => {
-		var t = Rc(), r = z(L(t), 2), i = (e) => {
-			var t = Lc();
+		var t = zc(), r = z(L(t), 2), i = (e) => {
+			var t = Rc();
 			Y(z(L(t), 2), 16, () => U(l), (e) => e, (e, t) => {
 				let r = /* @__PURE__ */ j(() => n().items[t]);
 				var i = jr(), a = L(i), o = (e) => {
-					var i = Ic(), a = I(i);
-					Ga(a, {
+					var i = Lc(), a = I(i);
+					Ka(a, {
 						get hue() {
 							return U(r).hue;
 						},
@@ -6960,32 +7008,32 @@ function ml(e, t) {
 			U(l).length && e(i);
 		}), K(e, t);
 	}, D = (e) => {
-		var t = Wc(), n = L(t), i = z(I(n), 2), o = (e) => {
-			var t = zc(), n = I(t), i = R(n, !0), o = R(z(n), !0);
+		var t = Gc(), n = L(t), i = z(I(n), 2), o = (e) => {
+			var t = Bc(), n = I(t), i = R(n, !0), o = R(z(n), !0);
 			k(t), B(() => {
 				q(i, U(a).title), q(o, U(a).artist || U(r).title);
 			}), K(e, t);
 		}, s = (e) => {
-			var t = Bc(), n = R(I(t), !0);
+			var t = Vc(), n = R(I(t), !0);
 			A(), k(t), B(() => q(n, U(r).title)), K(e, t);
 		};
 		J(i, (e) => {
 			U(a)?.title ? e(o) : e(s, -1);
 		}), k(n);
 		var c = z(n, 4), l = z(I(c)), u = R(l, !0), d = z(l, 2), f = (e) => {
-			var t = Vc(), n = R(z(L(t)), !0);
+			var t = Hc(), n = R(z(L(t)), !0);
 			B((e) => q(n, e), [() => U(r).sub.split(" · ")[0]]), K(e, t);
 		};
 		J(d, (e) => {
 			U(r).sub && e(f);
 		}), k(c);
 		var p = z(c, 2), m = (e) => {
-			var t = Uc();
+			var t = Wc();
 			Y(z(L(t), 2), 17, () => U(a).recent, Wr, (e, t) => {
-				var n = Hc(), i = I(n);
+				var n = Uc(), i = I(n);
 				{
 					let e = /* @__PURE__ */ j(() => U(t).title.slice(0, 2).toUpperCase());
-					Ga(i, {
+					Ka(i, {
 						get hue() {
 							return U(r).hue;
 						},
@@ -7010,8 +7058,8 @@ function ml(e, t) {
 			U(a)?.recent.length && e(m);
 		}), B(() => q(u, U(r).genre)), K(e, t);
 	}, xe = (e) => {
-		var t = Xc(), i = L(t), a = (e) => {
-			var t = Kc(), r = L(t), i = I(r);
+		var t = Zc(), i = L(t), a = (e) => {
+			var t = qc(), r = L(t), i = I(r);
 			$(I(i), {
 				get d() {
 					return Q.shuffle;
@@ -7036,8 +7084,8 @@ function ml(e, t) {
 				stroke: 1.8
 			}), A(), k(o), k(r);
 			var s = z(r, 2), c = (e) => {
-				var t = Gc(), r = I(t);
-				yi(r), ei(r, (e) => eo?.(e)), yn(() => Ti(r, () => U(y), (e) => P(y, e))), A(2), k(t), yr("submit", t, (e) => {
+				var t = Kc(), r = I(t);
+				yi(r), ei(r, (e) => to?.(e)), yn(() => Ti(r, () => U(y), (e) => P(y, e))), A(2), k(t), yr("submit", t, (e) => {
 					e.preventDefault(), n().saveQueueAsPlaylist(U(y)) && P(v, !1);
 				}), W("keydown", r, (e) => {
 					e.key === "Escape" && (e.stopPropagation(), P(v, !1));
@@ -7055,9 +7103,9 @@ function ml(e, t) {
 			(n().queue.length || U(r) && U(r).type !== "radio") && e(a);
 		}), Y(z(i, 2), 18, () => n().queue, (e) => e, (e, t, r) => {
 			let i = /* @__PURE__ */ j(() => n().items[t]);
-			var a = Xc(), o = L(a), s = (e) => {
-				var t = Jc(), i = I(t), a = R(i), o = z(i), s = (e) => {
-					K(e, qc());
+			var a = Zc(), o = L(a), s = (e) => {
+				var t = Yc(), i = I(t), a = R(i), o = z(i), s = (e) => {
+					K(e, Jc());
 				};
 				J(o, (e) => {
 					U(r) > 0 && e(s);
@@ -7067,7 +7115,7 @@ function ml(e, t) {
 				U(c) && e(s);
 			});
 			var l = z(o, 2), u = (e) => {
-				var a = Yc();
+				var a = Xc();
 				let o;
 				var s = I(a);
 				$(I(s), {
@@ -7078,7 +7126,7 @@ function ml(e, t) {
 					stroke: 2.4
 				}), k(s);
 				var c = z(s, 2);
-				Ga(c, {
+				Ka(c, {
 					get hue() {
 						return U(i).hue;
 					},
@@ -7138,14 +7186,14 @@ function ml(e, t) {
 				U(i) && e(u);
 			}), K(e, a);
 		}, (e) => {
-			K(e, Zc());
+			K(e, Qc());
 		}), K(e, t);
 	}, O = (e) => {
 		var t = jr(), i = L(t), a = (e) => {
 			var t = jr();
 			Y(L(t), 17, () => U(r).chapters, Wr, (e, t, i) => {
 				let a = /* @__PURE__ */ j(() => S(i)), o = /* @__PURE__ */ j(() => i === n().chapIdx);
-				var s = Qc();
+				var s = $c();
 				let c;
 				var l = I(s), u = R(l, !0), d = z(l, 2), f = R(d, !0), p = R(z(d, 2), !0);
 				k(s), B((e, r) => {
@@ -7156,14 +7204,14 @@ function ml(e, t) {
 				}, [() => U(r).type === "book" ? Li(i) : ea(U(t).start), () => i < n().chapIdx ? "Done" : U(o) && U(a) ? `${Math.min(100, Math.round((n().pos - U(t).start) / U(a) * 100))}%` : U(a) ? ta(U(a)) : ""]), W("click", s, () => n().seekTo(U(t).start)), K(e, s);
 			}), K(e, t);
 		}, o = /* @__PURE__ */ j(() => Pi(U(r)) && U(r).chapters.length), s = (e) => {
-			var t = $c(), n = R(t, !0);
+			var t = el(), n = R(t, !0);
 			B(() => q(n, U(r).type === "book" ? "Loading chapters…" : "This episode has no chapters.")), K(e, t);
 		};
 		J(i, (e) => {
 			U(o) ? e(a) : e(s, -1);
 		}), K(e, t);
 	}, Se = (e) => {
-		var t = nl(), r = L(t);
+		var t = rl(), r = L(t);
 		$(I(r), {
 			get d() {
 				return Q.plus;
@@ -7171,7 +7219,7 @@ function ml(e, t) {
 			size: 12,
 			stroke: 2
 		}), A(), k(r), Y(z(r, 2), 17, () => U(s), (e) => e.at, (e, t) => {
-			var r = el(), i = I(r), a = I(i), s = R(a, !0), c = R(z(a), !0);
+			var r = tl(), i = I(r), a = I(i), s = R(a, !0), c = R(z(a), !0);
 			k(i);
 			var l = z(i, 2);
 			$(I(l), {
@@ -7184,36 +7232,36 @@ function ml(e, t) {
 				q(s, U(t).label), q(c, e), Z(l, "aria-label", `Remove bookmark ${U(t).label ?? ""}`);
 			}, [() => new Date(U(t).at).toLocaleString()]), W("click", i, () => n().jumpTo(U(o).id, U(t).pos)), W("click", l, () => n().removeBookmark(U(o).id, U(t).at)), K(e, r);
 		}, (e) => {
-			K(e, tl());
+			K(e, nl());
 		}), W("click", r, () => n().bookmark(U(o).id)), K(e, t);
 	}, Ce = (e) => {
-		var t = ll(), i = L(t), a = (e) => {
-			var t = al(), n = z(I(t)), i = R(n, !0), a = z(n, 2), o = (e) => {
-				var t = rl(), n = R(z(L(t)), !0);
+		var t = ul(), i = L(t), a = (e) => {
+			var t = ol(), n = z(I(t)), i = R(n, !0), a = z(n, 2), o = (e) => {
+				var t = il(), n = R(z(L(t)), !0);
 				B((e) => q(n, e), [() => ta(U(r).dur)]), K(e, t);
 			};
 			J(a, (e) => {
 				U(r).dur && e(o);
 			});
 			var s = z(a, 2), c = (e) => {
-				var t = il(), n = R(z(L(t)), !0);
+				var t = al(), n = R(z(L(t)), !0);
 				B(() => q(n, U(r).chapters.length)), K(e, t);
 			};
 			J(s, (e) => {
 				U(r).chapters.length && e(c);
 			}), A(3), k(t), B(() => q(i, U(r).sub)), K(e, t);
 		}, o = (e) => {
-			var t = sl(), i = z(I(t)), a = I(i), o = R(a, !0);
+			var t = cl(), i = z(I(t)), a = I(i), o = R(a, !0);
 			k(i);
 			var s = z(i, 2), l = (e) => {
-				var t = ol(), n = R(z(L(t)), !0);
+				var t = sl(), n = R(z(L(t)), !0);
 				B((e) => q(n, e), [() => new Date(U(r).date).toLocaleDateString()]), K(e, t);
 			};
 			J(s, (e) => {
 				U(r).date && e(l);
 			});
 			var u = z(s, 2), d = (e) => {
-				var t = rl(), n = R(z(L(t)), !0);
+				var t = il(), n = R(z(L(t)), !0);
 				B((e) => q(n, e), [() => ta(U(c))]), K(e, t);
 			};
 			J(u, (e) => {
@@ -7224,19 +7272,19 @@ function ml(e, t) {
 			U(r).type === "book" ? e(a) : U(r).type === "podcast" && e(o, 1);
 		});
 		var s = z(i, 2), u = (e) => {
-			var t = cl(), n = R(t, !0);
+			var t = ll(), n = R(t, !0);
 			B(() => q(n, U(r).desc)), K(e, t);
 		}, d = /* @__PURE__ */ j(() => Pi(U(r)) && U(r).desc);
 		J(s, (e) => {
 			U(d) && e(u);
 		});
 		var f = z(s, 2), p = (e) => {
-			var t = Lc();
+			var t = Rc();
 			Y(z(L(t), 2), 16, () => U(l), (e) => e, (e, t) => {
 				let r = /* @__PURE__ */ j(() => n().items[t]);
 				var i = jr(), a = L(i), o = (e) => {
-					var i = Ic(), a = I(i);
-					Ga(a, {
+					var i = Lc(), a = I(i);
+					Ka(a, {
 						get hue() {
 							return U(r).hue;
 						},
@@ -7264,16 +7312,16 @@ function ml(e, t) {
 			U(l).length && e(p);
 		}), K(e, t);
 	}, we = (e) => {
-		var t = dl();
+		var t = fl();
 		Y(t, 21, () => U(h), Wr, (e, t, r) => {
-			var i = ul();
+			var i = dl();
 			let a;
 			var o = I(i), s = R(o), c = z(o, 1, !0);
 			k(i), B((e) => {
 				a = X(i, 1, "line svelte-1b7bd5u", null, a, { cur: r === n().lineIdx }), q(s, `${U(t).who ? `${U(t).who} · ` : ""}${e ?? ""}`), q(c, U(t).text);
 			}, [() => ea(U(t).t)]), W("click", i, () => n().seekTo(U(t).t)), K(e, i);
 		}, (e) => {
-			var t = $c(), n = R(t, !0);
+			var t = el(), n = R(t, !0);
 			B(() => q(n, U(C))), K(e, t);
 		}), k(t), Ai(t, (e) => P(g, e), () => U(g)), K(e, t);
 	};
@@ -7286,12 +7334,12 @@ function ml(e, t) {
 br(["click", "keydown"]);
 //#endregion
 //#region src/components/SeekBar.svelte
-var hl = /* @__PURE__ */ G("<div class=\"tick svelte-qmop01\"></div>"), gl = /* @__PURE__ */ G("<div role=\"slider\" aria-label=\"Playback position\"><div class=\"track svelte-qmop01\"><div class=\"fill svelte-qmop01\"></div> <!></div></div>"), _l = {
+var gl = /* @__PURE__ */ G("<div class=\"tick svelte-qmop01\"></div>"), _l = /* @__PURE__ */ G("<div role=\"slider\" aria-label=\"Playback position\"><div class=\"track svelte-qmop01\"><div class=\"fill svelte-qmop01\"></div> <!></div></div>"), vl = {
 	hash: "svelte-qmop01",
 	code: ".seek.svelte-qmop01 {flex:1;display:flex;align-items:center;cursor:pointer;border-radius:4px;}.seek.live.svelte-qmop01 {cursor:default;}.seek.svelte-qmop01:focus-visible {outline:2px solid var(--tm-accent);outline-offset:2px;}.track.svelte-qmop01 {flex:1;height:4px;border-radius:2px;background:var(--tm-fg-12);position:relative;}.fill.svelte-qmop01 {position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--tm-accent);}.live.svelte-qmop01 .fill:where(.svelte-qmop01) {opacity:.55;}.tick.svelte-qmop01 {position:absolute;top:-1px;width:2px;height:6px;background:var(--tm-panel-surface);}"
 };
-function vl(e, t) {
-	Ue(t, !0), $r(e, _l);
+function yl(e, t) {
+	Ue(t, !0), $r(e, vl);
 	let n = ji(t, "height", 3, 14), r = ji(t, "ticks", 3, !1), i = /* @__PURE__ */ j(() => t.store.item), a = /* @__PURE__ */ j(() => U(i) ? t.store.durOf(U(i).id) : 0), o = /* @__PURE__ */ j(() => !!U(i) && Pi(U(i)) && U(a) > 0), s = /* @__PURE__ */ j(() => U(i) ? Pi(U(i)) ? U(a) ? Math.min(100, t.store.pos / U(a) * 100) : 0 : 100 : 0), c = /* @__PURE__ */ j(() => r() && U(i) && Pi(U(i)) && U(a) ? U(i).chapters.slice(1).map((e) => e.start / U(a) * 100) : []);
 	function l(e) {
 		if (!U(o)) return;
@@ -7308,14 +7356,14 @@ function vl(e, t) {
 		}[e.key];
 		n ? (e.preventDefault(), t.store.skip(n)) : e.key === "Home" ? (e.preventDefault(), t.store.seekFraction(0)) : e.key === "End" && (e.preventDefault(), t.store.seekFraction(1));
 	}
-	var d = gl();
+	var d = _l();
 	let f;
 	Z(d, "aria-valuemin", 0), Z(d, "aria-valuemax", 100);
 	let p;
 	var m = I(d), h = I(m);
 	let g;
 	Y(z(h, 2), 17, () => U(c), Wr, (e, t) => {
-		var n = hl();
+		var n = gl();
 		let r;
 		B(() => r = si(n, "", r, { left: `${U(t) ?? ""}%` })), K(e, n);
 	}), k(m), k(d), B((e, t) => {
@@ -7325,16 +7373,16 @@ function vl(e, t) {
 br(["click", "keydown"]);
 //#endregion
 //#region src/components/SleepPopover.svelte
-var yl = /* @__PURE__ */ G("<button> </button>"), bl = /* @__PURE__ */ G("<div class=\"tm-pop\" role=\"dialog\" aria-label=\"Sleep timer\"><div class=\"title svelte-1mpzphw\">Sleep timer</div> <div class=\"hint svelte-1mpzphw\">Audio fades out over the last minute.</div> <div class=\"grid svelte-1mpzphw\"></div> <button> </button> <button class=\"off svelte-1mpzphw\">Turn off</button></div>"), xl = {
+var bl = /* @__PURE__ */ G("<button> </button>"), xl = /* @__PURE__ */ G("<div class=\"tm-pop\" role=\"dialog\" aria-label=\"Sleep timer\"><div class=\"title svelte-1mpzphw\">Sleep timer</div> <div class=\"hint svelte-1mpzphw\">Audio fades out over the last minute.</div> <div class=\"grid svelte-1mpzphw\"></div> <button> </button> <button class=\"off svelte-1mpzphw\">Turn off</button></div>"), Sl = {
 	hash: "svelte-1mpzphw",
 	code: ".title.svelte-1mpzphw {font-size:13px;font-weight:650;}.hint.svelte-1mpzphw {font-size:11px;color:var(--tm-muted);margin-top:2px;}.grid.svelte-1mpzphw {display:grid;grid-template-columns:repeat(3, 1fr);gap:6px;margin-top:12px;}.opt.svelte-1mpzphw {height:34px;border-radius:9px;border:0;background:var(--tm-fg-6);color:var(--tm-fg);font-size:12px;font-weight:600;cursor:pointer;}.opt.svelte-1mpzphw:hover {background:var(--tm-fg-10);}.opt.sel.svelte-1mpzphw {background:var(--tm-accent);color:var(--tm-on-accent);}.wide.svelte-1mpzphw {width:100%;margin-top:6px;}.off.svelte-1mpzphw {width:100%;height:30px;margin-top:6px;border:0;background:none;color:var(--tm-muted);font-size:12px;cursor:pointer;}.off.svelte-1mpzphw:hover {color:var(--tm-fg);}"
 };
-function Sl(e, t) {
-	Ue(t, !0), $r(e, xl);
+function Cl(e, t) {
+	Ue(t, !0), $r(e, Sl);
 	let n = (e) => typeof t.store.sleep == "number" && Math.ceil(t.store.sleep / 60) === e;
-	var r = bl(), i = z(I(r), 4);
-	Y(i, 21, () => Na, Wr, (e, r) => {
-		var i = yl();
+	var r = xl(), i = z(I(r), 4);
+	Y(i, 21, () => Pa, Wr, (e, r) => {
+		var i = bl();
 		let a;
 		var o = R(i);
 		B((e) => {
@@ -7351,17 +7399,17 @@ function Sl(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/SpeedPopover.svelte
-var Cl = /* @__PURE__ */ G("<button> </button>"), wl = /* @__PURE__ */ G("<div class=\"tm-pop\" role=\"dialog\" aria-label=\"Playback speed\"><div class=\"head svelte-1xvntbg\"><span class=\"title svelte-1xvntbg\">Playback speed</span><span class=\"now svelte-1xvntbg\"> </span></div> <div class=\"hint svelte-1xvntbg\"> </div> <div class=\"grid svelte-1xvntbg\"></div></div>"), Tl = {
+var wl = /* @__PURE__ */ G("<button> </button>"), Tl = /* @__PURE__ */ G("<div class=\"tm-pop\" role=\"dialog\" aria-label=\"Playback speed\"><div class=\"head svelte-1xvntbg\"><span class=\"title svelte-1xvntbg\">Playback speed</span><span class=\"now svelte-1xvntbg\"> </span></div> <div class=\"hint svelte-1xvntbg\"> </div> <div class=\"grid svelte-1xvntbg\"></div></div>"), El = {
 	hash: "svelte-1xvntbg",
 	code: ".head.svelte-1xvntbg {display:flex;align-items:baseline;justify-content:space-between;}.title.svelte-1xvntbg {font-size:13px;font-weight:650;}.now.svelte-1xvntbg {font:600 12px ui-monospace, Menlo, monospace;color:var(--tm-accent);}.hint.svelte-1xvntbg {font-size:11px;color:var(--tm-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.grid.svelte-1xvntbg {display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;margin-top:12px;}.opt.svelte-1xvntbg {height:32px;border-radius:9px;border:0;background:var(--tm-fg-6);color:var(--tm-fg);font:600 11.5px ui-monospace, Menlo, monospace;cursor:pointer;}.opt.svelte-1xvntbg:hover {background:var(--tm-fg-10);}.opt.sel.svelte-1xvntbg {background:var(--tm-accent);color:var(--tm-on-accent);}"
 };
-function El(e, t) {
-	Ue(t, !0), $r(e, Tl);
-	var n = wl(), r = I(n), i = R(z(I(r)));
+function Dl(e, t) {
+	Ue(t, !0), $r(e, El);
+	var n = Tl(), r = I(n), i = R(z(I(r)));
 	k(r);
 	var a = z(r, 2), o = R(a), s = z(a, 2);
-	Y(s, 21, () => Ma, Wr, (e, n) => {
-		var r = Cl();
+	Y(s, 21, () => Na, Wr, (e, n) => {
+		var r = wl();
 		let i;
 		var a = R(r);
 		B((e) => {
@@ -7374,12 +7422,12 @@ function El(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/PlayerBar.svelte
-var Dl = /* @__PURE__ */ G("<div class=\"thumb svelte-y66ne\"></div>"), Ol = /* @__PURE__ */ G("<span class=\"live svelte-y66ne\">LIVE</span>"), kl = /* @__PURE__ */ G("<span class=\"time r svelte-y66ne\"> </span>"), Al = /* @__PURE__ */ G("<span class=\"one svelte-y66ne\">1</span>"), jl = /* @__PURE__ */ G("<footer class=\"bar svelte-y66ne\"><div class=\"now svelte-y66ne\"><!> <div class=\"ntext svelte-y66ne\"><div class=\"ntitle svelte-y66ne\"> </div><div class=\"nsub svelte-y66ne\"> </div></div> <!></div> <div class=\"center svelte-y66ne\"><div class=\"controls svelte-y66ne\"><button class=\"skipc svelte-y66ne\" aria-label=\"Previous chapter\"><!></button> <button class=\"jump svelte-y66ne\"> </button> <button><!></button> <button class=\"jump svelte-y66ne\"> </button> <button class=\"skipc svelte-y66ne\" aria-label=\"Next in queue\"><!></button></div> <div class=\"timeline svelte-y66ne\"><span class=\"time l svelte-y66ne\"> </span> <!> <!></div></div> <div class=\"tools svelte-y66ne\"><button><!><!></button> <button data-pop=\"\" aria-haspopup=\"dialog\"> </button> <button data-pop=\"\" title=\"Sleep timer\" aria-haspopup=\"dialog\"><!> </button> <button class=\"clip svelte-y66ne\" title=\"Clip to Notes\"><!></button> <div class=\"vol svelte-y66ne\"><button class=\"mute svelte-y66ne\"><!></button> <div class=\"vtrack svelte-y66ne\" role=\"slider\" tabindex=\"0\" aria-label=\"Volume\"><div class=\"vfill svelte-y66ne\"></div></div></div></div> <!> <!></footer>"), Ml = {
+var Ol = /* @__PURE__ */ G("<div class=\"thumb svelte-y66ne\"></div>"), kl = /* @__PURE__ */ G("<span class=\"live svelte-y66ne\">LIVE</span>"), Al = /* @__PURE__ */ G("<span class=\"time r svelte-y66ne\"> </span>"), jl = /* @__PURE__ */ G("<span class=\"one svelte-y66ne\">1</span>"), Ml = /* @__PURE__ */ G("<footer class=\"bar svelte-y66ne\"><div class=\"now svelte-y66ne\"><!> <div class=\"ntext svelte-y66ne\"><div class=\"ntitle svelte-y66ne\"> </div><div class=\"nsub svelte-y66ne\"> </div></div> <!></div> <div class=\"center svelte-y66ne\"><div class=\"controls svelte-y66ne\"><button class=\"skipc svelte-y66ne\" aria-label=\"Previous chapter\"><!></button> <button class=\"jump svelte-y66ne\"> </button> <button><!></button> <button class=\"jump svelte-y66ne\"> </button> <button class=\"skipc svelte-y66ne\" aria-label=\"Next in queue\"><!></button></div> <div class=\"timeline svelte-y66ne\"><span class=\"time l svelte-y66ne\"> </span> <!> <!></div></div> <div class=\"tools svelte-y66ne\"><button><!><!></button> <button data-pop=\"\" aria-haspopup=\"dialog\"> </button> <button data-pop=\"\" title=\"Sleep timer\" aria-haspopup=\"dialog\"><!> </button> <button class=\"clip svelte-y66ne\" title=\"Clip to Notes\"><!></button> <div class=\"vol svelte-y66ne\"><button class=\"mute svelte-y66ne\"><!></button> <div class=\"vtrack svelte-y66ne\" role=\"slider\" tabindex=\"0\" aria-label=\"Volume\"><div class=\"vfill svelte-y66ne\"></div></div></div></div> <!> <!></footer>"), Nl = {
 	hash: "svelte-y66ne",
 	code: ".bar.svelte-y66ne {height:84px;flex:none;display:flex;align-items:center;gap:18px;padding:0 18px;background:var(--tm-panel-surface);border-top:1px solid var(--tm-fg-7);position:relative;}.now.svelte-y66ne {width:240px;display:flex;align-items:center;gap:11px;min-width:0;flex:none;}.thumb.svelte-y66ne {width:46px;height:46px;border-radius:9px;flex:none;background:var(--tm-fg-6);}.ntext.svelte-y66ne {min-width:0;flex:1;}.ntitle.svelte-y66ne {font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.nsub.svelte-y66ne {font-size:11px;color:var(--tm-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.center.svelte-y66ne {flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;}.controls.svelte-y66ne {display:flex;align-items:center;justify-content:center;gap:14px;}button.svelte-y66ne:disabled {opacity:.35;cursor:default;}.skipc.svelte-y66ne {width:30px;height:30px;border:0;background:none;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;}.skipc.svelte-y66ne:hover:not(:disabled) {color:var(--tm-fg);}.jump.svelte-y66ne {width:32px;height:32px;border:0;background:none;color:var(--tm-fg);cursor:pointer;font:600 10.5px ui-monospace, Menlo, monospace;border-radius:16px;}.jump.svelte-y66ne:hover:not(:disabled) {background:var(--tm-fg-8);}.pp.svelte-y66ne {width:50px;height:50px;flex:none;padding:0;border:0;border-radius:50%;background:var(--tm-fg);color:var(--tm-bg);cursor:pointer;display:grid;place-items:center;position:relative;transition:transform .1s;}\n  /* The play triangle's visual centre sits left of its box. */.pp.paused.svelte-y66ne svg {transform:translateX(1.5px);}.pp.svelte-y66ne:hover:not(:disabled) {filter:brightness(1.12);transform:scale(1.04);}.pp.svelte-y66ne:active:not(:disabled) {transform:scale(.96);}.pp.busy.svelte-y66ne::after {content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;border-top-color:var(--tm-accent); animation: svelte-y66ne-spin .9s linear infinite;}\n  @keyframes svelte-y66ne-spin { to { transform: rotate(360deg); } }\n  @media (prefers-reduced-motion: reduce) {.pp.svelte-y66ne {transition:none;}.pp.busy.svelte-y66ne::after { animation: none;border-color:var(--tm-accent);} }.timeline.svelte-y66ne {display:flex;align-items:center;gap:10px;width:100%;max-width:440px;}.time.svelte-y66ne {font:500 10.5px ui-monospace, Menlo, monospace;color:var(--tm-muted);width:52px;flex:none;}.time.l.svelte-y66ne {text-align:right;}.live.svelte-y66ne {width:52px;height:20px;flex:none;display:grid;place-items:center;border-radius:10px;background:var(--tm-live);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.8px;}.tools.svelte-y66ne {width:240px;flex:none;display:flex;align-items:center;justify-content:flex-end;gap:6px;}.repeat.svelte-y66ne {position:relative;height:30px;width:32px;border:0;border-radius:8px;background:transparent;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;}.repeat.svelte-y66ne:hover:not(:disabled) {background:var(--tm-fg-10);color:var(--tm-fg);}.repeat.on.svelte-y66ne {color:var(--tm-accent);}.one.svelte-y66ne {position:absolute;right:3px;bottom:3px;min-width:11px;height:11px;border-radius:6px;background:var(--tm-accent);color:var(--tm-on-accent);font:700 8px/11px system-ui, sans-serif;text-align:center;}.speed.svelte-y66ne {height:30px;min-width:44px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--tm-fg);font:600 11.5px ui-monospace, Menlo, monospace;cursor:pointer;}.speed.on.svelte-y66ne {background:var(--tm-accent-14);}.sleep.svelte-y66ne {height:30px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--tm-fg);cursor:pointer;display:flex;align-items:center;gap:5px;font:600 11px ui-monospace, Menlo, monospace;}.sleep.on.svelte-y66ne {background:var(--tm-accent-14);color:var(--tm-accent);}.speed.svelte-y66ne:hover:not(:disabled), .sleep.svelte-y66ne:hover:not(:disabled), .clip.svelte-y66ne:hover:not(:disabled) {background:var(--tm-fg-10);}.clip.svelte-y66ne {height:30px;width:32px;border:0;border-radius:8px;background:transparent;color:var(--tm-fg);cursor:pointer;display:grid;place-items:center;}.vol.svelte-y66ne {display:flex;align-items:center;gap:6px;margin-left:4px;color:var(--tm-muted);}.mute.svelte-y66ne {border:0;background:none;padding:0;color:inherit;cursor:pointer;display:grid;place-items:center;}.mute.svelte-y66ne:hover {color:var(--tm-fg);}.vtrack.svelte-y66ne {width:64px;height:12px;display:flex;align-items:center;cursor:pointer;position:relative;background:linear-gradient(var(--tm-fg-12), var(--tm-fg-12)) center / 100% 4px no-repeat;border-radius:2px;}.vfill.svelte-y66ne {height:4px;border-radius:2px;background:var(--tm-fg);}.vtrack.svelte-y66ne:focus-visible {outline:2px solid var(--tm-accent);outline-offset:2px;}"
 };
-function Nl(e, t) {
-	Ue(t, !0), $r(e, Ml);
+function Pl(e, t) {
+	Ue(t, !0), $r(e, Nl);
 	let n = /* @__PURE__ */ j(() => t.store.item), r = /* @__PURE__ */ j(() => !!U(n) && Pi(U(n))), i = /* @__PURE__ */ j(() => U(n) ? t.store.durOf(U(n).id) : 0), a = /* @__PURE__ */ j(() => typeof t.store.sleep == "number" ? ea(t.store.sleep) : t.store.sleep === "chapter" ? "End" : ""), o = /* @__PURE__ */ j(() => t.store.buffering || t.store.loadingItem), s = /* @__PURE__ */ j(() => U(n)?.type === "radio" ? t.store.nowPlaying[U(n).stationId] : void 0), c = /* @__PURE__ */ j(() => t.store.playing ? t.store.live ? "Stop" : "Pause" : "Play"), l = /* @__PURE__ */ j(() => t.store.playing ? t.store.live ? Q.stop : Q.pause : Q.play);
 	function u(e) {
 		let n = e.currentTarget.getBoundingClientRect();
@@ -7394,10 +7442,10 @@ function Nl(e, t) {
 		}[e.key];
 		n && (e.preventDefault(), t.store.setVolume(t.store.volume + n));
 	}
-	var f = jl(), p = I(f), m = I(p), h = (e) => {
+	var f = Ml(), p = I(f), m = I(p), h = (e) => {
 		{
 			let t = /* @__PURE__ */ j(() => U(s)?.art || U(n).art);
-			Ga(e, {
+			Ka(e, {
 				get hue() {
 					return U(n).hue;
 				},
@@ -7412,7 +7460,7 @@ function Nl(e, t) {
 			});
 		}
 	}, g = (e) => {
-		K(e, Dl());
+		K(e, Ol());
 	};
 	J(m, (e) => {
 		U(n) ? e(h) : e(g, -1);
@@ -7420,7 +7468,7 @@ function Nl(e, t) {
 	var _ = z(m, 2), v = I(_), y = R(v, !0), b = R(z(v), !0);
 	k(_);
 	var x = z(_, 2), S = (e) => {
-		jo(e, {
+		Mo(e, {
 			get store() {
 				return t.store;
 			},
@@ -7449,17 +7497,17 @@ function Nl(e, t) {
 		return Q.next;
 	} }), k(ae), k(w);
 	var oe = z(w, 2), se = I(oe), ce = R(se, !0), le = z(se, 2);
-	vl(le, {
+	yl(le, {
 		get store() {
 			return t.store;
 		},
 		ticks: !0
 	});
 	var ue = z(le, 2), de = (e) => {
-		K(e, Ol());
+		K(e, kl());
 	}, fe = (e) => {
-		var n = kl(), r = R(n, !0);
-		B((e) => q(r, e), [() => U(i) ? `−${ea(ma(U(i), t.store.pos, t.store.speed))}` : ""]), K(e, n);
+		var n = Al(), r = R(n, !0);
+		B((e) => q(r, e), [() => U(i) ? `−${ea(ha(U(i), t.store.pos, t.store.speed))}` : ""]), K(e, n);
 	};
 	J(ue, (e) => {
 		U(n) && !U(r) ? e(de) : e(fe, -1);
@@ -7475,7 +7523,7 @@ function Nl(e, t) {
 		stroke: 1.8
 	});
 	var _e = z(ge), ve = (e) => {
-		K(e, Al());
+		K(e, jl());
 	};
 	J(_e, (e) => {
 		t.store.prefs.repeat === "one" && e(ve);
@@ -7520,7 +7568,7 @@ function Nl(e, t) {
 	let ke;
 	k(De), k(we), k(pe);
 	var Ae = z(pe, 2), je = (e) => {
-		Sl(e, {
+		Cl(e, {
 			get store() {
 				return t.store;
 			},
@@ -7531,7 +7579,7 @@ function Nl(e, t) {
 		t.store.pop === "sleep" && e(je);
 	});
 	var Me = z(Ae, 2), Ne = (e) => {
-		El(e, {
+		Dl(e, {
 			get store() {
 				return t.store;
 			},
@@ -7556,17 +7604,17 @@ function Nl(e, t) {
 br(["click", "keydown"]);
 //#endregion
 //#region src/components/MiniPlayer.svelte
-var Pl = /* @__PURE__ */ G("<div class=\"blank svelte-1jla3sy\"></div>"), Fl = /* @__PURE__ */ G("<span class=\"kind svelte-1jla3sy\"> </span>"), Il = /* @__PURE__ */ G("<div class=\"chapter svelte-1jla3sy\"><span class=\"svelte-1jla3sy\">Chapter</span><br/> </div>"), Ll = /* @__PURE__ */ G("<span class=\"liveword svelte-1jla3sy\">LIVE</span>"), Rl = /* @__PURE__ */ G("<span> </span>"), zl = /* @__PURE__ */ G("<span class=\"one svelte-1jla3sy\">1</span>"), Bl = /* @__PURE__ */ G("<div class=\"sleepnote svelte-1jla3sy\"> </div>"), Vl = /* @__PURE__ */ G("<button class=\"svelte-1jla3sy\">Clip to Notes</button>"), Hl = /* @__PURE__ */ G("<button class=\"q svelte-1jla3sy\"><!> <span class=\"qtext svelte-1jla3sy\"><span class=\"qtitle svelte-1jla3sy\"> </span><span class=\"qmeta svelte-1jla3sy\"> </span></span></button>"), Ul = /* @__PURE__ */ G("<div class=\"empty svelte-1jla3sy\">Widen the panel to browse radio, podcasts and audiobooks.</div>"), Wl = /* @__PURE__ */ G("<div class=\"mini svelte-1jla3sy\"><div class=\"head svelte-1jla3sy\"><span class=\"np svelte-1jla3sy\">Now playing</span><span class=\"spacer svelte-1jla3sy\"></span><span class=\"by svelte-1jla3sy\">OndaCast</span></div> <div class=\"player svelte-1jla3sy\"><div class=\"art svelte-1jla3sy\"><!> <!> <!></div> <div class=\"trow svelte-1jla3sy\"><div class=\"title svelte-1jla3sy\"> </div><!></div> <div class=\"sub svelte-1jla3sy\"> </div> <div class=\"seek svelte-1jla3sy\"><!></div> <div class=\"times svelte-1jla3sy\"><span> </span> <!></div> <div class=\"controls svelte-1jla3sy\"><button class=\"chipbtn svelte-1jla3sy\" data-pop=\"\" aria-haspopup=\"dialog\"> </button> <button class=\"jump svelte-1jla3sy\"> </button> <button><!></button> <button class=\"jump svelte-1jla3sy\"> </button> <button><!><!></button> <button data-pop=\"\" aria-haspopup=\"dialog\" aria-label=\"Sleep timer\"><!></button></div> <!> <!> <!></div> <div class=\"upnext svelte-1jla3sy\"><div class=\"uphead svelte-1jla3sy\"><span class=\"svelte-1jla3sy\"> </span><!></div> <!></div></div>"), Gl = {
+var Fl = /* @__PURE__ */ G("<div class=\"blank svelte-1jla3sy\"></div>"), Il = /* @__PURE__ */ G("<span class=\"kind svelte-1jla3sy\"> </span>"), Ll = /* @__PURE__ */ G("<div class=\"chapter svelte-1jla3sy\"><span class=\"svelte-1jla3sy\">Chapter</span><br/> </div>"), Rl = /* @__PURE__ */ G("<span class=\"liveword svelte-1jla3sy\">LIVE</span>"), zl = /* @__PURE__ */ G("<span> </span>"), Bl = /* @__PURE__ */ G("<span class=\"one svelte-1jla3sy\">1</span>"), Vl = /* @__PURE__ */ G("<div class=\"sleepnote svelte-1jla3sy\"> </div>"), Hl = /* @__PURE__ */ G("<button class=\"svelte-1jla3sy\">Clip to Notes</button>"), Ul = /* @__PURE__ */ G("<button class=\"q svelte-1jla3sy\"><!> <span class=\"qtext svelte-1jla3sy\"><span class=\"qtitle svelte-1jla3sy\"> </span><span class=\"qmeta svelte-1jla3sy\"> </span></span></button>"), Wl = /* @__PURE__ */ G("<div class=\"empty svelte-1jla3sy\">Widen the panel to browse radio, podcasts and audiobooks.</div>"), Gl = /* @__PURE__ */ G("<div class=\"mini svelte-1jla3sy\"><div class=\"head svelte-1jla3sy\"><span class=\"np svelte-1jla3sy\">Now playing</span><span class=\"spacer svelte-1jla3sy\"></span><span class=\"by svelte-1jla3sy\">OndaCast</span></div> <div class=\"player svelte-1jla3sy\"><div class=\"art svelte-1jla3sy\"><!> <!> <!></div> <div class=\"trow svelte-1jla3sy\"><div class=\"title svelte-1jla3sy\"> </div><!></div> <div class=\"sub svelte-1jla3sy\"> </div> <div class=\"seek svelte-1jla3sy\"><!></div> <div class=\"times svelte-1jla3sy\"><span> </span> <!></div> <div class=\"controls svelte-1jla3sy\"><button class=\"chipbtn svelte-1jla3sy\" data-pop=\"\" aria-haspopup=\"dialog\"> </button> <button class=\"jump svelte-1jla3sy\"> </button> <button><!></button> <button class=\"jump svelte-1jla3sy\"> </button> <button><!><!></button> <button data-pop=\"\" aria-haspopup=\"dialog\" aria-label=\"Sleep timer\"><!></button></div> <!> <!> <!></div> <div class=\"upnext svelte-1jla3sy\"><div class=\"uphead svelte-1jla3sy\"><span class=\"svelte-1jla3sy\"> </span><!></div> <!></div></div>"), Kl = {
 	hash: "svelte-1jla3sy",
 	code: ".mini.svelte-1jla3sy {height:100%;container-type:size;display:flex;flex-direction:column;background:var(--tm-surface);}.head.svelte-1jla3sy {height:36px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;background:var(--tm-panel-surface);}.by.svelte-1jla3sy {font-size:11px;color:var(--tm-muted);}.spacer.svelte-1jla3sy {flex:1;}.np.svelte-1jla3sy {font-size:12px;font-weight:600;}.player.svelte-1jla3sy {padding:22px 22px 0;position:relative;flex:none;}.art.svelte-1jla3sy {width:min(100%, 48cqh);aspect-ratio:1;margin:0 auto;border-radius:18px;overflow:hidden;display:flex;position:relative;box-shadow:0 24px 50px rgba(0, 0, 0, .45);}.blank.svelte-1jla3sy {flex:1;background:var(--tm-fg-6);}.kind.svelte-1jla3sy {position:absolute;left:14px;top:14px;font-size:9.5px;font-weight:700;letter-spacing:.8px;padding:3px 8px;border-radius:20px;background:rgba(0, 0, 0, .45);color:#fff;}.chapter.svelte-1jla3sy {position:absolute;left:14px;bottom:14px;max-width:70%;padding:8px 10px;border-radius:10px;background:rgba(0, 0, 0, .5);color:#fff;font-size:11.5px;line-height:1.3;}.chapter.svelte-1jla3sy span:where(.svelte-1jla3sy) {opacity:.7;}.trow.svelte-1jla3sy {display:flex;align-items:flex-start;gap:6px;margin-top:18px;}.trow.svelte-1jla3sy .title:where(.svelte-1jla3sy) {margin-top:0;flex:1;min-width:0;}.title.svelte-1jla3sy {font-size:17px;font-weight:650;margin-top:18px;line-height:1.3;text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}.sub.svelte-1jla3sy {font-size:12.5px;color:var(--tm-muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.seek.svelte-1jla3sy {display:flex;margin-top:14px;}.times.svelte-1jla3sy {display:flex;justify-content:space-between;font:500 10.5px ui-monospace, Menlo, monospace;color:var(--tm-muted);margin-top:2px;}.liveword.svelte-1jla3sy {color:var(--tm-live);font-weight:700;}.controls.svelte-1jla3sy {display:flex;align-items:center;justify-content:space-between;margin-top:10px;}button.svelte-1jla3sy:disabled {opacity:.35;cursor:default;}.chipbtn.svelte-1jla3sy {width:44px;height:30px;border:0;border-radius:8px;background:var(--tm-fg-6);color:var(--tm-fg);font:600 11px ui-monospace, Menlo, monospace;cursor:pointer;display:grid;place-items:center;}.repeat.svelte-1jla3sy {position:relative;height:30px;width:32px;border:0;border-radius:8px;background:transparent;color:var(--tm-muted);cursor:pointer;display:grid;place-items:center;}.repeat.svelte-1jla3sy:hover:not(:disabled) {background:var(--tm-fg-10);color:var(--tm-fg);}.repeat.on.svelte-1jla3sy {color:var(--tm-accent);}.one.svelte-1jla3sy {position:absolute;right:3px;bottom:3px;min-width:11px;height:11px;border-radius:6px;background:var(--tm-accent);color:var(--tm-on-accent);font:700 8px/11px system-ui, sans-serif;text-align:center;}.sleep.svelte-1jla3sy {background:transparent;}.sleep.on.svelte-1jla3sy {background:var(--tm-accent-14);color:var(--tm-accent);}.jump.svelte-1jla3sy {width:40px;height:40px;border:0;border-radius:20px;background:none;color:var(--tm-fg);font:600 11px ui-monospace, Menlo, monospace;cursor:pointer;}.jump.svelte-1jla3sy:hover:not(:disabled) {background:var(--tm-fg-8);}.pp.svelte-1jla3sy {width:58px;height:58px;flex:none;padding:0;border:0;border-radius:50%;background:var(--tm-accent);color:var(--tm-on-accent);cursor:pointer;display:grid;place-items:center;position:relative;}.pp.paused.svelte-1jla3sy svg {transform:translateX(1.5px);}.pp.busy.svelte-1jla3sy::after {content:'';position:absolute;inset:-5px;border-radius:50%;border:2px solid transparent;border-top-color:var(--tm-accent); animation: svelte-1jla3sy-spin .9s linear infinite;}\n  @keyframes svelte-1jla3sy-spin { to { transform: rotate(360deg); } }\n  @media (prefers-reduced-motion: reduce) {.pp.busy.svelte-1jla3sy::after { animation: none;} }.sleepnote.svelte-1jla3sy {text-align:center;font-size:11px;color:var(--tm-accent);margin-top:6px;}.upnext.svelte-1jla3sy {flex:1;min-height:0;margin-top:16px;background:var(--tm-panel-surface);border-radius:18px 18px 0 0;padding:14px 12px;overflow:auto;}.uphead.svelte-1jla3sy {display:flex;align-items:baseline;justify-content:space-between;padding:0 8px 6px;}.uphead.svelte-1jla3sy span:where(.svelte-1jla3sy) {font-size:13px;font-weight:650;}.uphead.svelte-1jla3sy button:where(.svelte-1jla3sy) {border:0;background:none;color:var(--tm-accent);font-size:11.5px;cursor:pointer;padding:0;}.q.svelte-1jla3sy {display:flex;align-items:center;gap:10px;width:100%;padding:7px 8px;border:0;border-radius:9px;background:none;color:inherit;cursor:pointer;text-align:left;font:inherit;}.q.svelte-1jla3sy:hover {background:var(--tm-fg-5);}.qtext.svelte-1jla3sy {flex:1;min-width:0;display:flex;flex-direction:column;}.qtitle.svelte-1jla3sy {font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.qmeta.svelte-1jla3sy {font-size:11px;color:var(--tm-muted);margin-top:2px;}.empty.svelte-1jla3sy {padding:20px 8px;font-size:12px;color:var(--tm-muted);text-align:center;}"
 };
-function Kl(e, t) {
-	Ue(t, !0), $r(e, Gl);
+function ql(e, t) {
+	Ue(t, !0), $r(e, Kl);
 	let n = /* @__PURE__ */ j(() => t.store.item), r = /* @__PURE__ */ j(() => !!U(n) && Pi(U(n))), i = /* @__PURE__ */ j(() => U(n) ? t.store.durOf(U(n).id) : 0), a = /* @__PURE__ */ j(() => U(n) && Pi(U(n)) && U(n).chapters.length > 1 && t.store.chapIdx >= 0 ? U(n).chapters[t.store.chapIdx].title : ""), o = /* @__PURE__ */ j(() => typeof t.store.sleep == "number" ? ea(t.store.sleep) : t.store.sleep === "chapter" ? "end of chapter" : ""), s = /* @__PURE__ */ j(() => U(n)?.type === "radio" ? t.store.nowPlaying[U(n).stationId] : void 0), c = /* @__PURE__ */ j(() => [...t.store.continueIds, ...t.store.onAirIds].filter((e) => e !== t.store.now).slice(0, 6));
-	var l = Wl(), u = z(I(l), 2), d = I(u), f = I(d), p = (e) => {
+	var l = Gl(), u = z(I(l), 2), d = I(u), f = I(d), p = (e) => {
 		{
 			let t = /* @__PURE__ */ j(() => U(s)?.art || U(n).art);
-			Ga(e, {
+			Ka(e, {
 				get hue() {
 					return U(n).hue;
 				},
@@ -7582,27 +7630,27 @@ function Kl(e, t) {
 			});
 		}
 	}, m = (e) => {
-		K(e, Pl());
+		K(e, Fl());
 	};
 	J(f, (e) => {
 		U(n) ? e(p) : e(m, -1);
 	});
 	var h = z(f, 2), g = (e) => {
-		var n = Fl(), r = R(n, !0);
+		var n = Il(), r = R(n, !0);
 		B(() => q(r, t.store.kindLabel)), K(e, n);
 	};
 	J(h, (e) => {
 		U(n) && e(g);
 	});
 	var _ = z(h, 2), v = (e) => {
-		var t = Il(), n = z(I(t), 2, !0);
+		var t = Ll(), n = z(I(t), 2, !0);
 		k(t), B(() => q(n, U(a))), K(e, t);
 	};
 	J(_, (e) => {
 		U(a) && e(v);
 	}), k(d);
 	var y = z(d, 2), b = I(y), x = R(b, !0), S = z(b), C = (e) => {
-		jo(e, {
+		Mo(e, {
 			get store() {
 				return t.store;
 			},
@@ -7616,17 +7664,17 @@ function Kl(e, t) {
 		U(n) && e(C);
 	}), k(y);
 	var w = z(y, 2), T = R(w, !0), E = z(w, 2);
-	vl(I(E), {
+	yl(I(E), {
 		get store() {
 			return t.store;
 		},
 		height: 16
 	}), k(E);
 	var ee = z(E, 2), te = I(ee), ne = R(te, !0), re = z(te, 2), ie = (e) => {
-		K(e, Ll());
+		K(e, Rl());
 	}, ae = (e) => {
-		var n = Rl(), r = R(n, !0);
-		B((e) => q(r, e), [() => U(i) ? `−${ea(ma(U(i), t.store.pos, t.store.speed))}` : ""]), K(e, n);
+		var n = zl(), r = R(n, !0);
+		B((e) => q(r, e), [() => U(i) ? `−${ea(ha(U(i), t.store.pos, t.store.speed))}` : ""]), K(e, n);
 	};
 	J(re, (e) => {
 		U(n) && !U(r) ? e(ie) : e(ae, -1);
@@ -7655,7 +7703,7 @@ function Kl(e, t) {
 		stroke: 1.8
 	});
 	var ye = z(ve), be = (e) => {
-		K(e, zl());
+		K(e, Bl());
 	};
 	J(ye, (e) => {
 		t.store.prefs.repeat === "one" && e(be);
@@ -7670,14 +7718,14 @@ function Kl(e, t) {
 		stroke: 1.8
 	}), k(D), k(oe);
 	var O = z(oe, 2), Se = (e) => {
-		var t = Bl(), n = R(t);
+		var t = Vl(), n = R(t);
 		B(() => q(n, `Sleep timer · ${U(o) ?? ""}`)), K(e, t);
 	};
 	J(O, (e) => {
 		t.store.sleep && e(Se);
 	});
 	var Ce = z(O, 2), A = (e) => {
-		Sl(e, {
+		Cl(e, {
 			get store() {
 				return t.store;
 			},
@@ -7688,7 +7736,7 @@ function Kl(e, t) {
 		t.store.pop === "sleep" && e(A);
 	});
 	var we = z(Ce, 2), Te = (e) => {
-		El(e, {
+		Dl(e, {
 			get store() {
 				return t.store;
 			},
@@ -7699,7 +7747,7 @@ function Kl(e, t) {
 		t.store.pop === "speed" && e(Te);
 	}), k(u);
 	var Ee = z(u, 2), De = I(Ee), Oe = I(De), ke = R(Oe, !0), Ae = z(Oe), je = (e) => {
-		var n = Vl();
+		var n = Hl();
 		W("click", n, () => t.store.clip()), K(e, n);
 	};
 	J(Ae, (e) => {
@@ -7707,8 +7755,8 @@ function Kl(e, t) {
 	}), k(De), Y(z(De, 2), 16, () => t.store.queue.length ? t.store.queue : U(c), (e) => e, (e, n) => {
 		let r = /* @__PURE__ */ j(() => t.store.items[n]);
 		var i = jr(), a = L(i), o = (e) => {
-			var i = Hl(), a = I(i);
-			Ga(a, {
+			var i = Ul(), a = I(i);
+			Ka(a, {
 				get hue() {
 					return U(r).hue;
 				},
@@ -7730,7 +7778,7 @@ function Kl(e, t) {
 			U(r) && e(o);
 		}), K(e, i);
 	}, (e) => {
-		K(e, Ul());
+		K(e, Wl());
 	}), k(Ee), k(l), B((e, i, a, o) => {
 		q(x, U(s)?.title || U(n)?.title || "Nothing playing"), q(T, e), q(ne, i), se.disabled = !U(r), Z(se, "aria-expanded", t.store.pop === "speed"), Z(se, "aria-label", `Playback speed ${a ?? ""}×`), q(ce, `${o ?? ""}×`), le.disabled = !U(r), Z(le, "aria-label", `Back ${t.store.prefs.back ?? ""} seconds`), q(ue, `−${t.store.prefs.back ?? ""}`), fe = X(de, 1, "pp svelte-1jla3sy", null, fe, {
 			busy: t.store.buffering || t.store.loadingItem,
@@ -7746,16 +7794,16 @@ function Kl(e, t) {
 br(["click"]);
 //#endregion
 //#region src/components/PrefsPopover.svelte
-var ql = /* @__PURE__ */ G("<button> </button>"), Jl = /* @__PURE__ */ G("<div class=\"tm-pop\" role=\"dialog\" aria-label=\"Playback preferences\"><div class=\"title svelte-1dgvwbx\">Playback</div> <div class=\"label svelte-1dgvwbx\">Skip back</div> <div class=\"row svelte-1dgvwbx\" role=\"group\" aria-label=\"Skip back\"></div> <div class=\"label svelte-1dgvwbx\">Skip forward</div> <div class=\"row svelte-1dgvwbx\" role=\"group\" aria-label=\"Skip forward\"></div> <label class=\"toggle-row svelte-1dgvwbx\"><span class=\"svelte-1dgvwbx\"><b>Smart rewind</b><small class=\"svelte-1dgvwbx\">Replay a few seconds when you resume after a break.</small></span> <input type=\"checkbox\" role=\"switch\" class=\"svelte-1dgvwbx\"/></label> <label class=\"toggle-row svelte-1dgvwbx\"><span class=\"svelte-1dgvwbx\"><b>Fill Up next automatically</b><small class=\"svelte-1dgvwbx\">Playing from a show or New from your shows queues its other unplayed episodes. Your own Play next and Queue picks always come first.</small></span> <input type=\"checkbox\" role=\"switch\" class=\"svelte-1dgvwbx\"/></label> <label class=\"toggle-row svelte-1dgvwbx\"><span class=\"svelte-1dgvwbx\"><b>Continuous play</b><small class=\"svelte-1dgvwbx\">When an episode or book ends, play what is up next, or the show's next episode.</small></span> <input type=\"checkbox\" role=\"switch\" class=\"svelte-1dgvwbx\"/></label> <div class=\"foot svelte-1dgvwbx\"><button class=\"link svelte-1dgvwbx\">Keyboard shortcuts</button> <button class=\"link danger svelte-1dgvwbx\">Clear history</button></div></div>"), Yl = {
+var Jl = /* @__PURE__ */ G("<button> </button>"), Yl = /* @__PURE__ */ G("<div class=\"tm-pop\" role=\"dialog\" aria-label=\"Playback preferences\"><div class=\"title svelte-1dgvwbx\">Playback</div> <div class=\"label svelte-1dgvwbx\">Skip back</div> <div class=\"row svelte-1dgvwbx\" role=\"group\" aria-label=\"Skip back\"></div> <div class=\"label svelte-1dgvwbx\">Skip forward</div> <div class=\"row svelte-1dgvwbx\" role=\"group\" aria-label=\"Skip forward\"></div> <label class=\"toggle-row svelte-1dgvwbx\"><span class=\"svelte-1dgvwbx\"><b>Smart rewind</b><small class=\"svelte-1dgvwbx\">Replay a few seconds when you resume after a break.</small></span> <input type=\"checkbox\" role=\"switch\" class=\"svelte-1dgvwbx\"/></label> <label class=\"toggle-row svelte-1dgvwbx\"><span class=\"svelte-1dgvwbx\"><b>Fill Up next automatically</b><small class=\"svelte-1dgvwbx\">Playing from a show or New from your shows queues its other unplayed episodes. Your own Play next and Queue picks always come first.</small></span> <input type=\"checkbox\" role=\"switch\" class=\"svelte-1dgvwbx\"/></label> <label class=\"toggle-row svelte-1dgvwbx\"><span class=\"svelte-1dgvwbx\"><b>Continuous play</b><small class=\"svelte-1dgvwbx\">When an episode or book ends, play what is up next, or the show's next episode.</small></span> <input type=\"checkbox\" role=\"switch\" class=\"svelte-1dgvwbx\"/></label> <div class=\"foot svelte-1dgvwbx\"><button class=\"link svelte-1dgvwbx\">Keyboard shortcuts</button> <button class=\"link danger svelte-1dgvwbx\">Clear history</button></div></div>"), Xl = {
 	hash: "svelte-1dgvwbx",
 	code: ".title.svelte-1dgvwbx {font-size:13px;font-weight:650;}.label.svelte-1dgvwbx {font-size:11px;color:var(--tm-muted);margin:12px 0 6px;}.row.svelte-1dgvwbx {display:flex;gap:5px;}.opt.svelte-1dgvwbx {flex:1;height:30px;border-radius:8px;border:0;background:var(--tm-fg-6);color:var(--tm-fg);font-size:11.5px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums;}.opt.svelte-1dgvwbx:hover {background:var(--tm-fg-10);}.opt.sel.svelte-1dgvwbx {background:var(--tm-accent);color:var(--tm-on-accent);}.toggle-row.svelte-1dgvwbx {display:flex;align-items:center;gap:12px;margin-top:12px;cursor:pointer;}.toggle-row.svelte-1dgvwbx span:where(.svelte-1dgvwbx) {flex:1;display:flex;flex-direction:column;gap:2px;font-size:12px;}.toggle-row.svelte-1dgvwbx small:where(.svelte-1dgvwbx) {font-size:11px;color:var(--tm-muted);line-height:1.35;}input[type=checkbox].svelte-1dgvwbx {appearance:none;width:34px;height:20px;flex:none;border-radius:10px;background:var(--tm-fg-16);position:relative;cursor:pointer;transition:background .15s;margin:0;}input[type=checkbox].svelte-1dgvwbx::after {content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--tm-fg);transition:transform .15s;}input[type=checkbox].svelte-1dgvwbx:checked {background:var(--tm-accent);}input[type=checkbox].svelte-1dgvwbx:checked::after {transform:translateX(14px);background:var(--tm-on-accent);}input[type=checkbox].svelte-1dgvwbx:focus-visible {outline:2px solid var(--tm-accent);outline-offset:2px;}.foot.svelte-1dgvwbx {display:flex;justify-content:space-between;margin-top:14px;padding-top:10px;border-top:1px solid var(--tm-fg-8);}.link.svelte-1dgvwbx {border:0;background:none;padding:0;color:var(--tm-accent);font-size:11.5px;cursor:pointer;}.link.danger.svelte-1dgvwbx {color:var(--tm-muted);}.link.danger.svelte-1dgvwbx:hover:not(:disabled) {color:var(--tm-live);}.link.svelte-1dgvwbx:disabled {opacity:.4;cursor:default;}\n  @media (prefers-reduced-motion: reduce) {input[type=checkbox].svelte-1dgvwbx, input[type=checkbox].svelte-1dgvwbx::after {transition:none;} }"
 };
-function Xl(e, t) {
-	Ue(t, !0), $r(e, Yl);
+function Zl(e, t) {
+	Ue(t, !0), $r(e, Xl);
 	let n = ji(t, "store", 7);
-	var r = Jl(), i = z(I(r), 4);
-	Y(i, 21, () => Da, Wr, (e, t) => {
-		var r = ql();
+	var r = Yl(), i = z(I(r), 4);
+	Y(i, 21, () => Oa, Wr, (e, t) => {
+		var r = Jl();
 		let i;
 		var a = R(r);
 		B(() => {
@@ -7763,8 +7811,8 @@ function Xl(e, t) {
 		}), W("click", r, () => n().setPref("back", U(t))), K(e, r);
 	}), k(i);
 	var a = z(i, 4);
-	Y(a, 21, () => Oa, Wr, (e, t) => {
-		var r = ql();
+	Y(a, 21, () => ka, Wr, (e, t) => {
+		var r = Jl();
 		let i;
 		var a = R(r);
 		B(() => {
@@ -7787,12 +7835,12 @@ function Xl(e, t) {
 br(["click", "change"]);
 //#endregion
 //#region src/components/ShortcutsSheet.svelte
-var Zl = /* @__PURE__ */ G("<span class=\"to svelte-jfujii\">–</span>"), Ql = /* @__PURE__ */ G("<kbd class=\"svelte-jfujii\"> </kbd>"), $l = /* @__PURE__ */ G("<div class=\"svelte-jfujii\"><dt class=\"svelte-jfujii\"></dt><dd class=\"svelte-jfujii\"> </dd></div>"), eu = /* @__PURE__ */ G("<div class=\"scrim svelte-jfujii\" role=\"presentation\"><div class=\"sheet svelte-jfujii\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Keyboard shortcuts\" tabindex=\"-1\"><div class=\"head svelte-jfujii\"><h2 class=\"svelte-jfujii\">Keyboard shortcuts</h2><button class=\"x svelte-jfujii\" aria-label=\"Close\">✕</button></div> <dl class=\"svelte-jfujii\"></dl></div></div>"), tu = {
+var Ql = /* @__PURE__ */ G("<span class=\"to svelte-jfujii\">–</span>"), $l = /* @__PURE__ */ G("<kbd class=\"svelte-jfujii\"> </kbd>"), eu = /* @__PURE__ */ G("<div class=\"svelte-jfujii\"><dt class=\"svelte-jfujii\"></dt><dd class=\"svelte-jfujii\"> </dd></div>"), tu = /* @__PURE__ */ G("<div class=\"scrim svelte-jfujii\" role=\"presentation\"><div class=\"sheet svelte-jfujii\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Keyboard shortcuts\" tabindex=\"-1\"><div class=\"head svelte-jfujii\"><h2 class=\"svelte-jfujii\">Keyboard shortcuts</h2><button class=\"x svelte-jfujii\" aria-label=\"Close\">✕</button></div> <dl class=\"svelte-jfujii\"></dl></div></div>"), nu = {
 	hash: "svelte-jfujii",
 	code: ".scrim.svelte-jfujii {position:absolute;inset:0;z-index:20;background:rgba(0, 0, 0, .5);display:grid;place-items:center;padding:20px;}.sheet.svelte-jfujii {width:min(460px, 100%);max-height:100%;overflow:auto;padding:20px 22px;border-radius:16px;background:var(--tm-pop);border:1px solid var(--tm-fg-10);box-shadow:0 30px 70px rgba(0, 0, 0, .55);outline:none;}.head.svelte-jfujii {display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}h2.svelte-jfujii {font-size:15px;margin:0;}.x.svelte-jfujii {width:28px;height:28px;border:0;border-radius:8px;background:none;color:var(--tm-muted);cursor:pointer;}.x.svelte-jfujii:hover {background:var(--tm-fg-8);color:var(--tm-fg);}dl.svelte-jfujii {margin:0;display:grid;gap:2px;}dl.svelte-jfujii div:where(.svelte-jfujii) {display:flex;align-items:center;gap:14px;padding:7px 0;border-top:1px solid var(--tm-fg-6);}dt.svelte-jfujii {width:120px;flex:none;display:flex;align-items:center;gap:4px;}dd.svelte-jfujii {margin:0;font-size:12.5px;}kbd.svelte-jfujii {font:600 11px ui-monospace, Menlo, monospace;min-width:22px;text-align:center;padding:3px 6px;border-radius:6px;background:var(--tm-fg-8);border:1px solid var(--tm-fg-14);border-bottom-width:2px;}.to.svelte-jfujii {color:var(--tm-muted);}"
 };
-function nu(e, t) {
-	Ue(t, !0), $r(e, tu);
+function ru(e, t) {
+	Ue(t, !0), $r(e, nu);
 	let n = ji(t, "store", 7), r = /* @__PURE__ */ j(() => [
 		[["Space"], "Play or pause (stop for live radio)"],
 		[["←"], `Back ${n().prefs.back} seconds`],
@@ -7815,18 +7863,18 @@ function nu(e, t) {
 	gn(() => {
 		U(i)?.focus();
 	});
-	var a = eu(), o = I(a), s = I(o), c = z(I(s));
+	var a = tu(), o = I(a), s = I(o), c = z(I(s));
 	k(s);
 	var l = z(s, 2);
 	Y(l, 21, () => U(r), ([e, t]) => t, (e, t) => {
 		var n = /* @__PURE__ */ j(() => m(U(t), 2));
 		let r = () => U(n)[0], i = () => U(n)[1];
-		var a = $l(), o = I(a);
+		var a = eu(), o = I(a);
 		Y(o, 21, r, Wr, (e, t) => {
 			var n = jr(), r = L(n), i = (e) => {
-				K(e, Zl());
+				K(e, Ql());
 			}, a = (e) => {
-				var n = Ql(), r = R(n, !0);
+				var n = $l(), r = R(n, !0);
 				B(() => q(r, U(t))), K(e, n);
 			};
 			J(r, (e) => {
@@ -7842,13 +7890,13 @@ function nu(e, t) {
 br(["click", "keydown"]);
 //#endregion
 //#region src/App.svelte
-var ru = /* @__PURE__ */ G("<div class=\"unsupported svelte-1n46o8q\"><strong class=\"svelte-1n46o8q\">Update Tend to use TEND Media.</strong><p>This panel does not provide the OndaCast catalog capability yet. Updating Tend adds it.</p></div>"), iu = /* @__PURE__ */ G("<!> <div class=\"middle svelte-1n46o8q\"><!> <main class=\"svelte-1n46o8q\"><!></main> <!></div> <!>", 1), au = /* @__PURE__ */ G("<div role=\"status\"> </div>"), ou = /* @__PURE__ */ G("<div class=\"tend-media svelte-1n46o8q\" tabindex=\"-1\"><!> <!> <!> <!></div>"), su = {
+var iu = /* @__PURE__ */ G("<div class=\"unsupported svelte-1n46o8q\"><strong class=\"svelte-1n46o8q\">Update Tend to use TEND Media.</strong><p>This panel does not provide the OndaCast catalog capability yet. Updating Tend adds it.</p></div>"), au = /* @__PURE__ */ G("<!> <div class=\"middle svelte-1n46o8q\"><!> <main class=\"svelte-1n46o8q\"><!></main> <!></div> <!>", 1), ou = /* @__PURE__ */ G("<div role=\"status\"> </div>"), su = /* @__PURE__ */ G("<div class=\"tend-media svelte-1n46o8q\" tabindex=\"-1\"><!> <!> <!> <!></div>"), cu = {
 	hash: "svelte-1n46o8q",
 	code: ".tend-media.svelte-1n46o8q {\n    /* Live Tend theme tokens with the TEND Notes dark palette as fallback. */--tm-bg: var(--color-base-100, #151b19);--tm-panel: var(--color-base-200, #1d2622);--tm-fg: var(--color-base-content, #d8e3df);--tm-accent: var(--color-primary, #66b798);--tm-on-accent: var(--color-primary-content, #071a13);--tm-muted: color-mix(in srgb, var(--tm-fg) 64%, var(--tm-bg));--tm-brand: #0f766e;--tm-live: #ff6b6b;--tm-fg-4: color-mix(in srgb, var(--tm-fg) 4.5%, transparent);--tm-fg-5: color-mix(in srgb, var(--tm-fg) 5%, transparent);--tm-fg-6: color-mix(in srgb, var(--tm-fg) 6%, transparent);--tm-fg-7: color-mix(in srgb, var(--tm-fg) 7%, transparent);--tm-fg-8: color-mix(in srgb, var(--tm-fg) 8%, transparent);--tm-fg-10: color-mix(in srgb, var(--tm-fg) 10%, transparent);--tm-fg-12: color-mix(in srgb, var(--tm-fg) 12%, transparent);--tm-fg-14: color-mix(in srgb, var(--tm-fg) 14%, transparent);--tm-fg-16: color-mix(in srgb, var(--tm-fg) 16%, transparent);--tm-fg-18: color-mix(in srgb, var(--tm-fg) 18%, transparent);--tm-fg-45: color-mix(in srgb, var(--tm-fg) 45%, transparent);--tm-accent-7: color-mix(in srgb, var(--tm-accent) 7%, transparent);--tm-accent-8: color-mix(in srgb, var(--tm-accent) 8%, transparent);--tm-accent-12: color-mix(in srgb, var(--tm-accent) 12%, transparent);--tm-accent-14: color-mix(in srgb, var(--tm-accent) 14%, transparent);--tm-pop: color-mix(in srgb, var(--tm-fg) 3.5%, var(--tm-panel));\n    /* The panel's window glass: --tend-panel-surface-alpha is 0% for a glass\n       window and 100% for a solid one. The main surface follows it exactly;\n       bars and side panels keep a light tint so the layout still reads. */--tm-alpha: var(--tend-panel-surface-alpha, 100%);--tm-surface: color-mix(in srgb, var(--tm-bg) var(--tm-alpha), transparent);--tm-panel-surface: color-mix(in srgb, var(--tm-panel) max(var(--tm-alpha), 45%), transparent);position:relative;height:100%;width:100%;overflow:hidden;display:flex;flex-direction:column;background:var(--tm-surface);color:var(--tm-fg);font-family:system-ui, -apple-system, \"Segoe UI\", sans-serif;font-size:13px;-webkit-font-smoothing:antialiased;outline:none;}.tend-media.svelte-1n46o8q * {box-sizing:border-box;}.tend-media.svelte-1n46o8q button {font-family:inherit;}.tend-media.svelte-1n46o8q button:focus-visible {outline:2px solid var(--tm-accent);outline-offset:2px;}.tend-media.svelte-1n46o8q .tm-pop {position:absolute;width:250px;padding:14px;border-radius:14px;z-index:5;background:var(--tm-pop);border:1px solid var(--tm-fg-10);box-shadow:0 20px 50px rgba(0, 0, 0, .5);}.toast.low.svelte-1n46o8q {bottom:20px;}.unsupported.svelte-1n46o8q {margin:auto;max-width:360px;text-align:center;padding:24px;font-size:13px;color:var(--tm-muted);}.unsupported.svelte-1n46o8q strong:where(.svelte-1n46o8q) {display:block;color:var(--tm-fg);font-size:15px;margin-bottom:6px;}.middle.svelte-1n46o8q {flex:1;min-height:0;display:flex;}main.svelte-1n46o8q {flex:1;min-width:0;overflow:auto;padding:26px 28px 28px;container-type:inline-size;}.toast.svelte-1n46o8q {position:absolute;left:50%;bottom:96px;transform:translateX(-50%);padding:10px 16px;border-radius:10px;background:var(--tm-fg);color:var(--tm-bg);font-size:12.5px;font-weight:600;box-shadow:0 12px 30px rgba(0, 0, 0, .4);z-index:6;white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis;}"
 };
-function cu(e, t) {
-	Ue(t, !0), $r(e, su);
-	let n = ji(t, "narrow", 7, !1), r = new Fa(t.host), i = /* @__PURE__ */ N(void 0);
+function lu(e, t) {
+	Ue(t, !0), $r(e, cu);
+	let n = ji(t, "narrow", 7, !1), r = new Ia(t.host), i = /* @__PURE__ */ N(void 0);
 	Mi(() => (r.start(), () => r.destroy())), gn(() => {
 		r.tab, r.showSlug, r.bookId, r.libKind, U(i)?.scrollTo(0, 0);
 	});
@@ -7926,51 +7974,51 @@ function cu(e, t) {
 	var d = {
 		setNarrow: a,
 		shutdown: o
-	}, f = ou(), p = I(f), m = (e) => {
-		K(e, ru());
+	}, f = su(), p = I(f), m = (e) => {
+		K(e, iu());
 	}, h = (e) => {
-		Kl(e, { get store() {
+		ql(e, { get store() {
 			return r;
 		} });
 	}, g = (e) => {
-		var t = iu(), n = L(t);
-		Va(n, { get store() {
+		var t = au(), n = L(t);
+		Ha(n, { get store() {
 			return r;
 		} });
 		var a = z(n, 2), o = I(a);
-		$a(o, { get store() {
+		eo(o, { get store() {
 			return r;
 		} });
 		var s = z(o, 2), c = I(s), l = (e) => {
-			kc(e, { get store() {
+			Ac(e, { get store() {
 				return r;
 			} });
 		}, u = /* @__PURE__ */ j(() => r.query.trim()), d = (e) => {
-			Oo(e, { get store() {
+			ko(e, { get store() {
 				return r;
 			} });
 		}, f = (e) => {
-			vs(e, { get store() {
+			ys(e, { get store() {
 				return r;
 			} });
 		}, p = (e) => {
-			Ts(e, { get store() {
+			Es(e, { get store() {
 				return r;
 			} });
 		}, m = (e) => {
-			$s(e, { get store() {
+			ec(e, { get store() {
 				return r;
 			} });
 		}, h = (e) => {
-			xc(e, { get store() {
+			Sc(e, { get store() {
 				return r;
 			} });
 		};
 		J(c, (e) => {
 			U(u) ? e(l) : r.tab === "home" ? e(d, 1) : r.tab === "mine" ? e(f, 2) : r.tab === "radio" ? e(p, 3) : r.tab === "pod" ? e(m, 4) : e(h, -1);
-		}), k(s), Ai(s, (e) => P(i, e), () => U(i)), ml(z(s, 2), { get store() {
+		}), k(s), Ai(s, (e) => P(i, e), () => U(i)), hl(z(s, 2), { get store() {
 			return r;
-		} }), k(a), Nl(z(a, 2), { get store() {
+		} }), k(a), Pl(z(a, 2), { get store() {
 			return r;
 		} }), K(e, t);
 	};
@@ -7978,7 +8026,7 @@ function cu(e, t) {
 		r.supported ? n() ? e(h, 1) : e(g, -1) : e(m);
 	});
 	var _ = z(p, 2), v = (e) => {
-		Xl(e, {
+		Zl(e, {
 			get store() {
 				return r;
 			},
@@ -7989,7 +8037,7 @@ function cu(e, t) {
 		r.pop === "prefs" && e(v);
 	});
 	var y = z(_, 2), b = (e) => {
-		nu(e, { get store() {
+		ru(e, { get store() {
 			return r;
 		} });
 	};
@@ -7997,7 +8045,7 @@ function cu(e, t) {
 		r.shortcuts && e(b);
 	});
 	var x = z(y, 2), S = (e) => {
-		var t = au();
+		var t = ou();
 		let i;
 		var a = R(t, !0);
 		B(() => {
@@ -8011,8 +8059,8 @@ function cu(e, t) {
 br(["keydown", "pointerdown"]);
 //#endregion
 //#region src/index.ts
-var lu = 640;
-function uu(e) {
+var uu = 640;
+function du(e) {
 	let t = null, n = null;
 	async function r() {
 		n?.disconnect(), n = null;
@@ -8026,7 +8074,7 @@ function uu(e) {
 	return e.onUnmount?.(r), {
 		mount(i) {
 			let a = i.shadowRoot ?? i.attachShadow({ mode: "open" }), o = document.createElement("div");
-			return o.style.cssText = "height:100%;width:100%", a.replaceChildren(o), i.style.display = i.style.display || "block", t = Ir(cu, {
+			return o.style.cssText = "height:100%;width:100%", a.replaceChildren(o), i.style.display = i.style.display || "block", t = Ir(lu, {
 				target: o,
 				props: {
 					host: e,
@@ -8038,4 +8086,4 @@ function uu(e) {
 	};
 }
 //#endregion
-export { lu as NARROW_WIDTH, uu as activate };
+export { uu as NARROW_WIDTH, du as activate };
