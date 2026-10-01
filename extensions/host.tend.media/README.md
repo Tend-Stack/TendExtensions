@@ -3,7 +3,8 @@
 Radio stations, podcasts and audiobooks from [OndaCast](https://ondacast.com), inside Tend.
 
 - **Listen now:** continue where you left off, stations on air, new episodes from your shows.
-- **Radio:** live stations by genre, with the song on air.
+- **Radio:** every OndaCast station, by listeners or by genre (Country, Latin, Rock, Pop, Hip-Hop, Easy Listening, Talk & News), with the song on air, its artwork and recently played tracks.
+- **Now playing panel:** follows what is playing: the station and song for radio; queue, chapters, transcript and details for podcasts; chapters with progress, bookmarks and Continue listening for books.
 - **Podcasts:** browse, subscribe, play next, queue, mark as played.
 - **Audiobooks:** LibriVox classics with chapters, bookmarks and time left at your speed.
 - **Player:** −15/+30, chapter skip, per-show speed, sleep timer (minutes, end of chapter, end of the current radio show), transcripts, volume, OS media keys.
@@ -18,4 +19,4 @@ Radio stations, podcasts and audiobooks from [OndaCast](https://ondacast.com), i
 | `storage` | Keep your subscriptions, queue, progress, speeds and bookmarks on the panel, keyed by your user id. |
 | `documents.read`, `documents.write` | Find a notebook and create a note when you press Clip to Notes. TEND Media never reads or changes existing notes. |
 
-`index.js` is a build of the Svelte source; see the source repository named in the pull request that added it.
+`index.js` is a build of the Svelte source in `Rubirosa/Tend-Media` on the project's Gitea.
