@@ -6,14 +6,14 @@
   "features": [
     "Live radio, podcasts and LibriVox audiobooks from OndaCast in one calm player",
     "My Media: favorite stations, your shows, audiobooks, playlists and history, filtered by kind",
-    "Episodes newest or oldest first, filtered by unplayed, in progress or played, with show notes",
-    "Per-show skip intro and outro, speed, and new episodes added to Up next automatically",
-    "Playlists, repeat one or all, shuffle, and a reorderable Up next",
+    "Podcast categories (True Crime, Comedy, News, Sports and more) and episodes sorted and filtered your way",
+    "Up next fills itself from the show or new episodes you play, always behind your own picks",
+    "Per-show skip intro and outro and speed, playlists, repeat one or all, shuffle",
     "Resume anywhere, chapter progress, bookmarks with notes, sleep timer and keyboard shortcuts"
   ],
   "requirements": [
     "A Tend panel that provides the ondacast capability",
     "TEND Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.3.1: Your library now stays put. Favorites, subscriptions, playlists, history, progress and preferences are kept on the panel (with a copy in your browser) and load every time you open TEND Media."
+  "release_notes": "1.4.0: Play an episode from a show or from New from your shows and its other unplayed episodes line up in Up next, behind anything you queued yourself. Browse podcasts by category, starting with True Crime (needs the latest Tend panel)."
 }
