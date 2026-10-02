@@ -15,5 +15,5 @@
     "A Tend panel that provides the ondacast capability",
     "TEND Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.6.0: A Near me chip on the Radio tab lists the stations around you, nearest first, with distances and Play nearest. Ask Sprout for a local station and it plays from the same list. Your location is rounded to about a kilometre and never stored."
+  "release_notes": "1.7.0: Next and previous on your headphones, car or keyboard media keys now skip +30 / −15 seconds (or your own skip sizes) inside podcasts and audiobooks, so you can skip ads hands-free. Next moves on to the next episode only near the end. Turn it off under Preferences → Headphone buttons skip."
 }
