@@ -32,8 +32,8 @@ extensions/<id>/
     extension.json     manifest with the theme block
     listing.json       store listing (never shipped inside the ZIP)
     README.md          optional
-    wallpaper.webp     optional, 2000 px wide
-    thumb.webp         required with a wallpaper, 480 px wide
+    wallpaper.webp     optional (photo packs), 1600-4096 px wide, landscape
+    thumb.webp         REQUIRED for every pack (photo or gradient), 480 px wide, 240-320 px tall
 ```
 
 Forbidden anywhere in a pack: `.js`, `.mjs`, `.html`, `.htm`, `.css`, `.svg`, `.wasm`, and dotfiles.
@@ -57,8 +57,8 @@ rewrites it (images included).
     "api": 1,                        // required, must be 1
     "modes": ["dark", "light"],      // optional; non-empty subset of dark|light, default both
     "wallpaper": {                   // required; exactly one of image | gradient
-      "image": "wallpaper.webp",     // .webp .jpg .jpeg .png .avif, listed in integrity, <= 4 MiB
-      "thumb": "thumb.webp",         // required with image, same formats, <= 512 KiB
+      "image": "wallpaper.webp",     // .webp .jpg .jpeg .png, listed in integrity, <= 4 MiB
+      "thumb": "thumb.webp",         // REQUIRED (photo and gradient packs), same formats, <= 512 KiB
       "position": "center",          // center | top | bottom | left | right (default center)
       "veil": {                      // optional, per mode: weighted gradient laid over the photo
         "dark":  { "color": "oklch(10% 0.03 290)", "top": 0.50, "middle": 0.12, "bottom": 0.50 },
@@ -124,22 +124,36 @@ ignored) and refuses a pack below that.
 
 ## Image specs
 
-| | Wallpaper | Thumbnail |
+The thumbnail is **mandatory for every theme pack**, gradient packs included. The store card and the
+wallpaper picker both show it, so it must look like the theme.
+
+| | Wallpaper (photo packs only) | Thumbnail (every pack) |
 |---|---|---|
-| Format | WebP (JPEG, PNG, AVIF also accepted) | same |
-| Size | 2000 px wide, keep the aspect (16:9 works best) | 480 px wide |
+| Format | WebP, JPEG or PNG (`.webp`, `.jpg`, `.jpeg`, `.png`; AVIF is not accepted) | same |
+| Dimensions | 1600-4096 px wide, 900-2560 px tall, landscape (wider than tall); 2000 px wide at 16:9 works best | exactly 480 px wide, 240-320 px tall (about 16:9 to 3:2) |
 | Quality | about 82 | about 78 |
 | File size | 150-480 KB is typical, hard limit 4 MiB | hard limit 512 KiB, 15-40 KB is typical |
 | Metadata | stripped | stripped |
 
-The file contents must match the extension (the build checks magic bytes). Example with ImageMagick:
+The build checks the magic bytes against the extension, then reads the dimensions from the image header
+(Pillow, no pixel decode). An unreadable header or a size outside the ranges is refused, and the message
+states both, for example `thumb.webp is 512x300; a theme pack thumbnail must be 480 px wide and 240-320 px tall`.
+
+Making the thumbnail:
+
+- Photo pack: downscale the wallpaper to 480 px wide (the height follows the aspect, 16:9 gives 270).
+- Gradient pack: render the gradient at 480 px wide, or take a screenshot of the Tend shell in your theme and
+  scale it to 480 px wide. The template ships `thumb.png`, rendered from its own gradient; replace it.
 
 ```bash
 magick source.png -resize 2000x -strip -quality 82 wallpaper.webp
 magick wallpaper.webp -resize 480x -strip -quality 78 thumb.webp
+# gradient or screenshot (any size with a 240-320 / 480 aspect after scaling):
+magick screenshot.png -resize 480x -strip thumb.png
 ```
 
-The picker tiles and the store card use the thumbnail, so make sure it is the same photo and not washed out.
+Check the result with `python -c "from PIL import Image; print(Image.open('thumb.webp').size)"`.
+Make sure the thumbnail is the same look as the theme and not washed out.
 
 ## Design checklist
 
@@ -171,7 +185,7 @@ The picker tiles and the store card use the thumbnail, so make sure it is the sa
 ```
 
 `listing.category` must also be `themes`. The listing format has no screenshot field; the store card
-uses the pack's `thumb`.
+uses the pack's mandatory `thumb`.
 
 ## Publishing
 

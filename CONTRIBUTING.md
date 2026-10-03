@@ -65,8 +65,11 @@ A theme pack is an extension with `category: "themes"` and a declarative `theme`
 
 1. Copy `templates/theme-pack/` to `extensions/<id>/` (the folder name must equal the manifest `id`) and
    edit `extension.json` and `listing.json` (`category` is `themes` in both).
-2. If you use a photo, add `wallpaper.webp` (2000 px wide) and `thumb.webp` (480 px wide) and reference
-   them from `theme.wallpaper`.
+2. Every pack needs a thumbnail, `theme.wallpaper.thumb`: `.webp`, `.jpg`, `.jpeg` or `.png` (no AVIF),
+   exactly 480 px wide and 240-320 px tall. The store card and the wallpaper picker show it. For a photo
+   pack downscale the wallpaper to 480 px wide; for a gradient pack render it or screenshot the shell in
+   your theme (the template ships one to replace). A photo pack also adds `wallpaper.webp` (1600-4096 px
+   wide, 900-2560 px tall, landscape) and references it as `theme.wallpaper.image`.
 3. Run `python tools/build.py` and `pytest tests/`; the build enforces the colour grammar, numeric ranges,
    image checks and the WCAG 4.5:1 `primary`/`primaryContent` contrast.
 4. Open a PR with one pack. The full reference is [docs/themes.md](docs/themes.md).

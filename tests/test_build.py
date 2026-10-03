@@ -618,19 +618,36 @@ def test_theme_wallpaper_needs_exactly_one_of_image_or_gradient(tmp_path: Path) 
         build.run(tmp_path, sequence=1, revision=REVISION_A)
 
 
-def test_theme_image_requires_thumb_and_thumb_requires_image(tmp_path: Path) -> None:
+def _copy_template(tmp_path: Path) -> Path:
+    dst = tmp_path / "extensions" / "com.example.my-theme"
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(REPO_ROOT / "templates" / "theme-pack", dst)
+    return dst
+
+
+def _write_image(path: Path, size: tuple[int, int], fmt: str | None = None) -> None:
+    from PIL import Image
+
+    Image.new("RGB", size, (30, 40, 90)).save(path, format=fmt)
+
+
+def test_theme_thumb_is_required_for_photo_and_gradient_packs(tmp_path: Path) -> None:
     ext_dir = _copy_theme_pack(tmp_path)
     _edit_theme(ext_dir, lambda m: m["theme"]["wallpaper"].pop("thumb"))
-    with pytest.raises(build.BuildError, match="thumb"):
+    with pytest.raises(build.BuildError, match="wallpaper.thumb: is required"):
         build.run(tmp_path, sequence=1, revision=REVISION_A)
 
     template = tmp_path / "t"
-    dst = template / "extensions" / "com.example.my-theme"
-    dst.parent.mkdir(parents=True)
-    shutil.copytree(REPO_ROOT / "templates" / "theme-pack", dst)
-    _edit_theme(dst, lambda m: m["theme"]["wallpaper"].update({"thumb": "README.md"}))
-    with pytest.raises(build.BuildError, match="only allowed together with 'image'"):
+    dst = _copy_template(template)
+    _edit_theme(dst, lambda m: m["theme"]["wallpaper"].pop("thumb"))
+    with pytest.raises(build.BuildError, match="wallpaper.thumb: is required"):
         build.run(template, sequence=1, revision=REVISION_A)
+
+
+def test_theme_gradient_pack_with_thumb_builds(tmp_path: Path) -> None:
+    dst = _copy_template(tmp_path)
+    assert "gradient" in json.loads((dst / "extension.json").read_text())["theme"]["wallpaper"]
+    build.run(tmp_path, sequence=1, revision=REVISION_A)
 
 
 def test_theme_gradient_glow_limits(tmp_path: Path) -> None:
@@ -726,7 +743,7 @@ def test_theme_image_magic_bytes_for_other_formats() -> None:
     assert check(b"\xff\xd8\xff\xe0" + b"0" * 28, ".jpg")
     assert check(b"\xff\xd8\xff\xe0" + b"0" * 28, ".jpeg")
     assert check(b"\x89PNG\r\n\x1a\n" + b"0" * 24, ".png")
-    assert check(b"\x00\x00\x00\x1cftypavif" + b"0" * 20, ".avif")
+    assert not check(b"\x00\x00\x00\x1cftypavif" + b"0" * 20, ".avif")
     assert not check(b"\xff\xd8\xff\xe0" + b"0" * 28, ".png")
     assert not check(b"GIF89a" + b"0" * 26, ".webp")
 
@@ -770,3 +787,61 @@ def test_theme_top_bar_fields_are_individually_optional(tmp_path: Path, top_bar:
     ext_dir = _copy_theme_pack(tmp_path)
     _edit_theme(ext_dir, lambda m: m["theme"]["shell"].update({"topBar": top_bar}))
     build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+# Contract Addendum C: mandatory thumbnail and image dimensions.
+@pytest.mark.parametrize(
+    "size,fmt,ok",
+    [((480, 270), "WEBP", True), ((480, 262), "WEBP", True), ((480, 240), "PNG", True), ((480, 320), "JPEG", True),
+     ((512, 300), "WEBP", False), ((480, 239), "PNG", False), ((480, 321), "PNG", False), ((479, 270), "PNG", False)],
+)
+def test_theme_thumb_dimensions(tmp_path: Path, size: tuple[int, int], fmt: str, ok: bool) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    ext = {"WEBP": "webp", "PNG": "png", "JPEG": "jpg"}[fmt]
+    (ext_dir / "thumb.webp").unlink()
+    _write_image(ext_dir / f"thumb.{ext}", size, fmt)
+    _edit_theme(ext_dir, lambda m: m["theme"]["wallpaper"].update({"thumb": f"thumb.{ext}"}))
+    if ok:
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+        return
+    with pytest.raises(build.BuildError, match=rf"thumb\.{ext} is {size[0]}x{size[1]}; a theme pack thumbnail must be 480 px wide and 240-320 px tall"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize(
+    "size,ok",
+    [((1600, 900), True), ((4096, 2560), True), ((2000, 1091), True),
+     ((1200, 900), False), ((1599, 900), False), ((1600, 899), False), ((4097, 2000), False),
+     ((2000, 2561), False), ((1000, 2000), False), ((1600, 1600), False)],
+)
+def test_theme_wallpaper_dimensions(tmp_path: Path, size: tuple[int, int], ok: bool) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _write_image(ext_dir / "wallpaper.webp", size, "WEBP")
+    if ok:
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+        return
+    with pytest.raises(build.BuildError, match=rf"wallpaper\.webp is {size[0]}x{size[1]}; a theme pack wallpaper must be"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_avif_is_refused(tmp_path: Path) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    (ext_dir / "thumb.avif").write_bytes(b"\x00\x00\x00\x1cftypavif" + b"0" * 64)
+    _edit_theme(ext_dir, lambda m: m["theme"]["wallpaper"].update({"thumb": "thumb.avif"}))
+    with pytest.raises(build.BuildError, match=r"wallpaper\.thumb.*\.webp"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize("field,name", [("thumb", "thumb.webp"), ("image", "wallpaper.webp")])
+def test_theme_corrupt_image_header_is_refused(tmp_path: Path, field: str, name: str) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    (ext_dir / name).write_bytes(b"RIFF\x00\x00\x00\x00WEBP" + b"0" * 64)
+    with pytest.raises(build.BuildError, match="unreadable image header"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_pack_template_ships_a_valid_thumb() -> None:
+    from PIL import Image
+
+    with Image.open(REPO_ROOT / "templates" / "theme-pack" / "thumb.png") as img:
+        assert img.size == (480, 270)

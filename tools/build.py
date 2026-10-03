@@ -38,6 +38,8 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # ---------- re-implementation of the panel's manifest rules ----------
@@ -105,11 +107,15 @@ THEME_MODES = ("dark", "light")
 THEME_POSITIONS = ("center", "top", "bottom", "left", "right")
 THEME_SHAPES = ("sharp", "default", "round")
 THEME_LABELS = ("light", "dark")
-THEME_IMAGE_SUFFIXES = (".webp", ".jpg", ".jpeg", ".png", ".avif")
+THEME_IMAGE_SUFFIXES = (".webp", ".jpg", ".jpeg", ".png")
 THEME_FORBIDDEN_SUFFIXES = (".js", ".mjs", ".html", ".htm", ".css", ".svg", ".wasm")
 THEME_FORBIDDEN_MANIFEST_KEYS = ("ui", "runtime", "widgets")
 THEME_MAX_WALLPAPER_BYTES = 4 * 1024 * 1024
 THEME_MAX_THUMB_BYTES = 512 * 1024
+THEME_THUMB_WIDTH = 480
+THEME_THUMB_HEIGHT = (240, 320)
+THEME_WALLPAPER_WIDTH = (1600, 4096)
+THEME_WALLPAPER_HEIGHT = (900, 2560)
 THEME_MAX_GLOWS = 4
 THEME_MIN_CONTRAST = 4.5
 THEME_MAX_PATH_CHARS = 128
@@ -301,11 +307,9 @@ def validate_theme(manifest: dict[str, Any], ext_id: str) -> None:
         raise _theme_error(ext_id, "wallpaper", "must set exactly one of 'image' or 'gradient'")
     if has_image:
         _theme_path(wallpaper["image"], THEME_IMAGE_SUFFIXES, integrity, ext_id=ext_id, where="wallpaper.image")
-        if "thumb" not in wallpaper:
-            raise _theme_error(ext_id, "wallpaper.thumb", "is required with 'image'")
-        _theme_path(wallpaper["thumb"], THEME_IMAGE_SUFFIXES, integrity, ext_id=ext_id, where="wallpaper.thumb")
-    elif "thumb" in wallpaper:
-        raise _theme_error(ext_id, "wallpaper.thumb", "is only allowed together with 'image'")
+    if "thumb" not in wallpaper:
+        raise _theme_error(ext_id, "wallpaper.thumb", "is required (the store and picker preview)")
+    _theme_path(wallpaper["thumb"], THEME_IMAGE_SUFFIXES, integrity, ext_id=ext_id, where="wallpaper.thumb")
     if "position" in wallpaper:
         _theme_enum(wallpaper["position"], THEME_POSITIONS, ext_id=ext_id, where="wallpaper.position")
 
@@ -422,9 +426,18 @@ def _image_matches_extension(head: bytes, suffix: str) -> bool:
         return head[:3] == b"\xff\xd8\xff"
     if suffix == ".png":
         return head[:8] == b"\x89PNG\r\n\x1a\n"
-    if suffix == ".avif":
-        return head[4:8] == b"ftyp" and (b"avif" in head[8:32] or b"avis" in head[8:32])
     return False
+
+
+def _read_image_size(path: Path, *, ext_id: str, field: str, rel: str) -> tuple[int, int]:
+    """Image dimensions from the header only (PIL reads no pixels here). An
+    unreadable header is refused, like the panel does."""
+    try:
+        with Image.open(path) as img:
+            width, height = img.size
+    except Exception as exc:  # noqa: BLE001 - PIL raises several types for bad headers
+        raise BuildError(f"{ext_id}: theme.wallpaper.{field} {rel!r} has an unreadable image header ({exc.__class__.__name__})") from exc
+    return int(width), int(height)
 
 
 def validate_theme_files(ext_dir: Path, manifest: dict[str, Any]) -> None:
@@ -452,6 +465,23 @@ def validate_theme_files(ext_dir: Path, manifest: dict[str, Any]) -> None:
             head = handle.read(32)
         if not _image_matches_extension(head, Path(rel).suffix.lower()):
             raise BuildError(f"{ext_id}: theme.wallpaper.{field} {rel!r} is not a valid {Path(rel).suffix.lower()} image")
+        width, height = _read_image_size(path, ext_id=ext_id, field=field, rel=rel)
+        if field == "thumb":
+            if width != THEME_THUMB_WIDTH or not THEME_THUMB_HEIGHT[0] <= height <= THEME_THUMB_HEIGHT[1]:
+                raise BuildError(
+                    f"{ext_id}: {rel} is {width}x{height}; a theme pack thumbnail must be "
+                    f"{THEME_THUMB_WIDTH} px wide and {THEME_THUMB_HEIGHT[0]}-{THEME_THUMB_HEIGHT[1]} px tall"
+                )
+        elif (
+            not THEME_WALLPAPER_WIDTH[0] <= width <= THEME_WALLPAPER_WIDTH[1]
+            or not THEME_WALLPAPER_HEIGHT[0] <= height <= THEME_WALLPAPER_HEIGHT[1]
+            or width <= height
+        ):
+            raise BuildError(
+                f"{ext_id}: {rel} is {width}x{height}; a theme pack wallpaper must be "
+                f"{THEME_WALLPAPER_WIDTH[0]}-{THEME_WALLPAPER_WIDTH[1]} px wide, "
+                f"{THEME_WALLPAPER_HEIGHT[0]}-{THEME_WALLPAPER_HEIGHT[1]} px tall and landscape (wider than tall)"
+            )
 
 
 # Files never shipped inside the ZIP or covered by the integrity map.

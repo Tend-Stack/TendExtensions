@@ -11,6 +11,7 @@
     "api": 1,
     "modes": ["dark", "light"],
     "wallpaper": {
+      "thumb": "thumb.png",
       "gradient": {
         "dark": {
           "base": "oklch(14% 0.030 260)",
