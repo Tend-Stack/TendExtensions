@@ -1,0 +1,19 @@
+{
+  "publisher": "TEND Stack",
+  "category": "developer-tools",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "JSON format, minify and validate with line and column errors, optional key sorting",
+    "Base64 (UTF-8 safe, URL-safe variant), URL encode, decode and parse, SHA-1/256/384/512 hashes",
+    "JWT decoder that shows exp, iat and nbf as dates and says plainly that it never verifies a signature",
+    "UUID v4 generator (1 to 50 at once), unix timestamp converter, and a regex tester with live match and group highlighting",
+    "Offline: no network access, only storage to remember your last tool"
+  ],
+  "requirements": [
+    "A Tend panel running schema-2 (native ESM) extensions",
+    "A desktop or mobile browser tab with ES module support",
+    "A secure context (https or localhost) for hashing and clipboard copy"
+  ],
+  "release_notes": "Initial release."
+}

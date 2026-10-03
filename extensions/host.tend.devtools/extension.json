@@ -1,0 +1,54 @@
+{
+  "schema": 2,
+  "id": "host.tend.devtools",
+  "name": "Developer Tools",
+  "version": "1.0.0",
+  "author": "tend.host",
+  "description": "Eight everyday developer tools in one window: JSON, Base64, URL, JWT, Hash, UUID, Timestamp and a guarded Regex tester. Offline, no network. Native ESM extension.",
+  "icon": "icon.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 760,
+      "h": 640
+    },
+    "minSize": {
+      "w": 360,
+      "h": 420
+    },
+    "maxSize": {
+      "w": 1400,
+      "h": 1000
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "README.md": "sha256-Tqf/rFpI4D/+PaLvE4TTFux1nOZJjvwaQyHXtkOCvuQ=",
+    "icon.svg": "sha256-CCd88w9QYqlExuASLDOY8hSi3+w/ym0Lb4Cr51muMjw=",
+    "index.js": "sha256-YySoSipR4eYjdCqI0n/qHd77phv1HGf8fYfHEjjTyw4=",
+    "lib/base64.js": "sha256-oCvm1zK5pvObUX740CNXtAD2rMB4iUUhHGF1eGbOH88=",
+    "lib/hash.js": "sha256-i8Ws8+hHhxEICQEHXoSaekW9IfXxzCNeXNeBZRW3B7w=",
+    "lib/json-tools.js": "sha256-4ZeWRMpQZ7TA2s6mH1j8Ro/3p183XODxWKqC4ij+O4U=",
+    "lib/jwt.js": "sha256-5ehJl76M+SHhf8qWWjS9MDuTLob0CJecptZ4ItwJB8A=",
+    "lib/regex-guard.js": "sha256-ZZ1UyetfplnyakqeZnFNQrZ0hvmhrRTLsOaDIZ89ngs=",
+    "lib/timestamp.js": "sha256-WW0q41eciSxDtf3ApIPAEaa/i23xFjbKudjum/iqg1A=",
+    "lib/url-tools.js": "sha256-cuKl6yXdqmYLumfefLvdS61Pew0qwqAurTompJX15M0=",
+    "lib/uuid.js": "sha256-lOZkX6/0eHroute6jq+5pAozuxWikCPvZisCZM40Bac=",
+    "panels/base64.js": "sha256-ZcqqBQWk5dAtKaHjcCbcpCVqRH/nbec8cQQLGs5II8A=",
+    "panels/hash.js": "sha256-3AvDsg2Q/hLmyqY5uOmqLb2/ErjmWP8cnkqMh6rGmMc=",
+    "panels/json.js": "sha256-m1UdGuvOnw+5JDc+UcC8T14966wz4pqUuSbA5a6AU0c=",
+    "panels/jwt.js": "sha256-6mHNKgEskbl4zeanGrYkUOiZmkSHh12fO3fao1otMH0=",
+    "panels/regex.js": "sha256-8BVEXhz0KI3jbDOJp3Hl83qUKYxrlS4ghCf3yjpSx90=",
+    "panels/timestamp.js": "sha256-Al5S2sauQI9n83UVTq/R9+k01WjjCBIoVZFOv6oYVEc=",
+    "panels/url.js": "sha256-Xxa31in9Z3HhE+RPPXGmUfoDWlW/6jd6Ch6LCJe+XqM=",
+    "panels/uuid.js": "sha256-/K46hYSNfxXTgldEM7Wkf+4rCHkw18LpbCWrv/LdaN0=",
+    "store.js": "sha256-8x6ETjbHoxBTbhXIqt03Mom5CB1/8ODs/zhJeYYQu+E=",
+    "ui/clipboard.js": "sha256-Rssu+UzbgYazHiIx83NO7olqQb2pXRZjBFuoAg2OIgw=",
+    "ui/dom.js": "sha256-d89D5MMxqHXe+9fVsN78txxMdApXh8BuJJUTTt+Q6vg=",
+    "ui/parts.js": "sha256-F5SqkmmM/GvXRwyqV3xVoiNy1apE7T8lsEyxII8qD1A=",
+    "ui/styles.js": "sha256-LVUBUPoGX0LO4MxzMKskc9coWj0HG/UDx4ctusyZJ4Q="
+  }
+}
