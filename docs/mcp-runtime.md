@@ -176,6 +176,25 @@ An envelope whose sequence cannot be read back at all — a failed download, a
 missing asset — is a refusal, not a zero. "The download broke" is not evidence that
 the alias is behind this build.
 
+Public alias/artifact reads retry transient HTTP 429/500/502/503/504 and transport
+failures at most three times, with one- and two-second backoff. Each attempt keeps
+its existing response-size and socket-timeout bound and carries no credential.
+Permanent responses (including authentication failures and 404) are not retried;
+exhaustion still refuses unknown sequence or immutable bytes. Publication steps
+also classify raw socket timeouts/resets as bounded transient failures and retry
+the existing whole reconciliation, rereading release state before any mutation.
+No retry enables overwrite, resets the signed sequence, replaces pinned keys or
+turns an uncertain result into successful publication. A new workflow dispatch
+still needs a forward unused version if an immutable version was already signed
+and published with different envelope dates.
+
+Retries do not guarantee convergence after every lost mutation response. If an
+alias envelope upload succeeded before its response was lost, reconciliation may
+observe the new sequence floor and refuse the same version without further
+writes. This is a failed publication, not proof that both platform envelopes were
+updated. Inspect the public assets and use the normal forward-version workflow;
+do not bypass the floor or overwrite immutable assets to repair the alias.
+
 ### The alias release
 
 After `mcp-runtime-<version>` is published, the workflow publishes or updates

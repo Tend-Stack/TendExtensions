@@ -69,7 +69,7 @@ from tools.mcp_window import (
     check_sequence_increases,
     sequence_of,
 )
-from tools.release import ReleaseError, api, classify_failure
+from tools.release import ReleaseError, api, classify_failure, fetch_public_asset
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -207,9 +207,8 @@ def _plain_fetch(url: str) -> bytes:
     public, and a download is never a reason for the publish token to leave the
     two API hosts `tools.release.api` allows.
     """
-    request = urllib.request.Request(url, headers={"User-Agent": "TendExtensions-mcp-release"})
-    with urllib.request.urlopen(request, timeout=120) as response:
-        body = response.read(MAX_COMPARE_BYTES + 1)
+    body = fetch_public_asset(url, timeout=120, max_bytes=MAX_COMPARE_BYTES,
+                              user_agent="TendExtensions-mcp-release")
     if len(body) > MAX_COMPARE_BYTES:
         raise ReleaseError("a published asset is larger than this tool will compare")
     return body
@@ -773,7 +772,7 @@ def _attempt(action: Callable[[], dict], *, retries: int) -> dict | None:
         except ReleaseError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return None
-        except (urllib.error.HTTPError, urllib.error.URLError) as exc:
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ConnectionError) as exc:
             last_message, permanent = classify_failure(exc)
             print(f"attempt {attempt}/{retries}: {last_message}", file=sys.stderr)
             if permanent:

@@ -381,3 +381,29 @@ def test_runtime_workflow_uses_the_core_workers_capability_contract() -> None:
     workflow = (ROOT / ".gitea/workflows/mcp-runtime.yml").read_text()
     assert "go run ./cmd/tend-mcp-release sign" in workflow
     assert "--capability" not in workflow
+
+
+@pytest.mark.parametrize("failure", [TimeoutError("private-token"), ConnectionResetError("private-token")])
+def test_publish_attempt_retries_raw_socket_failure_without_traceback(monkeypatch, capsys, failure) -> None:
+    calls, sleeps = [], []
+    def attempt():
+        calls.append(True)
+        if len(calls) == 1: raise failure
+        return {"original": True}
+    monkeypatch.setattr(mcp_release.time, "sleep", sleeps.append)
+    assert mcp_release._attempt(attempt, retries=3) == {"original": True}
+    assert len(calls) == 2 and sleeps == [2]
+    text = capsys.readouterr().err
+    assert "transport" in text and "private-token" not in text and "Traceback" not in text
+
+
+def test_publish_attempt_exhausts_socket_failures_and_never_reports_success(monkeypatch, capsys) -> None:
+    calls = []
+    def attempt():
+        calls.append(True)
+        raise TimeoutError("private-token")
+    monkeypatch.setattr(mcp_release.time, "sleep", lambda seconds: None)
+    assert mcp_release._attempt(attempt, retries=3) is None
+    assert len(calls) == 3
+    text = capsys.readouterr().err
+    assert "exhausted 3" in text and "private-token" not in text

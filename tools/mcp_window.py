@@ -62,7 +62,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from tools.release import ReleaseError
+from tools.release import ReleaseError, fetch_public_asset
 
 # The mutable tag a consumer may pin instead of a version. See docs/mcp-runtime.md.
 ALIAS_TAG = "mcp-runtime-latest"
@@ -264,9 +264,8 @@ def alias_state(envelope_body: bytes) -> AliasState:
 
 def fetch_public(url: str) -> bytes:
     """Read one published asset with no credential attached."""
-    request = urllib.request.Request(url, headers={"User-Agent": "TendExtensions-mcp-window"})
-    with urllib.request.urlopen(request, timeout=60) as response:
-        return response.read(MAX_ENVELOPE_BYTES + 1)
+    return fetch_public_asset(url, timeout=60, max_bytes=MAX_ENVELOPE_BYTES,
+                              user_agent="TendExtensions-mcp-window")
 
 
 def read_alias(url: str, *, fetch: FetchFn = fetch_public) -> AliasState | None:

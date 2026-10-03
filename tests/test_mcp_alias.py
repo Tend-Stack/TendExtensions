@@ -204,6 +204,82 @@ def test_alias_touches_no_release_but_its_own(tmp_path: Path) -> None:
     assert not any(TAG in path for _, path in fake.calls)
 
 
+def test_alias_retry_rereads_after_ambiguous_delete_without_resigning_or_overwrite(tmp_path, monkeypatch) -> None:
+    previous = write_release_dir(tmp_path / "previous", version="0.1.0")
+    newer = write_release_dir(tmp_path / "newer", version="0.1.1", salt=b" next")
+    public_bytes = dict(previous)
+
+    class InterruptedAPI(FakeAliasAPI):
+        interrupted = False
+        def __call__(self, path, *, method="GET", payload=None, binary=None):
+            result = super().__call__(path, method=method, payload=payload, binary=binary)
+            if method == "DELETE":
+                asset_id = int(path.rsplit("/", 1)[1])
+                self.release["assets"] = [a for a in self.release["assets"] if a["id"] != asset_id]
+                if not self.interrupted:
+                    self.interrupted = True
+                    # GitHub applied the deletion, but its response was lost.
+                    raise TimeoutError("private-token")
+            elif method == "POST" and path.startswith("https://uploads.github.com/"):
+                name = path.split("name=")[1]
+                public_bytes[name] = binary
+                self.release["assets"].append({"name": name, "id": len(self.calls)+1000, "browser_download_url": f"https://example.invalid/{name}"})
+            return result
+
+    fake = InterruptedAPI(_alias_published(previous))
+    sleeps = []
+    monkeypatch.setattr(mcp_release.time, "sleep", sleeps.append)
+    result = mcp_release._attempt(
+        lambda: mcp_release.sync_alias_release(newer, "0.1.1", REVISION_A, api_fn=fake, fetch_fn=lambda url: public_bytes[url.rsplit("/", 1)[1]]),
+        retries=3,
+    )
+    assert result is not None and sleeps == [2]
+    assert fake.calls.count(("GET", f"/releases/tags/{ALIAS_TAG}")) == 2
+    assert public_bytes == newer and len(fake.release["assets"]) == 5
+    assert not any(TAG in path for _, path in fake.calls)
+
+
+def test_alias_retry_refuses_after_envelope_upload_response_is_lost(tmp_path, monkeypatch, capsys) -> None:
+    previous = write_release_dir(tmp_path / "previous", version="0.1.0")
+    newer = write_release_dir(tmp_path / "newer", version="0.1.1", salt=b" next")
+    public_bytes = dict(previous)
+
+    class InterruptedAPI(FakeAliasAPI):
+        interrupted_at = None
+
+        def __call__(self, path, *, method="GET", payload=None, binary=None):
+            result = super().__call__(path, method=method, payload=payload, binary=binary)
+            if method == "DELETE":
+                asset_id = int(path.rsplit("/", 1)[1])
+                self.release["assets"] = [a for a in self.release["assets"] if a["id"] != asset_id]
+            elif method == "POST" and path.startswith("https://uploads.github.com/"):
+                name = path.split("name=")[1]
+                public_bytes[name] = binary
+                self.release["assets"].append({"name": name, "id": len(self.calls)+1000, "browser_download_url": f"https://example.invalid/{name}"})
+                if name == mcp_release.ENVELOPE_ASSETS[0]:
+                    # The first envelope advanced the floor, but the response
+                    # was lost before the second envelope could be published.
+                    self.interrupted_at = len(self.calls)
+                    raise TimeoutError("private-token")
+            return result
+
+    fake = InterruptedAPI(_alias_published(previous))
+    sleeps = []
+    monkeypatch.setattr(mcp_release.time, "sleep", sleeps.append)
+    result = mcp_release._attempt(
+        lambda: mcp_release.sync_alias_release(newer, "0.1.1", REVISION_A, api_fn=fake, fetch_fn=lambda url: public_bytes[url.rsplit("/", 1)[1]]),
+        retries=3,
+    )
+    assert result is None and sleeps == [2]
+    assert fake.interrupted_at is not None
+    assert fake.calls[fake.interrupted_at:] == [("GET", f"/releases/tags/{ALIAS_TAG}")]
+    assert public_bytes[mcp_release.ENVELOPE_ASSETS[0]] == newer[mcp_release.ENVELOPE_ASSETS[0]]
+    assert public_bytes[mcp_release.ENVELOPE_ASSETS[1]] == previous[mcp_release.ENVELOPE_ASSETS[1]]
+    assert not any(TAG in path for _, path in fake.calls)
+    output = capsys.readouterr().err
+    assert "already serves sequence" in output and "private-token" not in output
+
+
 def test_release_body_records_the_window_and_the_key(tmp_path: Path) -> None:
     bodies = write_release_dir(tmp_path)
     body = mcp_release.release_body(

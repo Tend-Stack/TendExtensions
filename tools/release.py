@@ -83,6 +83,31 @@ def api(path: str, *, method: str = "GET", payload: dict | None = None, binary: 
         return json.loads(body) if body else {}
 
 
+def fetch_public_asset(url: str, *, timeout: int, max_bytes: int, user_agent: str) -> bytes:
+    """Bounded, credential-free read retries, never an authenticated mutation.
+
+    Retries do not turn an unreadable envelope into an absent one: the final
+    exception still reaches the caller's fail-closed sequence/byte checks.
+    Each failed response is closed before retry. Permanent HTTP responses are
+    raised immediately, including 404's existing first-publication meaning.
+    """
+    request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return response.read(max_bytes + 1)
+        except (urllib.error.URLError, OSError) as exc:
+            if isinstance(exc, urllib.error.HTTPError):
+                code = exc.code
+                exc.close()
+                if code not in (429, 500, 502, 503, 504):
+                    raise
+            if attempt == 2:
+                raise
+            time.sleep(2**attempt)
+    raise AssertionError("unreachable read retry state")
+
+
 def classify_failure(exc: BaseException) -> tuple[str, bool]:
     """Classify a release failure the way scripts/publish-verified-main.py
     classifies git push failures: a message safe to print (never the raw
@@ -102,7 +127,7 @@ def classify_failure(exc: BaseException) -> tuple[str, bool]:
         if status in (502, 503, 504):
             return (f"GitHub API returned a transient server error ({status})", False)
         return (f"GitHub API returned an unclassified HTTP {status} error", False)
-    if isinstance(exc, urllib.error.URLError):
+    if isinstance(exc, (urllib.error.URLError, TimeoutError, ConnectionError)):
         return ("GitHub API transport failed (connection, DNS, or timeout)", False)
     return (f"unclassified release failure: {type(exc).__name__}", False)
 

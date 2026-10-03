@@ -348,6 +348,41 @@ def test_read_alias_returns_the_published_state() -> None:
     assert state is not None and state.version == "0.3.1"
 
 
+def test_real_public_alias_reader_recovers_transient_response_before_sequence_check(monkeypatch) -> None:
+    from tools import release
+    calls = []
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self, count):
+            assert count == mcp_window.MAX_ENVELOPE_BYTES + 1
+            return envelope_bytes("0.3.1")
+    def fetch(request, *, timeout):
+        calls.append(True)
+        assert request.get_header("Authorization") is None and timeout == 60
+        if len(calls) == 1:
+            raise urllib.error.HTTPError(request.full_url, 503, "private-token", {}, None)
+        return Response()
+    monkeypatch.setattr(release.urllib.request, "urlopen", fetch)
+    monkeypatch.setattr(release.time, "sleep", lambda seconds: None)
+    # read_alias's default bound function uses the actual retrying public fetch.
+    state = mcp_window.read_alias("https://example.invalid/e.json")
+    assert state.version == "0.3.1" and len(calls) == 2
+
+
+def test_real_public_alias_reader_stays_fail_closed_after_bounded_exhaustion(monkeypatch) -> None:
+    from tools import release
+    calls = []
+    def fetch(*args, **kwargs):
+        calls.append(True)
+        raise TimeoutError("private-token")
+    monkeypatch.setattr(release.urllib.request, "urlopen", fetch)
+    monkeypatch.setattr(release.time, "sleep", lambda seconds: None)
+    with pytest.raises(ReleaseError, match="refusing to publish without knowing") as result:
+        mcp_window.read_alias("https://example.invalid/e.json")
+    assert len(calls) == 3 and "private-token" not in str(result.value)
+
+
 def test_the_alias_url_is_the_one_a_consumer_pins() -> None:
     assert mcp_window.ALIAS_TAG == "mcp-runtime-latest"
     assert mcp_window.ALIAS_ENVELOPE_URL == (
