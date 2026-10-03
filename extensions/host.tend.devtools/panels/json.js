@@ -26,6 +26,9 @@ export function createJsonPanel(ctx) {
       status.set(okText, 'ok');
     } else {
       lastError = result.error;
+      // The result must describe the current input; never leave an older
+      // valid output next to an error.
+      output.set('');
       status.set(describeError(result.error), 'error');
     }
     goTo.element.hidden = !lastError;
