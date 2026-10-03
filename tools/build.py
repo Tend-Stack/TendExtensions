@@ -307,6 +307,11 @@ def validate_theme(manifest: dict[str, Any], ext_id: str) -> None:
         raise _theme_error(ext_id, "wallpaper", "must set exactly one of 'image' or 'gradient'")
     if has_image:
         _theme_path(wallpaper["image"], THEME_IMAGE_SUFFIXES, integrity, ext_id=ext_id, where="wallpaper.image")
+    else:
+        # Photo-only fields, refused on a gradient pack exactly as the panel core does.
+        for key in ("position", "veil", "fallback"):
+            if key in wallpaper:
+                raise _theme_error(ext_id, f"wallpaper.{key}", "only applies to an image wallpaper, not a gradient")
     if "thumb" not in wallpaper:
         raise _theme_error(ext_id, "wallpaper.thumb", "is required (the store and picker preview)")
     _theme_path(wallpaper["thumb"], THEME_IMAGE_SUFFIXES, integrity, ext_id=ext_id, where="wallpaper.thumb")

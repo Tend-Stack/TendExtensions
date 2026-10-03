@@ -650,6 +650,22 @@ def test_theme_gradient_pack_with_thumb_builds(tmp_path: Path) -> None:
     build.run(tmp_path, sequence=1, revision=REVISION_A)
 
 
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("position", "center"),
+        ("veil", {"dark": {"color": "#000000", "top": 0.5, "middle": 0.1, "bottom": 0.5},
+                  "light": {"color": "#ffffff", "top": 0.3, "middle": 0.0, "bottom": 0.2}}),
+        ("fallback", {"dark": "#101010", "light": "#f0f0f0"}),
+    ],
+)
+def test_theme_gradient_pack_refuses_photo_only_fields(tmp_path: Path, key: str, value: object) -> None:
+    dst = _copy_template(tmp_path)
+    _edit_theme(dst, lambda m: m["theme"]["wallpaper"].update({key: value}))
+    with pytest.raises(build.BuildError, match=f"wallpaper.{key}"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
 def test_theme_gradient_glow_limits(tmp_path: Path) -> None:
     dst = tmp_path / "extensions" / "com.example.my-theme"
     dst.parent.mkdir(parents=True)
