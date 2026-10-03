@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f.svg)](LICENSE)
 [![Latest registry release](https://img.shields.io/github/v/release/Tend-Stack/TendExtensions?label=registry&sort=semver)](https://github.com/Tend-Stack/TendExtensions/releases)
-[![Extensions](https://img.shields.io/badge/extensions-25-14b8a6.svg)](#whats-in-the-registry)
+[![Extensions](https://img.shields.io/badge/extensions-26-14b8a6.svg)](#whats-in-the-registry)
 
 Every extension lives here as plain source, in its own folder. A pull request adds one or updates one.
 On merge, CI builds every package, signs the index, and publishes a release that every Tend panel
@@ -66,6 +66,7 @@ publisher, category, feature bullets, requirements, and the release notes for th
 |---|---|---|---|
 | **Calculator** (`host.tend.calculator`) | 3.0.0 | productivity | Standard, scientific, graphing, programmer, statistics, financial and converter modes, a real expression engine, a history tape, full keyboard control |
 | **Calendar** (`host.tend.calendar`) | 1.5.0 | productivity | Month, week, day and agenda views with local events, reminders and ICS import/export |
+| **Developer Tools** (`host.tend.devtools`) | 1.0.0 | developer-tools | JSON, Base64, URL, JWT, hash, UUID, timestamp and guarded regex tools in one offline window |
 | **TEND Media** (`host.tend.media`) | 1.0.0 | media | Radio, podcasts and audiobooks from OndaCast with subscriptions, a queue, per-show speed, sleep timer, transcripts and clips to Notes |
 | **Riftwing: Skybound** (`com.tendstack.riftwing`) | 4.1.1 | games | A fast, replayable sky-runner with eight worlds and nine pilots |
 | **2048 Odyssey** (`host.tend.2048`) | 2.0.1 | games | Merge mastery across an endless target ladder |
