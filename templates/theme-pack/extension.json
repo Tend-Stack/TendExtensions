@@ -1,0 +1,54 @@
+{
+  "schema": 2,
+  "id": "com.example.my-theme",
+  "name": "My Theme",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "One sentence describing the look, at most 160 characters.",
+  "category": "themes",
+  "permissions": [],
+  "theme": {
+    "api": 1,
+    "modes": ["dark", "light"],
+    "wallpaper": {
+      "gradient": {
+        "dark": {
+          "base": "oklch(14% 0.030 260)",
+          "glows": [
+            { "x": 18, "y": 22, "w": 80, "h": 60, "color": "oklch(55% 0.16 280)", "alpha": 0.55 },
+            { "x": 84, "y": 78, "w": 70, "h": 55, "color": "oklch(60% 0.12 200)", "alpha": 0.40 }
+          ]
+        },
+        "light": {
+          "base": "oklch(97% 0.012 260)",
+          "glows": [
+            { "x": 18, "y": 22, "w": 80, "h": 60, "color": "oklch(85% 0.08 280)", "alpha": 0.60 },
+            { "x": 84, "y": 78, "w": 70, "h": 55, "color": "oklch(88% 0.06 200)", "alpha": 0.50 }
+          ]
+        }
+      }
+    },
+    "palette": {
+      "dark": {
+        "primary": "oklch(76% 0.14 280)",
+        "secondary": "oklch(82% 0.10 250)",
+        "primaryContent": "oklch(15% 0.030 270)",
+        "highlight": "oklch(82% 0.11 200)"
+      },
+      "light": {
+        "primary": "oklch(50% 0.17 280)",
+        "secondary": "oklch(56% 0.13 250)",
+        "primaryContent": "oklch(98.5% 0.008 280)",
+        "highlight": "oklch(54% 0.11 200)"
+      }
+    },
+    "surface": { "hue": 270, "chroma": 0.030 },
+    "shell": {
+      "desktopLabels": "light",
+      "shadow": 0.6
+    }
+  },
+  "integrity": {
+    "README.md": "sha256-regenerated-by-tools-build-py"
+  }
+}

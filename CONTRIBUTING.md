@@ -18,7 +18,7 @@
    ```json
    {
      "publisher": "Your name or org",
-     "category": "games | utilities | productivity | media | developer-tools | communication | other",
+     "category": "games | utilities | productivity | media | developer-tools | communication | themes | other",
      "featured": false,
      "reviewed": true,
      "features": ["3 to 6 short bullets"],
@@ -57,6 +57,19 @@
    reference example.
 9. Open a PR. CI re-runs the same build and validates against the pinned
    core commit.
+
+## Adding a theme pack
+
+A theme pack is an extension with `category: "themes"` and a declarative `theme` block instead of code
+(no `.js`/`.mjs`/`.html`/`.css`/`.svg`/`.wasm` files, no `ui`/`runtime`/`widgets`, no permissions).
+
+1. Copy `templates/theme-pack/` to `extensions/<id>/` (the folder name must equal the manifest `id`) and
+   edit `extension.json` and `listing.json` (`category` is `themes` in both).
+2. If you use a photo, add `wallpaper.webp` (2000 px wide) and `thumb.webp` (480 px wide) and reference
+   them from `theme.wallpaper`.
+3. Run `python tools/build.py` and `pytest tests/`; the build enforces the colour grammar, numeric ranges,
+   image checks and the WCAG 4.5:1 `primary`/`primaryContent` contrast.
+4. Open a PR with one pack. The full reference is [docs/themes.md](docs/themes.md).
 
 ## Updating an existing extension
 

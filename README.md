@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f.svg)](LICENSE)
 [![Latest registry release](https://img.shields.io/github/v/release/Tend-Stack/TendExtensions?label=registry&sort=semver)](https://github.com/Tend-Stack/TendExtensions/releases)
-[![Extensions](https://img.shields.io/badge/extensions-19-14b8a6.svg)](#whats-in-the-registry)
+[![Extensions](https://img.shields.io/badge/extensions-25-14b8a6.svg)](#whats-in-the-registry)
 
 Every extension lives here as plain source, in its own folder. A pull request adds one or updates one.
 On merge, CI builds every package, signs the index, and publishes a release that every Tend panel
@@ -65,6 +65,7 @@ publisher, category, feature bullets, requirements, and the release notes for th
 | Extension | Version | Category | What it is |
 |---|---|---|---|
 | **Calculator** (`host.tend.calculator`) | 3.0.0 | productivity | Standard, scientific, graphing, programmer, statistics, financial and converter modes, a real expression engine, a history tape, full keyboard control |
+| **Calendar** (`host.tend.calendar`) | 1.5.0 | productivity | Month, week, day and agenda views with local events, reminders and ICS import/export |
 | **TEND Media** (`host.tend.media`) | 1.0.0 | media | Radio, podcasts and audiobooks from OndaCast with subscriptions, a queue, per-show speed, sleep timer, transcripts and clips to Notes |
 | **Riftwing: Skybound** (`com.tendstack.riftwing`) | 4.1.1 | games | A fast, replayable sky-runner with eight worlds and nine pilots |
 | **2048 Odyssey** (`host.tend.2048`) | 2.0.1 | games | Merge mastery across an endless target ladder |
@@ -83,8 +84,22 @@ publisher, category, feature bullets, requirements, and the release notes for th
 | **Sudoku** (`host.tend.sudoku`) | 1.1.0 | games | Classic 9×9 Sudoku |
 | **Tetris** (`host.tend.tetris`) | 3.1.0 | games | The classic, rebuilt with keyboard and touch controls |
 | **Word Guess** (`host.tend.wordle`) | 1.1.0 | games | Guess the hidden word in six tries |
+| **Nebula** (`host.tend.theme.nebula`) | 1.0.0 | themes | Theme pack: orchid starlight and teal dust across a violet spiral galaxy |
+| **Synthwave** (`host.tend.theme.synthwave`) | 1.0.0 | themes | Theme pack: gold contrails over a neon wireframe horizon |
+| **Inkwell** (`host.tend.theme.inkwell`) | 1.0.0 | themes | Theme pack: cyan, cobalt and gold ink blooming in a glass tank |
+| **Prism** (`host.tend.theme.prism`) | 1.0.0 | themes | Theme pack: a tangerine cube and amber light beams in a quiet concrete gallery |
+| **Skyline** (`host.tend.theme.skyline`) | 1.0.0 | themes | Theme pack: sapphire night over a riverside city, window light glowing gold |
 
 The table is a snapshot; `dist/registry.json` built from `main` is always the authority.
+
+## Themes
+
+Not every extension is code. A **theme pack** is an extension with `category: "themes"` that carries only
+a declarative `theme` object (colours, a wallpaper, a few shell settings) and its images. It has no
+scripts and no permissions, and every colour passes a closed grammar, so installing one can only change
+how the panel looks. Enabled packs appear in the wallpaper picker, and each account tunes its own.
+Five first-party packs ship here (Nebula, Synthwave, Inkwell, Prism, Skyline). To make your own, copy
+[`templates/theme-pack`](templates/theme-pack) and follow [docs/themes.md](docs/themes.md).
 
 ## How an extension reaches a panel
 
@@ -161,6 +176,8 @@ extensions/<id>/                 one folder per extension (id = manifest id)
     listing.json                 store listing: publisher, category, features, requirements, release notes
     README.md, icon.svg, *.js    the extension itself
 
+templates/theme-pack/            starter for a gradient-based theme pack (copy into extensions/; never built as is)
+
 tools/
     build.py                     validate, rebuild integrity maps, build deterministic ZIPs, write registry.json
     sign.py                      sign registry.json into the published envelope (also --verify)
@@ -174,6 +191,7 @@ tests/                           tooling tests (reproducible builds, integrity, 
 scripts/publish-verified-main.py publishes the exact verified commit to this repository
 .gitea/workflows/ci.yml          the pipeline: build and validate → publish → sign and release
 .gitea/workflows/mcp-runtime.yml build, sign and publish the optional MCP component runtime
+docs/themes.md                   how to build and publish a theme pack
 docs/mcp-runtime.md              what that runtime is, how it is signed, and how a core release re-signs it
 ```
 
