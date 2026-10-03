@@ -10,7 +10,7 @@ on that panel. Each account still chooses its own theme and can tune it (hue, di
 shadow); "Restore official look" drops the tuning. If the pack is later disabled or uninstalled, accounts
 that used it fall back to the default theme, and their tuning is kept in case the pack returns.
 
-Requires a panel with theme pack support (core 0.10.26 or newer).
+Requires a Tend panel with theme pack support (the `themes` extension category). Older panels refuse the category at install, so nothing half-applies.
 
 ## Quick start
 
@@ -156,7 +156,7 @@ The picker tiles and the store card use the thumbnail, so make sure it is the sa
   "featured": false,
   "reviewed": true,
   "features": ["3 to 6 bullets that describe the look"],
-  "requirements": ["A Tend panel with theme pack support (core 0.10.26 or newer)"],
+  "requirements": ["A Tend panel with theme pack support (the themes extension category)"],
   "release_notes": "Initial release."
 }
 ```

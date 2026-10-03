@@ -10,7 +10,7 @@
     "Tune hue, dim, top-bar opacity and shadow per account, then restore the official look any time"
   ],
   "requirements": [
-    "A Tend panel with theme pack support (core 0.10.26 or newer)"
+    "A Tend panel with theme pack support (the themes extension category)"
   ],
   "release_notes": "Initial release."
 }

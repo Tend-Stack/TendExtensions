@@ -10,7 +10,7 @@
     "Dark and light modes, tunable per account"
   ],
   "requirements": [
-    "A Tend panel with theme pack support (core 0.10.26 or newer)"
+    "A Tend panel with theme pack support (the themes extension category)"
   ],
   "release_notes": "Initial release."
 }
