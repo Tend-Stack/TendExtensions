@@ -86,7 +86,7 @@ publisher, category, feature bullets, requirements, and the release notes for th
 | **Word Guess** (`host.tend.wordle`) | 1.1.0 | games | Guess the hidden word in six tries |
 | **Nebula** (`host.tend.theme.nebula`) | 1.0.0 | themes | Theme pack: orchid starlight and teal dust across a violet spiral galaxy |
 | **Synthwave** (`host.tend.theme.synthwave`) | 1.0.0 | themes | Theme pack: gold contrails over a neon wireframe horizon |
-| **Inkwell** (`host.tend.theme.inkwell`) | 1.0.0 | themes | Theme pack: cyan, cobalt and gold ink blooming in a glass tank |
+| **Inkwell** (`host.tend.theme.inkwell`) | 1.0.1 | themes | Theme pack: cyan, cobalt and gold ink blooming beneath rippling water |
 | **Prism** (`host.tend.theme.prism`) | 1.0.0 | themes | Theme pack: a tangerine cube and amber light beams in a quiet concrete gallery |
 | **Skyline** (`host.tend.theme.skyline`) | 1.0.0 | themes | Theme pack: sapphire night over a riverside city, window light glowing gold |
 

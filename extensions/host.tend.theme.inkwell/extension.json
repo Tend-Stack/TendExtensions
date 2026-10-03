@@ -2,9 +2,9 @@
   "schema": 2,
   "id": "host.tend.theme.inkwell",
   "name": "Inkwell",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "tend.host",
-  "description": "Cyan, cobalt and gold ink blooming in a glass tank.",
+  "description": "Cyan, cobalt and gold ink blooming beneath rippling water.",
   "category": "themes",
   "permissions": [],
   "theme": {
@@ -65,8 +65,8 @@
     }
   },
   "integrity": {
-    "README.md": "sha256-YL6km/miOOc5fdjBAsyFItVAVJ3NIOBkPqigXBOwLV0=",
-    "thumb.webp": "sha256-xhn/CSU4TNR6c/SM92xTNw3s/b3Y9pTczCWeImOGBjg=",
-    "wallpaper.webp": "sha256-LTDBvZ1gp6m1CStg+xJguyvTMC7Mb4KsQ4E0DLZReU4="
+    "README.md": "sha256-bCROqJtsrk5Y3VQSDIkqzZyPg/24N7Ka6P/hO3JjoHo=",
+    "thumb.webp": "sha256-AMLfg1HmXsir14TOCw9eX41iZV4aK+2RRjFAfW1LG2k=",
+    "wallpaper.webp": "sha256-3B3HBxgUw5d/eU/vr9o+pMuuruV2yDk2TaSDlHv0wHU="
   }
 }

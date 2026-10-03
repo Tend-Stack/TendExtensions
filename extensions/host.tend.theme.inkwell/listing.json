@@ -4,7 +4,7 @@
   "featured": false,
   "reviewed": true,
   "features": [
-    "Cyan, cobalt and gold ink blooming in a glass tank as the wallpaper",
+    "Cyan, cobalt and gold ink blooming beneath rippling water as the wallpaper",
     "Cool cyan accents and cobalt highlights on an ink-blue interface",
     "A heavier veil in dark mode keeps the busiest part of the photo calm behind windows",
     "Dark and light modes, tunable per account"
@@ -12,5 +12,5 @@
   "requirements": [
     "A Tend panel with theme pack support (the themes extension category)"
   ],
-  "release_notes": "Initial release."
+  "release_notes": "New full-resolution wallpaper (2000 px, no upscaling) without the tank walls; lighter download."
 }
