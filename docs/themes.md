@@ -95,6 +95,15 @@ Unknown keys anywhere inside `theme` are refused, so typos fail at build time an
 `api`. Numbers must be JSON numbers inside the stated ranges (not strings). Paths are relative,
 `/`-separated, at most 128 characters, with no `..`, no empty or `.` segments, no `:` and no leading `/`.
 
+Group rules (the panel core, its frontend and this registry apply the same ones):
+
+- Every per-mode object (`veil`, `fallback`, `gradient`, `palette`, `topBar.tint`) needs both `dark` and
+  `light`.
+- `surface` needs both `hue` and `chroma`; `shell.glass` needs both `blur` and `saturate`.
+- `shell.topBar` may set `opacity`, `tint`, or both, but not neither: a pack can make the bar translucent
+  without choosing a tint.
+- `icons` fields are each optional (defaults: `hueRotate` 0, `saturate` 1, `brightness` 1).
+
 ## The colour grammar
 
 Colours are the security boundary: nothing free-form is ever accepted. A colour is a string of at most 64

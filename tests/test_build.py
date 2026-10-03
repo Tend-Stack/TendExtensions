@@ -499,7 +499,7 @@ def test_templates_folder_is_never_built_as_a_package() -> None:
 )
 def test_theme_colour_grammar_refuses_injection_and_garbage(tmp_path: Path, bad: object) -> None:
     ext_dir = _copy_theme_pack(tmp_path)
-    _edit_theme(ext_dir, lambda m: m["theme"]["shell"].update({"topBar": {"tint": {"dark": bad}}}))
+    _edit_theme(ext_dir, lambda m: m["theme"]["shell"].update({"topBar": {"tint": {"dark": bad, "light": "oklch(97% 0.01 300)"}}}))
     with pytest.raises(build.BuildError, match="theme"):
         build.run(tmp_path, sequence=1, revision=REVISION_A)
 
@@ -518,7 +518,7 @@ def test_theme_colour_grammar_refuses_injection_and_garbage(tmp_path: Path, bad:
 )
 def test_theme_colour_grammar_accepts_valid_colours(tmp_path: Path, good: str) -> None:
     ext_dir = _copy_theme_pack(tmp_path)
-    _edit_theme(ext_dir, lambda m: m["theme"]["shell"].update({"topBar": {"tint": {"dark": good}}}))
+    _edit_theme(ext_dir, lambda m: m["theme"]["shell"].update({"topBar": {"tint": {"dark": good, "light": "oklch(97% 0.01 300)"}}}))
     build.run(tmp_path, sequence=1, revision=REVISION_A)
 
 
@@ -729,3 +729,44 @@ def test_theme_image_magic_bytes_for_other_formats() -> None:
     assert check(b"\x00\x00\x00\x1cftypavif" + b"0" * 20, ".avif")
     assert not check(b"\xff\xd8\xff\xe0" + b"0" * 28, ".png")
     assert not check(b"GIF89a" + b"0" * 26, ".webp")
+
+
+# Contract Addendum B: the group field rules Go, the frontend and this mirror share.
+@pytest.mark.parametrize(
+    "path,value",
+    [
+        (("surface",), {"hue": 290}),
+        (("surface",), {"chroma": 0.03}),
+        (("shell", "topBar"), {}),
+        (("shell", "topBar"), {"tint": {"dark": "oklch(20% 0.03 290)"}}),
+        (("shell", "glass"), {"blur": 20}),
+        (("shell", "glass"), {"saturate": 1.4}),
+        (("wallpaper", "fallback"), {"dark": "oklch(12% 0.03 290)"}),
+    ],
+)
+def test_theme_group_rules_refuse_incomplete_groups(tmp_path: Path, path: tuple[str, ...], value: object) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+
+    def mutate(manifest: dict) -> None:
+        node = manifest["theme"]
+        for key in path[:-1]:
+            node = node.setdefault(key, {})
+        node[path[-1]] = value
+
+    _edit_theme(ext_dir, mutate)
+    with pytest.raises(build.BuildError, match="theme"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize(
+    "top_bar",
+    [
+        {"opacity": 0.6},
+        {"tint": {"dark": "oklch(20% 0.03 290)", "light": "oklch(97% 0.01 300)"}},
+        {"opacity": 0.8, "tint": {"dark": "#101020", "light": "#f4f2fa"}},
+    ],
+)
+def test_theme_top_bar_fields_are_individually_optional(tmp_path: Path, top_bar: dict) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _edit_theme(ext_dir, lambda m: m["theme"]["shell"].update({"topBar": top_bar}))
+    build.run(tmp_path, sequence=1, revision=REVISION_A)

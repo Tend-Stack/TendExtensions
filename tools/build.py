@@ -239,12 +239,14 @@ def _theme_path(raw: object, suffixes: tuple[str, ...], integrity: dict[str, Any
 def _validate_mode_map(
     raw: object, *, ext_id: str, where: str, required: bool, check: Any
 ) -> None:
+    # Contract Addendum B: every per-mode object (veil, fallback, gradient,
+    # topBar.tint, palette) needs both modes. `required` is kept for call-site
+    # readability; a present map is always complete.
     obj = _theme_object(raw, set(THEME_MODES), ext_id=ext_id, where=where)
     for mode in THEME_MODES:
-        if mode in obj:
-            check(obj[mode], f"{where}.{mode}")
-        elif required:
+        if mode not in obj:
             raise _theme_error(ext_id, where, f"missing '{mode}'")
+        check(obj[mode], f"{where}.{mode}")
 
 
 def validate_theme(manifest: dict[str, Any], ext_id: str) -> None:
@@ -368,10 +370,11 @@ def validate_theme(manifest: dict[str, Any], ext_id: str) -> None:
 
     if "surface" in theme:
         surface = _theme_object(theme["surface"], {"hue", "chroma"}, ext_id=ext_id, where="surface")
-        if "hue" in surface:
-            number(surface["hue"], 0, 360, "surface.hue")
-        if "chroma" in surface:
-            number(surface["chroma"], 0, 0.05, "surface.chroma")
+        for key in ("hue", "chroma"):
+            if key not in surface:
+                raise _theme_error(ext_id, f"surface.{key}", "is required when 'surface' is set")
+        number(surface["hue"], 0, 360, "surface.hue")
+        number(surface["chroma"], 0, 0.05, "surface.chroma")
 
     if "icons" in theme:
         icons = _theme_object(theme["icons"], {"hueRotate", "saturate", "brightness"}, ext_id=ext_id, where="icons")
@@ -386,6 +389,8 @@ def validate_theme(manifest: dict[str, Any], ext_id: str) -> None:
         shell = _theme_object(theme["shell"], KNOWN_SHELL_KEYS, ext_id=ext_id, where="shell")
         if "topBar" in shell:
             bar = _theme_object(shell["topBar"], {"opacity", "tint"}, ext_id=ext_id, where="shell.topBar")
+            if not bar:
+                raise _theme_error(ext_id, "shell.topBar", "must set 'opacity', 'tint', or both")
             if "opacity" in bar:
                 number(bar["opacity"], 0.4, 1, "shell.topBar.opacity")
             if "tint" in bar:
@@ -395,10 +400,11 @@ def validate_theme(manifest: dict[str, Any], ext_id: str) -> None:
                 )
         if "glass" in shell:
             glass = _theme_object(shell["glass"], {"blur", "saturate"}, ext_id=ext_id, where="shell.glass")
-            if "blur" in glass:
-                number(glass["blur"], 0, 40, "shell.glass.blur")
-            if "saturate" in glass:
-                number(glass["saturate"], 1, 2, "shell.glass.saturate")
+            for key in ("blur", "saturate"):
+                if key not in glass:
+                    raise _theme_error(ext_id, f"shell.glass.{key}", "is required when 'glass' is set")
+            number(glass["blur"], 0, 40, "shell.glass.blur")
+            number(glass["saturate"], 1, 2, "shell.glass.saturate")
         if "shape" in shell:
             _theme_enum(shell["shape"], THEME_SHAPES, ext_id=ext_id, where="shell.shape")
         if "desktopLabels" in shell:
