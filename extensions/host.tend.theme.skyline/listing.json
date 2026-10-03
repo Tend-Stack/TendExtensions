@@ -1,0 +1,16 @@
+{
+  "publisher": "TEND Stack",
+  "category": "themes",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "A sapphire night over a riverside city, with window light glowing gold",
+    "Sapphire accents with gold highlights across the interface and desktop icons",
+    "A balanced veil keeps the skyline visible while windows stay readable",
+    "Dark and light modes, tunable per account"
+  ],
+  "requirements": [
+    "A Tend panel with theme pack support (core 0.10.26 or newer)"
+  ],
+  "release_notes": "Initial release."
+}

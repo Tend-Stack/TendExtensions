@@ -1,0 +1,72 @@
+{
+  "schema": 2,
+  "id": "host.tend.theme.skyline",
+  "name": "Skyline",
+  "version": "1.0.0",
+  "author": "tend.host",
+  "description": "Sapphire night over a riverside city, window light glowing gold.",
+  "category": "themes",
+  "permissions": [],
+  "theme": {
+    "api": 1,
+    "modes": [
+      "dark",
+      "light"
+    ],
+    "wallpaper": {
+      "image": "wallpaper.webp",
+      "thumb": "thumb.webp",
+      "position": "center",
+      "veil": {
+        "dark": {
+          "color": "oklch(11% 0.035 258)",
+          "top": 0.5,
+          "middle": 0.12,
+          "bottom": 0.48
+        },
+        "light": {
+          "color": "oklch(97.5% 0.015 255)",
+          "top": 0.3,
+          "middle": 0.06,
+          "bottom": 0.26
+        }
+      },
+      "fallback": {
+        "dark": "oklch(12% 0.035 258)",
+        "light": "oklch(97.5% 0.010 255)"
+      }
+    },
+    "palette": {
+      "dark": {
+        "primary": "oklch(72% 0.15 258)",
+        "secondary": "oklch(80% 0.11 245)",
+        "primaryContent": "oklch(13% 0.035 262)",
+        "highlight": "oklch(84% 0.12 80)"
+      },
+      "light": {
+        "primary": "oklch(50% 0.17 260)",
+        "secondary": "oklch(57% 0.14 250)",
+        "primaryContent": "oklch(98.5% 0.008 255)",
+        "highlight": "oklch(60% 0.13 70)"
+      }
+    },
+    "surface": {
+      "hue": 258,
+      "chroma": 0.04
+    },
+    "icons": {
+      "hueRotate": 69,
+      "saturate": 0.9,
+      "brightness": 1.05
+    },
+    "shell": {
+      "desktopLabels": "light",
+      "shadow": 0.75
+    }
+  },
+  "integrity": {
+    "README.md": "sha256-bo/XUfOnQgBsc4GblviHAh1juj6oxLXbpj/MPXhwwLw=",
+    "thumb.webp": "sha256-wZXg9Oe3MXy2wf96rZ6/92JUcIKH5uBLQGbeFV7d4cg=",
+    "wallpaper.webp": "sha256-e9Zo8xEXfYhZkvPuuvd6LNaOg60jD5QcgNwYUQHKSxE="
+  }
+}

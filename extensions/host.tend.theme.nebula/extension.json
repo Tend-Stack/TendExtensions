@@ -1,0 +1,72 @@
+{
+  "schema": 2,
+  "id": "host.tend.theme.nebula",
+  "name": "Nebula",
+  "version": "1.0.0",
+  "author": "tend.host",
+  "description": "Orchid starlight and teal dust across a violet spiral galaxy.",
+  "category": "themes",
+  "permissions": [],
+  "theme": {
+    "api": 1,
+    "modes": [
+      "dark",
+      "light"
+    ],
+    "wallpaper": {
+      "image": "wallpaper.webp",
+      "thumb": "thumb.webp",
+      "position": "center",
+      "veil": {
+        "dark": {
+          "color": "oklch(10% 0.030 290)",
+          "top": 0.5,
+          "middle": 0.12,
+          "bottom": 0.5
+        },
+        "light": {
+          "color": "oklch(97% 0.020 300)",
+          "top": 0.34,
+          "middle": 0.1,
+          "bottom": 0.3
+        }
+      },
+      "fallback": {
+        "dark": "oklch(12% 0.030 290)",
+        "light": "oklch(97.5% 0.010 300)"
+      }
+    },
+    "palette": {
+      "dark": {
+        "primary": "oklch(76% 0.15 322)",
+        "secondary": "oklch(84% 0.10 305)",
+        "primaryContent": "oklch(15% 0.030 300)",
+        "highlight": "oklch(82% 0.11 195)"
+      },
+      "light": {
+        "primary": "oklch(52% 0.17 322)",
+        "secondary": "oklch(58% 0.14 305)",
+        "primaryContent": "oklch(98.5% 0.008 320)",
+        "highlight": "oklch(56% 0.11 200)"
+      }
+    },
+    "surface": {
+      "hue": 292,
+      "chroma": 0.032
+    },
+    "icons": {
+      "hueRotate": 137,
+      "saturate": 0.75,
+      "brightness": 1.05
+    },
+    "shell": {
+      "desktopLabels": "light",
+      "shadow": 0.75
+    }
+  },
+  "integrity": {
+    "README.md": "sha256-wmWSv7SMpNZYBtSjPuTIQNVsZHK6ZJvtW3pyCduev/c=",
+    "thumb.webp": "sha256-uyYU5mwKZW2o/MbEX3WT2pWzsZdqI28MKJEMO5fab8c=",
+    "wallpaper.webp": "sha256-zMcyRc9ypB9dL4tSXj83zp2jovgpeh8v5AQvtyfMBHY="
+  }
+}

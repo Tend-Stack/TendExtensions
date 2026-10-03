@@ -1,0 +1,72 @@
+{
+  "schema": 2,
+  "id": "host.tend.theme.inkwell",
+  "name": "Inkwell",
+  "version": "1.0.0",
+  "author": "tend.host",
+  "description": "Cyan, cobalt and gold ink blooming in a glass tank.",
+  "category": "themes",
+  "permissions": [],
+  "theme": {
+    "api": 1,
+    "modes": [
+      "dark",
+      "light"
+    ],
+    "wallpaper": {
+      "image": "wallpaper.webp",
+      "thumb": "thumb.webp",
+      "position": "center",
+      "veil": {
+        "dark": {
+          "color": "oklch(12% 0.035 225)",
+          "top": 0.55,
+          "middle": 0.16,
+          "bottom": 0.5
+        },
+        "light": {
+          "color": "oklch(98% 0.012 215)",
+          "top": 0.22,
+          "middle": 0.03,
+          "bottom": 0.2
+        }
+      },
+      "fallback": {
+        "dark": "oklch(13% 0.030 225)",
+        "light": "oklch(98% 0.010 215)"
+      }
+    },
+    "palette": {
+      "dark": {
+        "primary": "oklch(80% 0.13 212)",
+        "secondary": "oklch(86% 0.09 200)",
+        "primaryContent": "oklch(15% 0.030 225)",
+        "highlight": "oklch(72% 0.14 262)"
+      },
+      "light": {
+        "primary": "oklch(48% 0.095 222)",
+        "secondary": "oklch(55% 0.09 212)",
+        "primaryContent": "oklch(98.5% 0.008 215)",
+        "highlight": "oklch(50% 0.16 262)"
+      }
+    },
+    "surface": {
+      "hue": 226,
+      "chroma": 0.034
+    },
+    "icons": {
+      "hueRotate": 32,
+      "saturate": 1.1,
+      "brightness": 1.05
+    },
+    "shell": {
+      "desktopLabels": "light",
+      "shadow": 0.75
+    }
+  },
+  "integrity": {
+    "README.md": "sha256-YL6km/miOOc5fdjBAsyFItVAVJ3NIOBkPqigXBOwLV0=",
+    "thumb.webp": "sha256-xhn/CSU4TNR6c/SM92xTNw3s/b3Y9pTczCWeImOGBjg=",
+    "wallpaper.webp": "sha256-LTDBvZ1gp6m1CStg+xJguyvTMC7Mb4KsQ4E0DLZReU4="
+  }
+}

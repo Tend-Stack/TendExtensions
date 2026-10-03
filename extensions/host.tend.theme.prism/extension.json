@@ -1,0 +1,77 @@
+{
+  "schema": 2,
+  "id": "host.tend.theme.prism",
+  "name": "Prism",
+  "version": "1.0.0",
+  "author": "tend.host",
+  "description": "A tangerine cube and amber light beams in a quiet concrete gallery.",
+  "category": "themes",
+  "permissions": [],
+  "theme": {
+    "api": 1,
+    "modes": [
+      "dark",
+      "light"
+    ],
+    "wallpaper": {
+      "image": "wallpaper.webp",
+      "thumb": "thumb.webp",
+      "position": "center",
+      "veil": {
+        "dark": {
+          "color": "oklch(12% 0.012 250)",
+          "top": 0.58,
+          "middle": 0.24,
+          "bottom": 0.55
+        },
+        "light": {
+          "color": "oklch(98% 0.006 60)",
+          "top": 0.22,
+          "middle": 0.03,
+          "bottom": 0.18
+        }
+      },
+      "fallback": {
+        "dark": "oklch(14% 0.010 250)",
+        "light": "oklch(98% 0.006 60)"
+      }
+    },
+    "palette": {
+      "dark": {
+        "primary": "oklch(76% 0.16 58)",
+        "secondary": "oklch(84% 0.12 70)",
+        "primaryContent": "oklch(16% 0.020 50)",
+        "highlight": "oklch(80% 0.07 190)"
+      },
+      "light": {
+        "primary": "oklch(55% 0.16 48)",
+        "secondary": "oklch(62% 0.14 58)",
+        "primaryContent": "oklch(98.5% 0.006 60)",
+        "highlight": "oklch(50% 0.08 195)"
+      }
+    },
+    "surface": {
+      "hue": 250,
+      "chroma": 0.01
+    },
+    "icons": {
+      "hueRotate": -119,
+      "saturate": 1,
+      "brightness": 1.05
+    },
+    "shell": {
+      "desktopLabels": "light",
+      "shadow": 0.75,
+      "shape": "sharp",
+      "glass": {
+        "blur": 28,
+        "saturate": 1.2
+      }
+    }
+  },
+  "integrity": {
+    "README.md": "sha256-dh4x5jjZcPDv7zY7Bl6wkfI7yDJ4YJJQiPfe1f4qSd0=",
+    "thumb.webp": "sha256-BtQZl3gaXhyxfM/YWpltbWIZYu6uHokLMNnSdrdWcgA=",
+    "wallpaper.webp": "sha256-4UdPbp+OmffSFMEXBO/qt29ZYTz0UGc8XxaNEFk3xoU="
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "schema": 2,
+  "id": "host.tend.theme.synthwave",
+  "name": "Synthwave",
+  "version": "1.0.0",
+  "author": "tend.host",
+  "description": "Gold contrails over a neon wireframe horizon.",
+  "category": "themes",
+  "permissions": [],
+  "theme": {
+    "api": 1,
+    "modes": [
+      "dark",
+      "light"
+    ],
+    "wallpaper": {
+      "image": "wallpaper.webp",
+      "thumb": "thumb.webp",
+      "position": "center",
+      "veil": {
+        "dark": {
+          "color": "oklch(12% 0.030 210)",
+          "top": 0.52,
+          "middle": 0.1,
+          "bottom": 0.45
+        },
+        "light": {
+          "color": "oklch(97% 0.020 90)",
+          "top": 0.3,
+          "middle": 0.06,
+          "bottom": 0.24
+        }
+      },
+      "fallback": {
+        "dark": "oklch(13% 0.030 210)",
+        "light": "oklch(97.5% 0.012 90)"
+      }
+    },
+    "palette": {
+      "dark": {
+        "primary": "oklch(84% 0.13 85)",
+        "secondary": "oklch(88% 0.10 95)",
+        "primaryContent": "oklch(16% 0.030 210)",
+        "highlight": "oklch(82% 0.12 195)"
+      },
+      "light": {
+        "primary": "oklch(50% 0.11 75)",
+        "secondary": "oklch(56% 0.10 85)",
+        "primaryContent": "oklch(98.5% 0.008 90)",
+        "highlight": "oklch(52% 0.10 200)"
+      }
+    },
+    "surface": {
+      "hue": 208,
+      "chroma": 0.03
+    },
+    "icons": {
+      "hueRotate": -102,
+      "saturate": 1,
+      "brightness": 1.15
+    },
+    "shell": {
+      "desktopLabels": "light",
+      "shadow": 0.75,
+      "glass": {
+        "blur": 20,
+        "saturate": 1.5
+      }
+    }
+  },
+  "integrity": {
+    "README.md": "sha256-G0NCPS4XyTGrQNpkDk7iK241gIOt/wJWHf70BJGIjLE=",
+    "thumb.webp": "sha256-gd/JzsNZm/+coarIMoHmDBhWQ0++mPVFwYvABC9e018=",
+    "wallpaper.webp": "sha256-WTtauN3UxE51cM7+tfgA9+2wRo9l/joWLh1fWN4Ul2A="
+  }
+}

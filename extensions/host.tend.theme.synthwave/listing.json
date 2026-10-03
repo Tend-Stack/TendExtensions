@@ -1,0 +1,16 @@
+{
+  "publisher": "TEND Stack",
+  "category": "themes",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "Gold contrails and a neon wireframe horizon as the wallpaper",
+    "Gold accents on a deep teal-blue interface, with warmer desktop icons",
+    "Slightly stronger glass blur and saturation for a vivid, luminous shell",
+    "Dark and light modes, tunable per account"
+  ],
+  "requirements": [
+    "A Tend panel with theme pack support (core 0.10.26 or newer)"
+  ],
+  "release_notes": "Initial release."
+}

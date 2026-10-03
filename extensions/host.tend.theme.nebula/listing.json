@@ -1,0 +1,16 @@
+{
+  "publisher": "TEND Stack",
+  "category": "themes",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "A violet spiral galaxy with teal dust and drifting planets as the wallpaper",
+    "Orchid and teal accents recolour buttons, highlights and the desktop icons",
+    "A soft top-to-bottom veil keeps windows and labels readable in dark and light",
+    "Tune hue, dim, top-bar opacity and shadow per account, then restore the official look any time"
+  ],
+  "requirements": [
+    "A Tend panel with theme pack support (core 0.10.26 or newer)"
+  ],
+  "release_notes": "Initial release."
+}
