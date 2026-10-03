@@ -379,3 +379,353 @@ def test_widget_entry_field_rejections(tmp_path: Path, mutation: dict, match: st
 
     with pytest.raises(build.BuildError, match=match):
         build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+# ---------- theme packs (category "themes") ----------
+
+THEME_PACK_IDS = [
+    "host.tend.theme.nebula",
+    "host.tend.theme.synthwave",
+    "host.tend.theme.inkwell",
+    "host.tend.theme.prism",
+    "host.tend.theme.skyline",
+]
+
+
+def _copy_theme_pack(tmp_path: Path, pack_id: str = "host.tend.theme.nebula") -> Path:
+    dst = tmp_path / "extensions" / pack_id
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(REPO_ROOT / "extensions" / pack_id, dst)
+    return dst
+
+
+def _edit_theme(ext_dir: Path, mutate) -> None:  # noqa: ANN001 - callback over the parsed manifest
+    manifest = json.loads((ext_dir / "extension.json").read_text())
+    mutate(manifest)
+    (ext_dir / "extension.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+@pytest.mark.parametrize("pack_id", THEME_PACK_IDS)
+def test_first_party_theme_packs_build(tmp_path: Path, pack_id: str) -> None:
+    ext_dir = _copy_theme_pack(tmp_path, pack_id)
+
+    registry = build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    entry = registry["extensions"][0]
+    assert entry["id"] == pack_id
+    assert entry["category"] == "themes"
+    assert entry["permissions"] == []
+    manifest = json.loads((ext_dir / "extension.json").read_text())
+    # Images are hashed too, and every shipped file is covered.
+    assert {"wallpaper.webp", "thumb.webp"} <= set(manifest["integrity"])
+    build.check_full_coverage(ext_dir, manifest["integrity"])
+    wallpaper = (ext_dir / "wallpaper.webp").stat().st_size
+    thumb = (ext_dir / "thumb.webp").stat().st_size
+    assert wallpaper <= 4 * 1024 * 1024 and thumb <= 512 * 1024
+
+
+def test_committed_theme_pack_manifests_are_already_rebuilt() -> None:
+    """The integrity map committed in each real pack matches the files on
+    disk, so CI's rebuild leaves the tree clean."""
+    for pack_id in THEME_PACK_IDS:
+        ext_dir = REPO_ROOT / "extensions" / pack_id
+        manifest = json.loads((ext_dir / "extension.json").read_text())
+        assert manifest["integrity"] == build.rebuild_integrity(ext_dir), pack_id
+
+
+def test_theme_pack_zip_is_deterministic_and_has_no_listing(tmp_path: Path) -> None:
+    _copy_theme_pack(tmp_path)
+    build.run(tmp_path, sequence=1, revision=REVISION_A)
+    first = _zip_hashes(tmp_path / "dist")
+    build.run(tmp_path, sequence=1, revision=REVISION_A)
+    assert first == _zip_hashes(tmp_path / "dist")
+    import zipfile
+
+    with zipfile.ZipFile(tmp_path / "dist" / "host.tend.theme.nebula-1.0.0.zip") as zf:
+        assert zf.namelist() == ["README.md", "extension.json", "thumb.webp", "wallpaper.webp"]
+
+
+def test_theme_pack_template_builds_when_copied_into_extensions(tmp_path: Path) -> None:
+    dst = tmp_path / "extensions" / "com.example.my-theme"
+    dst.parent.mkdir(parents=True)
+    shutil.copytree(REPO_ROOT / "templates" / "theme-pack", dst)
+
+    registry = build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    assert [e["id"] for e in registry["extensions"]] == ["com.example.my-theme"]
+    assert registry["extensions"][0]["category"] == "themes"
+
+
+def test_templates_folder_is_never_built_as_a_package() -> None:
+    assert build.discover_extension_ids(REPO_ROOT / "extensions") == sorted(
+        p.name for p in (REPO_ROOT / "extensions").iterdir() if p.is_dir()
+    )
+    assert "theme-pack" not in build.discover_extension_ids(REPO_ROOT / "extensions")
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "red",
+        "rgb(0,0,0)",
+        "rgb(0 0 0)",
+        "hsl(120 50% 50%)",
+        "var(--x)",
+        "url(x)",
+        "calc(1 + 1)",
+        "oklch(50% 0.1 120); background:url(x)",
+        "oklch(50% 0.1 120) /* c */",
+        "oklch(5e1% 0.1 120)",
+        "oklch(50% 1e-1 120)",
+        "oklch(50% 0.1 1.2e2)",
+        "oklch(50 0.1 120)",
+        "oklch(101% 0.1 120)",
+        "oklch(50% 0.41 120)",
+        "oklch(50% 0.1 361)",
+        "oklch(50% 0.1 120 / 1.5)",
+        "oklch(-5% 0.1 120)",
+        "oklch(50% 0.1 120 / 0.5 0.5)",
+        "#12",
+        "#12345",
+        "#gggggg",
+        "#1234567",
+        "#fff; x",
+        "oklch(50% 0.1 120)\\",
+        "'oklch(50% 0.1 120)'",
+        "oklch(" + "5" * 70 + "% 0.1 120)",
+        "",
+        12,
+    ],
+)
+def test_theme_colour_grammar_refuses_injection_and_garbage(tmp_path: Path, bad: object) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _edit_theme(ext_dir, lambda m: m["theme"]["shell"].update({"topBar": {"tint": {"dark": bad}}}))
+    with pytest.raises(build.BuildError, match="theme"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize(
+    "good",
+    [
+        "oklch(50% 0.1 120)",
+        "OKLCH(50.5% 0.1234 120.25 / 0.5)",
+        "  oklch(0% 0 0)  ",
+        "oklch(100% 0.4 360 / 1)",
+        "#abc",
+        "#A1B2C3",
+        "#a1b2c3d4",
+    ],
+)
+def test_theme_colour_grammar_accepts_valid_colours(tmp_path: Path, good: str) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _edit_theme(ext_dir, lambda m: m["theme"]["shell"].update({"topBar": {"tint": {"dark": good}}}))
+    build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize(
+    "path,value",
+    [
+        (("surface", "hue"), 361),
+        (("surface", "hue"), -1),
+        (("surface", "chroma"), 0.06),
+        (("icons", "hueRotate"), 181),
+        (("icons", "saturate"), 2.1),
+        (("icons", "brightness"), 0.4),
+        (("icons", "brightness"), 1.6),
+        (("shell", "topBar"), {"opacity": 0.3}),
+        (("shell", "topBar"), {"opacity": 1.1}),
+        (("shell", "glass"), {"blur": 41}),
+        (("shell", "glass"), {"saturate": 0.9}),
+        (("shell", "shadow"), 1.5),
+        (("shell", "wallpaperDim"), 0.9),
+        (("shell", "shape"), "pill"),
+        (("shell", "desktopLabels"), "grey"),
+        (("shell", "shadow"), "0.5"),
+        (("shell", "shadow"), True),
+        (("wallpaper", "position"), "middle"),
+        (("wallpaper", "veil"), {"dark": {"color": "oklch(10% 0.03 290)", "top": 1.2, "middle": 0, "bottom": 0}}),
+        (("wallpaper", "veil"), {"dark": {"color": "oklch(10% 0.03 290)", "top": 0.5}}),
+        (("modes",), []),
+        (("modes",), ["dark", "dark"]),
+        (("modes",), ["dusk"]),
+        (("api",), 2),
+        (("api",), True),
+    ],
+)
+def test_theme_numeric_and_enum_rules(tmp_path: Path, path: tuple[str, ...], value: object) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+
+    def mutate(manifest: dict) -> None:
+        node = manifest["theme"]
+        for key in path[:-1]:
+            node = node[key]
+        node[path[-1]] = value
+
+    _edit_theme(ext_dir, mutate)
+    with pytest.raises(build.BuildError, match="theme"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize(
+    "where",
+    ["theme", "wallpaper", "palette.dark", "surface", "icons", "shell", "shell.glass", "wallpaper.veil.dark"],
+)
+def test_theme_unknown_keys_are_refused(tmp_path: Path, where: str) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+
+    def mutate(manifest: dict) -> None:
+        node = manifest["theme"]
+        node["shell"].setdefault("glass", {"blur": 20})
+        if where != "theme":
+            for key in where.split("."):
+                node = node[key]
+        node["extra"] = 1
+
+    _edit_theme(ext_dir, mutate)
+    with pytest.raises(build.BuildError, match="unknown key"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize(
+    "image",
+    ["../wallpaper.webp", "/wallpaper.webp", "a//b.webp", "./wallpaper.webp", "c:wallpaper.webp",
+     "dir\\wallpaper.webp", "wallpaper.gif", "missing.webp", "x" * 130 + ".webp", ""],
+)
+def test_theme_image_paths_must_be_safe_and_covered(tmp_path: Path, image: str) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _edit_theme(ext_dir, lambda m: m["theme"]["wallpaper"].update({"image": image}))
+    with pytest.raises(build.BuildError, match="wallpaper.image"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_wallpaper_needs_exactly_one_of_image_or_gradient(tmp_path: Path) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _edit_theme(
+        ext_dir,
+        lambda m: m["theme"]["wallpaper"].update(
+            {"gradient": {"dark": {"base": "#000"}, "light": {"base": "#fff"}}}
+        ),
+    )
+    with pytest.raises(build.BuildError, match="exactly one"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    def neither(m: dict) -> None:
+        for key in ("image", "thumb", "gradient"):
+            m["theme"]["wallpaper"].pop(key, None)
+
+    _edit_theme(ext_dir, neither)
+    with pytest.raises(build.BuildError, match="exactly one"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_image_requires_thumb_and_thumb_requires_image(tmp_path: Path) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _edit_theme(ext_dir, lambda m: m["theme"]["wallpaper"].pop("thumb"))
+    with pytest.raises(build.BuildError, match="thumb"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    template = tmp_path / "t"
+    dst = template / "extensions" / "com.example.my-theme"
+    dst.parent.mkdir(parents=True)
+    shutil.copytree(REPO_ROOT / "templates" / "theme-pack", dst)
+    _edit_theme(dst, lambda m: m["theme"]["wallpaper"].update({"thumb": "README.md"}))
+    with pytest.raises(build.BuildError, match="only allowed together with 'image'"):
+        build.run(template, sequence=1, revision=REVISION_A)
+
+
+def test_theme_gradient_glow_limits(tmp_path: Path) -> None:
+    dst = tmp_path / "extensions" / "com.example.my-theme"
+    dst.parent.mkdir(parents=True)
+    shutil.copytree(REPO_ROOT / "templates" / "theme-pack", dst)
+    glow = {"x": 10, "y": 10, "w": 50, "h": 50, "color": "#123456", "alpha": 0.5}
+
+    def set_glows(glows: list) -> None:
+        _edit_theme(dst, lambda m: m["theme"]["wallpaper"]["gradient"]["dark"].update({"glows": glows}))
+
+    set_glows([glow] * 4)
+    build.run(tmp_path, sequence=1, revision=REVISION_A)
+    set_glows([glow] * 5)
+    with pytest.raises(build.BuildError, match="at most 4"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+    for bad in ({"x": 101}, {"y": -1}, {"w": 9}, {"h": 151}, {"alpha": 1.1}, {"color": "red"}):
+        set_glows([{**glow, **bad}])
+        with pytest.raises(build.BuildError, match="theme"):
+            build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_contrast_failure_is_refused(tmp_path: Path) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    # Same lightness for button and button text: ratio 1:1.
+    _edit_theme(
+        ext_dir,
+        lambda m: m["theme"]["palette"]["light"].update({"primaryContent": m["theme"]["palette"]["light"]["primary"]}),
+    )
+    with pytest.raises(build.BuildError, match="contrast"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_contrast_boundary_uses_wcag_ratio() -> None:
+    black = build.parse_theme_color("#000", ext_id="x", where="x")
+    white = build.parse_theme_color("#fff", ext_id="x", where="x")
+    assert build.contrast_ratio(black, white) == pytest.approx(21.0)
+    assert build.contrast_ratio(white, white) == pytest.approx(1.0)
+
+
+def test_theme_pack_refuses_code_and_markup_files(tmp_path: Path) -> None:
+    for name in ("index.js", "mod.mjs", "page.html", "page.htm", "style.css", "icon.svg", "m.wasm", "UPPER.JS"):
+        shutil.rmtree(tmp_path / "extensions", ignore_errors=True)
+        ext_dir = _copy_theme_pack(tmp_path)
+        (ext_dir / name).write_bytes(b"x")
+        with pytest.raises(build.BuildError, match="must not ship"):
+            build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+@pytest.mark.parametrize("key,value", [("ui", {"module": "i.js"}), ("runtime", {"api": 1}), ("widgets", [])])
+def test_theme_pack_refuses_ui_runtime_widgets(tmp_path: Path, key: str, value: object) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _edit_theme(ext_dir, lambda m: m.update({key: value}))
+    with pytest.raises(build.BuildError, match=f"must not declare '{key}'"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_pack_refuses_permissions_and_wrong_category(tmp_path: Path) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    _edit_theme(ext_dir, lambda m: m.update({"permissions": ["storage"]}))
+    with pytest.raises(build.BuildError, match="no permissions"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    _edit_theme(ext_dir, lambda m: m.update({"permissions": [], "category": "games"}))
+    with pytest.raises(build.BuildError, match="requires category 'themes'"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    _edit_theme(ext_dir, lambda m: (m.update({"category": "themes"}), m.pop("theme")))
+    with pytest.raises(build.BuildError, match="requires a 'theme' object"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_images_must_match_their_extension_and_size(tmp_path: Path) -> None:
+    ext_dir = _copy_theme_pack(tmp_path)
+    original = (ext_dir / "wallpaper.webp").read_bytes()
+
+    (ext_dir / "wallpaper.webp").write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+    with pytest.raises(build.BuildError, match="not a valid .webp"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    (ext_dir / "wallpaper.webp").write_bytes(original + b"0" * (4 * 1024 * 1024))
+    with pytest.raises(build.BuildError, match="over the"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    (ext_dir / "wallpaper.webp").write_bytes(original)
+    (ext_dir / "thumb.webp").write_bytes(b"RIFF\x00\x00\x00\x00WEBP" + b"0" * (512 * 1024))
+    with pytest.raises(build.BuildError, match="over the"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_theme_image_magic_bytes_for_other_formats() -> None:
+    check = build._image_matches_extension
+    assert check(b"\xff\xd8\xff\xe0" + b"0" * 28, ".jpg")
+    assert check(b"\xff\xd8\xff\xe0" + b"0" * 28, ".jpeg")
+    assert check(b"\x89PNG\r\n\x1a\n" + b"0" * 24, ".png")
+    assert check(b"\x00\x00\x00\x1cftypavif" + b"0" * 20, ".avif")
+    assert not check(b"\xff\xd8\xff\xe0" + b"0" * 28, ".png")
+    assert not check(b"GIF89a" + b"0" * 26, ".webp")

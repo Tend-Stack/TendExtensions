@@ -29,6 +29,7 @@ import argparse
 import base64
 import hashlib
 import json
+import math
 import re
 import subprocess
 import sys
@@ -75,6 +76,7 @@ KNOWN_CATEGORIES = {
     "media",
     "developer-tools",
     "communication",
+    "themes",
     "other",
 }
 KNOWN_RUNTIME_MODULES = {"phaser@4"}
@@ -92,6 +94,359 @@ MAX_WIDGET_DESCRIPTION_CHARS = 160
 WIDGET_MODULE_SUFFIXES = (".js", ".mjs")
 WIDGET_PREVIEW_SUFFIXES = (".svg", ".png", ".webp")
 _WIDGET_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+
+# ---------- theme packs (schema-2, category "themes") ----------
+# Mirrors the panel core's theme-pack rules (THEME_CONTRACT v1): a pack is a
+# declarative `theme` object plus images, never code. Every value that ends up
+# in CSS passes the closed colour grammar below; nothing free-form is accepted.
+THEME_CATEGORY = "themes"
+THEME_API = 1
+THEME_MODES = ("dark", "light")
+THEME_POSITIONS = ("center", "top", "bottom", "left", "right")
+THEME_SHAPES = ("sharp", "default", "round")
+THEME_LABELS = ("light", "dark")
+THEME_IMAGE_SUFFIXES = (".webp", ".jpg", ".jpeg", ".png", ".avif")
+THEME_FORBIDDEN_SUFFIXES = (".js", ".mjs", ".html", ".htm", ".css", ".svg", ".wasm")
+THEME_FORBIDDEN_MANIFEST_KEYS = ("ui", "runtime", "widgets")
+THEME_MAX_WALLPAPER_BYTES = 4 * 1024 * 1024
+THEME_MAX_THUMB_BYTES = 512 * 1024
+THEME_MAX_GLOWS = 4
+THEME_MIN_CONTRAST = 4.5
+THEME_MAX_PATH_CHARS = 128
+THEME_MAX_COLOR_CHARS = 64
+THEME_MAX_NAME_CHARS = 40
+THEME_MAX_DESCRIPTION_CHARS = 160
+
+_NUM = r"\d{1,3}(?:\.\d{1,4})?"
+_OKLCH_RE = re.compile(
+    rf"^oklch\(\s*({_NUM})%\s+({_NUM})\s+({_NUM})(?:\s*/\s*(\d(?:\.\d{{1,4}})?))?\s*\)$"
+)
+_HEX_RE = re.compile(r"^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$")
+
+KNOWN_THEME_KEYS = {"api", "modes", "wallpaper", "palette", "surface", "icons", "shell"}
+KNOWN_WALLPAPER_KEYS = {"image", "thumb", "position", "veil", "gradient", "fallback"}
+KNOWN_PALETTE_KEYS = {"primary", "secondary", "primaryContent", "highlight"}
+KNOWN_SHELL_KEYS = {"topBar", "glass", "shape", "desktopLabels", "shadow", "wallpaperDim"}
+
+
+def _theme_error(ext_id: str, where: str, message: str) -> BuildError:
+    return BuildError(f"{ext_id}: theme{'.' + where if where else ''}: {message}")
+
+
+def _theme_object(raw: object, allowed: set[str], *, ext_id: str, where: str) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise _theme_error(ext_id, where, "must be an object")
+    unknown = sorted(set(raw) - allowed)
+    if unknown:
+        raise _theme_error(ext_id, where, f"unknown key(s): {', '.join(unknown)}")
+    return raw
+
+
+def _theme_number(raw: object, lo: float, hi: float, *, ext_id: str, where: str) -> float:
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(raw):
+        raise _theme_error(ext_id, where, "must be a JSON number")
+    if not lo <= raw <= hi:
+        raise _theme_error(ext_id, where, f"must be between {lo} and {hi}, got {raw!r}")
+    return float(raw)
+
+
+def _theme_enum(raw: object, allowed: tuple[str, ...], *, ext_id: str, where: str) -> str:
+    if not isinstance(raw, str) or raw not in allowed:
+        raise _theme_error(ext_id, where, f"must be one of {list(allowed)}")
+    return raw
+
+
+def parse_theme_color(raw: object, *, ext_id: str, where: str) -> tuple[float, float, float]:
+    """Validate a `<color>` against the closed grammar and return its
+    approximate sRGB triple (0..1, gamut-clipped, alpha ignored)."""
+    if not isinstance(raw, str):
+        raise _theme_error(ext_id, where, "colour must be a string")
+    text = raw.strip().lower()
+    if len(text) > THEME_MAX_COLOR_CHARS:
+        raise _theme_error(ext_id, where, f"colour is longer than {THEME_MAX_COLOR_CHARS} characters")
+    match = _OKLCH_RE.fullmatch(text)
+    if match:
+        lightness, chroma, hue = (float(match.group(i)) for i in (1, 2, 3))
+        alpha = match.group(4)
+        if lightness > 100 or chroma > 0.4 or hue > 360 or (alpha is not None and float(alpha) > 1):
+            raise _theme_error(
+                ext_id, where, f"oklch out of range (L 0-100%, C 0-0.4, H 0-360, A 0-1): {raw!r}"
+            )
+        return _oklch_to_srgb(lightness / 100, chroma, hue)
+    if _HEX_RE.fullmatch(text):
+        digits = text[1:]
+        if len(digits) in (3, 4):
+            digits = "".join(c * 2 for c in digits)
+        return tuple(int(digits[i : i + 2], 16) / 255 for i in (0, 2, 4))  # type: ignore[return-value]
+    raise _theme_error(
+        ext_id, where, f"colour must be oklch(L% C H [/ A]) or #rgb/#rrggbb/#rrggbbaa, got {raw!r}"
+    )
+
+
+def _oklch_to_srgb(lightness: float, chroma: float, hue: float) -> tuple[float, float, float]:
+    a = chroma * math.cos(math.radians(hue))
+    b = chroma * math.sin(math.radians(hue))
+    l_ = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3
+    m_ = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3
+    s_ = (lightness - 0.0894841775 * a - 1.2914855480 * b) ** 3
+    linear = (
+        4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
+        -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
+        -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_,
+    )
+
+    def encode(c: float) -> float:
+        c = max(0.0, min(1.0, c))
+        return 12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
+
+    return tuple(encode(c) for c in linear)  # type: ignore[return-value]
+
+
+def _relative_luminance(rgb: tuple[float, float, float]) -> float:
+    def lin(c: float) -> float:
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (lin(c) for c in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast_ratio(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
+    la, lb = _relative_luminance(a), _relative_luminance(b)
+    hi, lo = max(la, lb), min(la, lb)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _theme_path(raw: object, suffixes: tuple[str, ...], integrity: dict[str, Any], *, ext_id: str, where: str) -> str:
+    if not isinstance(raw, str) or not raw:
+        raise _theme_error(ext_id, where, "must be a package-relative file path")
+    if (
+        len(raw) > THEME_MAX_PATH_CHARS
+        or "\\" in raw
+        or ":" in raw
+        or raw.startswith("/")
+        or any(part in ("", ".", "..") for part in raw.split("/"))
+    ):
+        raise _theme_error(
+            ext_id, where, f"must be a relative '/'-separated path inside the package (no '..', no ':'), got {raw!r}"
+        )
+    if not raw.lower().endswith(suffixes):
+        raise _theme_error(ext_id, where, f"must end with one of {', '.join(suffixes)}, got {raw!r}")
+    if raw not in integrity:
+        raise _theme_error(ext_id, where, f"{raw!r} is not covered by the integrity map (file must exist in the package)")
+    return raw
+
+
+def _validate_mode_map(
+    raw: object, *, ext_id: str, where: str, required: bool, check: Any
+) -> None:
+    obj = _theme_object(raw, set(THEME_MODES), ext_id=ext_id, where=where)
+    for mode in THEME_MODES:
+        if mode in obj:
+            check(obj[mode], f"{where}.{mode}")
+        elif required:
+            raise _theme_error(ext_id, where, f"missing '{mode}'")
+
+
+def validate_theme(manifest: dict[str, Any], ext_id: str) -> None:
+    """Validate a theme pack's manifest (the `theme` block and the rules
+    around it). File-level rules (sizes, magic bytes, forbidden files) live in
+    `validate_theme_files`."""
+    theme = manifest.get("theme")
+    is_theme_category = manifest.get("category") == THEME_CATEGORY
+    if theme is None:
+        if is_theme_category:
+            raise BuildError(f"{ext_id}: category 'themes' requires a 'theme' object")
+        return
+    if not is_theme_category:
+        raise BuildError(f"{ext_id}: a 'theme' object requires category 'themes'")
+    if manifest.get("schema") != 2:
+        raise BuildError(f"{ext_id}: theme packs require schema 2")
+    if manifest.get("permissions"):
+        raise BuildError(f"{ext_id}: a theme pack must declare no permissions")
+    if len(manifest["name"]) > THEME_MAX_NAME_CHARS:
+        raise BuildError(f"{ext_id}: theme pack 'name' must be at most {THEME_MAX_NAME_CHARS} characters")
+    description = manifest.get("description", "")
+    if not isinstance(description, str) or len(description) > THEME_MAX_DESCRIPTION_CHARS:
+        raise BuildError(
+            f"{ext_id}: theme pack 'description' must be a string of at most {THEME_MAX_DESCRIPTION_CHARS} characters"
+        )
+    integrity = manifest["integrity"]
+
+    def color(raw: object, where: str) -> tuple[float, float, float]:
+        return parse_theme_color(raw, ext_id=ext_id, where=where)
+
+    def number(raw: object, lo: float, hi: float, where: str) -> float:
+        return _theme_number(raw, lo, hi, ext_id=ext_id, where=where)
+
+    theme = _theme_object(theme, KNOWN_THEME_KEYS, ext_id=ext_id, where="")
+    if theme.get("api") != THEME_API or isinstance(theme.get("api"), bool):
+        raise _theme_error(ext_id, "api", f"must be {THEME_API}")
+
+    if "modes" in theme:
+        modes = theme["modes"]
+        if (
+            not isinstance(modes, list)
+            or not modes
+            or not all(isinstance(m, str) and m in THEME_MODES for m in modes)
+            or len(set(modes)) != len(modes)
+        ):
+            raise _theme_error(ext_id, "modes", f"must be a non-empty list of distinct values from {list(THEME_MODES)}")
+
+    # wallpaper
+    wallpaper = _theme_object(theme.get("wallpaper"), KNOWN_WALLPAPER_KEYS, ext_id=ext_id, where="wallpaper")
+    has_image, has_gradient = "image" in wallpaper, "gradient" in wallpaper
+    if has_image == has_gradient:
+        raise _theme_error(ext_id, "wallpaper", "must set exactly one of 'image' or 'gradient'")
+    if has_image:
+        _theme_path(wallpaper["image"], THEME_IMAGE_SUFFIXES, integrity, ext_id=ext_id, where="wallpaper.image")
+        if "thumb" not in wallpaper:
+            raise _theme_error(ext_id, "wallpaper.thumb", "is required with 'image'")
+        _theme_path(wallpaper["thumb"], THEME_IMAGE_SUFFIXES, integrity, ext_id=ext_id, where="wallpaper.thumb")
+    elif "thumb" in wallpaper:
+        raise _theme_error(ext_id, "wallpaper.thumb", "is only allowed together with 'image'")
+    if "position" in wallpaper:
+        _theme_enum(wallpaper["position"], THEME_POSITIONS, ext_id=ext_id, where="wallpaper.position")
+
+    def check_veil(raw: object, where: str) -> None:
+        veil = _theme_object(raw, {"color", "top", "middle", "bottom"}, ext_id=ext_id, where=where)
+        if set(veil) != {"color", "top", "middle", "bottom"}:
+            raise _theme_error(ext_id, where, "needs color, top, middle and bottom")
+        color(veil["color"], f"{where}.color")
+        for key in ("top", "middle", "bottom"):
+            number(veil[key], 0, 1, f"{where}.{key}")
+
+    if "veil" in wallpaper:
+        _validate_mode_map(wallpaper["veil"], ext_id=ext_id, where="wallpaper.veil", required=False, check=check_veil)
+
+    def check_gradient(raw: object, where: str) -> None:
+        grad = _theme_object(raw, {"base", "glows"}, ext_id=ext_id, where=where)
+        if "base" not in grad:
+            raise _theme_error(ext_id, where, "needs a 'base' colour")
+        color(grad["base"], f"{where}.base")
+        glows = grad.get("glows", [])
+        if not isinstance(glows, list) or len(glows) > THEME_MAX_GLOWS:
+            raise _theme_error(ext_id, f"{where}.glows", f"must be a list of at most {THEME_MAX_GLOWS} glows")
+        for i, glow in enumerate(glows):
+            gwhere = f"{where}.glows[{i}]"
+            glow = _theme_object(glow, {"x", "y", "w", "h", "color", "alpha"}, ext_id=ext_id, where=gwhere)
+            if set(glow) != {"x", "y", "w", "h", "color", "alpha"}:
+                raise _theme_error(ext_id, gwhere, "needs x, y, w, h, color and alpha")
+            number(glow["x"], 0, 100, f"{gwhere}.x")
+            number(glow["y"], 0, 100, f"{gwhere}.y")
+            number(glow["w"], 10, 150, f"{gwhere}.w")
+            number(glow["h"], 10, 150, f"{gwhere}.h")
+            number(glow["alpha"], 0, 1, f"{gwhere}.alpha")
+            color(glow["color"], f"{gwhere}.color")
+
+    if has_gradient:
+        _validate_mode_map(
+            wallpaper["gradient"], ext_id=ext_id, where="wallpaper.gradient", required=True, check=check_gradient
+        )
+    if "fallback" in wallpaper:
+        _validate_mode_map(
+            wallpaper["fallback"], ext_id=ext_id, where="wallpaper.fallback", required=False,
+            check=lambda raw, where: color(raw, where),
+        )
+
+    # palette
+    def check_palette(raw: object, where: str) -> None:
+        pal = _theme_object(raw, KNOWN_PALETTE_KEYS, ext_id=ext_id, where=where)
+        for key in ("primary", "secondary", "primaryContent"):
+            if key not in pal:
+                raise _theme_error(ext_id, where, f"missing '{key}'")
+        colours = {key: color(value, f"{where}.{key}") for key, value in pal.items()}
+        ratio = contrast_ratio(colours["primary"], colours["primaryContent"])
+        if ratio < THEME_MIN_CONTRAST:
+            raise _theme_error(
+                ext_id, where,
+                f"primary/primaryContent contrast is {ratio:.2f}:1, needs at least {THEME_MIN_CONTRAST}:1",
+            )
+
+    if "palette" not in theme:
+        raise _theme_error(ext_id, "palette", "is required")
+    _validate_mode_map(theme["palette"], ext_id=ext_id, where="palette", required=True, check=check_palette)
+
+    if "surface" in theme:
+        surface = _theme_object(theme["surface"], {"hue", "chroma"}, ext_id=ext_id, where="surface")
+        if "hue" in surface:
+            number(surface["hue"], 0, 360, "surface.hue")
+        if "chroma" in surface:
+            number(surface["chroma"], 0, 0.05, "surface.chroma")
+
+    if "icons" in theme:
+        icons = _theme_object(theme["icons"], {"hueRotate", "saturate", "brightness"}, ext_id=ext_id, where="icons")
+        if "hueRotate" in icons:
+            number(icons["hueRotate"], -180, 180, "icons.hueRotate")
+        if "saturate" in icons:
+            number(icons["saturate"], 0, 2, "icons.saturate")
+        if "brightness" in icons:
+            number(icons["brightness"], 0.5, 1.5, "icons.brightness")
+
+    if "shell" in theme:
+        shell = _theme_object(theme["shell"], KNOWN_SHELL_KEYS, ext_id=ext_id, where="shell")
+        if "topBar" in shell:
+            bar = _theme_object(shell["topBar"], {"opacity", "tint"}, ext_id=ext_id, where="shell.topBar")
+            if "opacity" in bar:
+                number(bar["opacity"], 0.4, 1, "shell.topBar.opacity")
+            if "tint" in bar:
+                _validate_mode_map(
+                    bar["tint"], ext_id=ext_id, where="shell.topBar.tint", required=False,
+                    check=lambda raw, where: color(raw, where),
+                )
+        if "glass" in shell:
+            glass = _theme_object(shell["glass"], {"blur", "saturate"}, ext_id=ext_id, where="shell.glass")
+            if "blur" in glass:
+                number(glass["blur"], 0, 40, "shell.glass.blur")
+            if "saturate" in glass:
+                number(glass["saturate"], 1, 2, "shell.glass.saturate")
+        if "shape" in shell:
+            _theme_enum(shell["shape"], THEME_SHAPES, ext_id=ext_id, where="shell.shape")
+        if "desktopLabels" in shell:
+            _theme_enum(shell["desktopLabels"], THEME_LABELS, ext_id=ext_id, where="shell.desktopLabels")
+        if "shadow" in shell:
+            number(shell["shadow"], 0, 1, "shell.shadow")
+        if "wallpaperDim" in shell:
+            number(shell["wallpaperDim"], 0, 0.85, "shell.wallpaperDim")
+
+
+def _image_matches_extension(head: bytes, suffix: str) -> bool:
+    if suffix == ".webp":
+        return head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    if suffix in (".jpg", ".jpeg"):
+        return head[:3] == b"\xff\xd8\xff"
+    if suffix == ".png":
+        return head[:8] == b"\x89PNG\r\n\x1a\n"
+    if suffix == ".avif":
+        return head[4:8] == b"ftyp" and (b"avif" in head[8:32] or b"avis" in head[8:32])
+    return False
+
+
+def validate_theme_files(ext_dir: Path, manifest: dict[str, Any]) -> None:
+    """File-level theme-pack rules: no executable or markup files, and the
+    images the theme references are real images of the right size."""
+    if not isinstance(manifest.get("theme"), dict):
+        return
+    ext_id = ext_dir.name
+    for _, rel in package_files(ext_dir):
+        if rel.lower().endswith(THEME_FORBIDDEN_SUFFIXES):
+            raise BuildError(
+                f"{ext_id}: a theme pack must not ship {rel!r} "
+                f"(no {', '.join(THEME_FORBIDDEN_SUFFIXES)} files)"
+            )
+    wallpaper = manifest["theme"]["wallpaper"]
+    for field, limit in (("image", THEME_MAX_WALLPAPER_BYTES), ("thumb", THEME_MAX_THUMB_BYTES)):
+        rel = wallpaper.get(field)
+        if rel is None:
+            continue
+        path = ext_dir / rel
+        size = path.stat().st_size
+        if size > limit:
+            raise BuildError(f"{ext_id}: theme.wallpaper.{field} {rel!r} is {size} bytes, over the {limit}-byte limit")
+        with path.open("rb") as handle:
+            head = handle.read(32)
+        if not _image_matches_extension(head, Path(rel).suffix.lower()):
+            raise BuildError(f"{ext_id}: theme.wallpaper.{field} {rel!r} is not a valid {Path(rel).suffix.lower()} image")
+
 
 # Files never shipped inside the ZIP or covered by the integrity map.
 _LISTING_NAME = "listing.json"
@@ -138,6 +493,11 @@ def validate_manifest(manifest: dict[str, Any], *, ext_id_hint: str) -> None:
         raise BuildError(
             f"{ext_id_hint}: 'version' must be strict x.y.z, got {manifest['version']!r}"
         )
+
+    if manifest.get("category") == THEME_CATEGORY or "theme" in manifest:
+        for key in THEME_FORBIDDEN_MANIFEST_KEYS:
+            if key in manifest:
+                raise BuildError(f"{ext_id_hint}: a theme pack must not declare '{key}'")
 
     perms = manifest.get("permissions") or []
     if not isinstance(perms, list) or not all(isinstance(p, str) for p in perms):
@@ -214,6 +574,8 @@ def validate_manifest(manifest: dict[str, Any], *, ext_id_hint: str) -> None:
                 raise BuildError(
                     f"{ext_id_hint}: 'integrity' entries must be 'sha256-<base64>' strings (bad key {key!r})"
                 )
+
+    validate_theme(manifest, ext_id_hint)
 
     widgets = manifest.get("widgets")
     if widgets is not None:
@@ -487,6 +849,9 @@ def build_one(ext_dir: Path, dist_dir: Path, *, revision: str) -> dict[str, Any]
     check_full_coverage(ext_dir, integrity)
     manifest["integrity"] = integrity
     validate_manifest(manifest, ext_id_hint=ext_id)
+    validate_theme_files(ext_dir, manifest)
+    if manifest.get("category") == THEME_CATEGORY and listing["category"] != THEME_CATEGORY:
+        raise BuildError(f"{ext_id}: listing.json 'category' must be 'themes' for a theme pack")
     rewrite_manifest(ext_dir, manifest)
 
     version = manifest["version"]
