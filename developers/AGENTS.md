@@ -69,7 +69,9 @@ Human-readable overview: [`README.md`](README.md). A short guide on deploy sourc
   hide behaviour in minified or encoded code.
 - A deploy route that sends a mutable image tag to the deploy webhook. Only `repo@sha256:<digest>` is accepted.
 - Putting a secret in a Dockerfile `ENV`/`ARG`, compose file, recipe default, workflow file or commit.
-- Claiming compose files deploy as an app source on Tend today (see [`tend-compose`](skills/tend-compose/SKILL.md)).
+- Claiming every compose file deploys on Tend: it deploys as a stack, only within the subset the panel checks, and
+  secrets, configs, host paths, privileged mode and more than one replica are refused (see
+  [`tend-compose`](skills/tend-compose/SKILL.md)).
 - Claiming a recipe is "certified", "tested" or "official". Only Tend's own review grants assurance status.
 
 ## Before you report done

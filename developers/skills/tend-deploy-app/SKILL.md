@@ -1,6 +1,6 @@
 ---
 name: tend-deploy-app
-description: Deploy the user's own application on a Tend panel from Git, a Dockerfile, a prebuilt image, or their own CI pipeline (files needed per source, environment variables and secrets, domains and HTTPS, volumes, databases, deploy checks, rollback, deploy tokens and webhooks). Use when the user wants to get their project running on Tend or automate its deploys.
+description: Deploy the user's own application on a Tend panel from Git, a Dockerfile, a prebuilt image, a Compose file (as a stack) or their own CI pipeline (files needed per source, environment variables and secrets, domains and HTTPS, volumes, databases, deploy checks, rollback, deploy tokens and webhooks). Use when the user wants to get their project running on Tend or automate its deploys.
 ---
 
 # Deploy your own app on Tend
@@ -17,7 +17,7 @@ Tend runs apps in containers on servers the user manages over SSH; nothing is in
 | **Git repository** | a `Dockerfile` in the build context ([`tend-dockerfile`](../tend-dockerfile/SKILL.md)) | you want Tend to build from a branch, tag or exact commit; optional auto-deploy on push |
 | **Prebuilt image** (registry) | an image reference, ideally `repo@sha256:<digest>` | you build elsewhere (your CI, Docker Hub, GHCR) |
 | **Your own CI** | a pipeline that publishes an image and calls Tend's image webhook with the digest | you already have CI and want Tend to deploy what CI built |
-| **Compose file** | nothing: not deployable as a source today | translate it: [`tend-compose`](../tend-compose/SKILL.md) |
+| **Compose file** | a compose file inside Tend's subset ([`tend-compose`](../tend-compose/SKILL.md)); `build:` needs a Git source | several services that belong together: each becomes an app of one **stack** (ordered `depends_on`, one network, one rollback) |
 | **Archive (zip URL)** | nothing: recognised but not deployable today | publish a Git repo or an image instead |
 | **App Store recipe** | none | an app someone already described: [`tend-app-recipe`](../tend-app-recipe/SKILL.md) |
 
@@ -25,7 +25,9 @@ Overview of the supported sources and their limits: [`../../guides/deploy-source
 
 ## Add the app (UI)
 
-**Apps or App Store, then Add:** choose the source, the target server, an app name and a web address.
+**Apps or App Store, then Add:** choose the source, the target server, an app name and a web address. For a compose
+file, switch the form to **A Compose file** instead and follow [`tend-compose`](../tend-compose/SKILL.md); it is a
+stack with its own checked, reviewed deploy (below, **Compose stacks**).
 
 1. **Git**: repository URL; **Branch / Git Ref** takes a branch, a tag or a full commit SHA (blank means the
    repository default). The form probes the repo and shows the detected port and a warning when there is no
@@ -67,9 +69,25 @@ compete with serving.
 ## Rollback
 
 Each successful release is recorded with its commit or digest. **Roll back** from the app's deploy history re-runs
-the previous verified release; it must be exactly the next step back. Rollback exists for image and Git apps, not
-for compose. Rollback restores code, not data: data in volumes is untouched, so take a backup before risky
+the previous verified release; it must be exactly the next step back. Rollback exists for image and Git apps, and for compose
+stacks as a whole (see below). Rollback restores code, not data: data in volumes is untouched, so take a backup before risky
 migrations.
+
+## Compose stacks
+
+A compose file deploys as a **stack**: every long-running service becomes an app named `<stack>-<service>`, the stack
+runs them on one private network in `depends_on` order (a `service_completed_successfully` dependency runs once as a
+job), and every service swapped in a run is put back if one fails. The panel checks the file against its subset first
+and names each refusal by YAML path; nothing runs until you deploy, and the plan shows what will be added, changed and
+removed per service. A `./folder` bind becomes a managed volume that starts empty. Web addresses attach to a service's
+declared TCP port. Auto-deploy on push works for Git stacks.
+
+Roll back from the stack's **Releases** (or `POST /api/orchestrator/stacks/{uuid}/rollback`): one release at a time,
+replaying the recorded image digests and environment without rereading the source; data volumes are untouched. A
+service's own app refuses source, build, runtime, volume, auto-deploy, delete and rollback changes with
+`409 stack_owned`; change the file or the stack instead. Deleting a stack keeps its volumes and DNS records unless you
+ask, with a second typed confirmation for the volumes. Stacks do not support compose `secrets` or `configs`, more
+than one replica per service, public TCP or UDP ports or private registries.
 
 ## Deploy from your own CI
 
@@ -127,10 +145,11 @@ ignored; the same app and commit within ten minutes counts once.
 - Putting the deploy token, registry password or any secret in a repository, workflow file or log.
 - Using an admin session cookie in CI. Use the deploy token (or a scoped API token, see
   [`tend-api-and-mcp`](../tend-api-and-mcp/SKILL.md)).
-- Telling the user a compose file or a zip URL deploys directly.
+- Telling the user any compose file deploys as is: run the Validate step first; a zip URL does not deploy at all.
 
 Source: public docs [applications](https://tend.host/docs/applications),
 [deploy-from-your-own-ci](https://tend.host/docs/deploy-from-your-own-ci); panel `internal/api/orchestrator_image_webhook.go`
 and `route_scopes.go` (deploy-token routes are browser-only, `apps:deploy` scope), `internal/deploy/plan.go`
-(`SupportedSources`), `internal/api/orchestrator_deploy.go` (rollback), the panel docs on deploy checks and build
+(`SupportedSources`), `internal/api/orchestrator_deploy.go` (rollback), `internal/api/stacks*.go` and
+`internal/compose/` (compose stacks), public docs [compose](https://tend.host/docs/compose), the panel docs on deploy checks and build
 placement (`docs/how-to/deploy-checks.md`, `deploy-build-placement.md`), `domains-and-dns.md`.

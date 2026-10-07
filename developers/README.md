@@ -30,8 +30,8 @@ Tend panel.
 | Add a shelf widget | [`skills/tend-extension`](skills/tend-extension/SKILL.md) (widgets section) | [Widgets](https://tend.host/docs/extension-widgets) |
 | Make a theme pack | [`skills/tend-theme-pack`](skills/tend-theme-pack/SKILL.md) | [Theme packs](https://tend.host/docs/extension-themes), [`../docs/themes.md`](../docs/themes.md) |
 | Write a Dockerfile Tend builds well | [`skills/tend-dockerfile`](skills/tend-dockerfile/SKILL.md) | [Managing applications](https://tend.host/docs/applications) |
-| Write a compose file (what Tend does with it today) | [`skills/tend-compose`](skills/tend-compose/SKILL.md) | [Managing applications](https://tend.host/docs/applications) |
-| Deploy my own app (Git, Dockerfile, image, my CI) | [`skills/tend-deploy-app`](skills/tend-deploy-app/SKILL.md), [`guides/deploy-sources.md`](guides/deploy-sources.md) | [Applications](https://tend.host/docs/applications), [Deploy from your own CI](https://tend.host/docs/deploy-from-your-own-ci) |
+| Write a compose file Tend deploys as a stack | [`skills/tend-compose`](skills/tend-compose/SKILL.md) | [Deploy a Compose file](https://tend.host/docs/compose) |
+| Deploy my own app (Git, Dockerfile, image, compose, my CI) | [`skills/tend-deploy-app`](skills/tend-deploy-app/SKILL.md), [`guides/deploy-sources.md`](guides/deploy-sources.md) | [Applications](https://tend.host/docs/applications), [Deploy from your own CI](https://tend.host/docs/deploy-from-your-own-ci) |
 | Describe an app as a recipe | [`skills/tend-app-recipe`](skills/tend-app-recipe/SKILL.md) | [Managing applications](https://tend.host/docs/applications) (catalog sources) |
 | Automate a panel with a token or an assistant | [`skills/tend-api-and-mcp`](skills/tend-api-and-mcp/SKILL.md) | [API tokens](https://tend.host/docs/api-tokens), [MCP](https://tend.host/docs/mcp) |
 | Open a good pull request | [`skills/tend-git-and-pr`](skills/tend-git-and-pr/SKILL.md), [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | |
