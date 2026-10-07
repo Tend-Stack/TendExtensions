@@ -19,6 +19,13 @@
 - [ ] `pytest tests/` passes.
 - [ ] Version bumped (updates only) and `release_notes` describes the change.
 
+## AI-generated code
+
+- [ ] I wrote this, or I have read, run and understood every line an AI tool
+      wrote for me (including any Dockerfile, compose file or recipe), and I can
+      explain it. Reviewers reject code its author can't explain.
+- [ ] If an AI agent helped, I said so under "Notes for reviewers".
+
 ## Notes for reviewers
 
 <!-- Anything that needs a second look: new permission, new runtime module,

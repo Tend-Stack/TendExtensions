@@ -178,6 +178,18 @@ version:
 - Keep third-party code to what the panel allows as a runtime module; today that is `phaser@4`.
 - Be kind in reviews and honest in release notes.
 
+## Build with AI
+
+An optional developer kit for AI coding agents lives in the Tend repository:
+[`developers/`](https://github.com/wilkinsantana/tend.host/tree/main/developers) ([`AGENTS.md`](https://github.com/wilkinsantana/tend.host/blob/main/developers/AGENTS.md) for the agent, plus a
+[skill](https://github.com/wilkinsantana/tend.host/tree/main/developers/skills) for extensions, theme packs, Dockerfiles, compose files, recipes, Git and PRs, and the API).
+There is also a short human guide, [`developers/README.md`](https://github.com/wilkinsantana/tend.host/blob/main/developers/README.md).
+
+**Read this before you use it.** Every extension, theme pack, App Store recipe and listing is inspected by humans
+before it is published. The AI kit is a convenience, not the default. You are responsible for inspecting, testing,
+fixing and patching AI-generated code (and Dockerfiles, compose files and recipes) before you open a PR, and
+reviewers reject code its author can't explain. Registry PRs always get human review.
+
 ## Repository layout
 
 ```

@@ -98,6 +98,20 @@ then signs `registry.json` and creates (or updates) a GitHub release tagged
 `registry-<sequence>` with the built ZIPs and the signed envelope attached.
 Panels pick up the new registry on their next scheduled or manual check.
 
+## Using an AI coding agent
+
+You may use one; you do not have to. The Tend repository ships a kit for agents:
+[`developers/AGENTS.md`](https://github.com/wilkinsantana/tend.host/blob/main/developers/AGENTS.md) and the [skills](https://github.com/wilkinsantana/tend.host/tree/main/developers/skills) (extension, theme
+pack, Dockerfile, compose, deploy, recipe, Git and PR, API and MCP, review before PR). Point your agent at them, and
+this repository's own [`AGENTS.md`](AGENTS.md) for the rules here.
+
+- Every extension, theme pack, App Store recipe and listing is inspected by humans before it is published.
+- The AI kit is a convenience, not the default.
+- You are responsible for inspecting, testing, fixing and patching AI-generated code (and Dockerfiles, compose
+  files and recipes) before you open a PR. Run `python tools/build.py` and `pytest tests/` yourself and read the
+  diff line by line.
+- Reviewers reject code its author can't explain. Be ready to answer questions about every file in your PR.
+
 ## House rules
 
 - Extension ids are unique and never reused for a different extension.
