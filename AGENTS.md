@@ -3,9 +3,10 @@
 This is the official extension registry for Tend (extensions and theme packs). If you are an AI coding agent,
 read the Tend developer kit first, then follow this repo's rules below.
 
-- Kit instructions: https://github.com/wilkinsantana/tend.host/blob/main/developers/AGENTS.md
-- Skills (load the one you need, e.g. `tend-extension`, `tend-theme-pack`, `tend-review-before-pr`): https://github.com/wilkinsantana/tend.host/tree/main/developers/skills
-- Human guide: https://github.com/wilkinsantana/tend.host/blob/main/developers/README.md
+- Kit instructions: [`developers/AGENTS.md`](developers/AGENTS.md)
+- Skills (load the one you need, e.g. `tend-extension`, `tend-theme-pack`, `tend-review-before-pr`): [`developers/skills/`](developers/skills/)
+- Human guide: [`developers/README.md`](developers/README.md)
+- Online: https://github.com/Tend-Stack/TendExtensions/tree/main/developers
 
 ## Human review comes first
 

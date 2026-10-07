@@ -100,8 +100,8 @@ Panels pick up the new registry on their next scheduled or manual check.
 
 ## Using an AI coding agent
 
-You may use one; you do not have to. The Tend repository ships a kit for agents:
-[`developers/AGENTS.md`](https://github.com/wilkinsantana/tend.host/blob/main/developers/AGENTS.md) and the [skills](https://github.com/wilkinsantana/tend.host/tree/main/developers/skills) (extension, theme
+You may use one; you do not have to. This repository ships a kit for agents:
+[`developers/AGENTS.md`](developers/AGENTS.md) and the [skills](developers/skills) (extension, theme
 pack, Dockerfile, compose, deploy, recipe, Git and PR, API and MCP, review before PR). Point your agent at them, and
 this repository's own [`AGENTS.md`](AGENTS.md) for the rules here.
 

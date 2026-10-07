@@ -180,10 +180,10 @@ version:
 
 ## Build with AI
 
-An optional developer kit for AI coding agents lives in the Tend repository:
-[`developers/`](https://github.com/wilkinsantana/tend.host/tree/main/developers) ([`AGENTS.md`](https://github.com/wilkinsantana/tend.host/blob/main/developers/AGENTS.md) for the agent, plus a
-[skill](https://github.com/wilkinsantana/tend.host/tree/main/developers/skills) for extensions, theme packs, Dockerfiles, compose files, recipes, Git and PRs, and the API).
-There is also a short human guide, [`developers/README.md`](https://github.com/wilkinsantana/tend.host/blob/main/developers/README.md).
+An optional developer kit for people and AI coding agents lives in this repository:
+[`developers/`](developers) ([`AGENTS.md`](developers/AGENTS.md) for the agent, plus a
+[skill](developers/skills) for extensions, theme packs, Dockerfiles, compose files, recipes, deploying your own app,
+Git and PRs, and the API). There is also a human guide, [`developers/README.md`](developers/README.md).
 
 **Read this before you use it.** Every extension, theme pack, App Store recipe and listing is inspected by humans
 before it is published. The AI kit is a convenience, not the default. You are responsible for inspecting, testing,
@@ -198,6 +198,8 @@ extensions/<id>/                 one folder per extension (id = manifest id)
     listing.json                 store listing: publisher, category, features, requirements, release notes
     glyph.svg                    the themed icon shape (required unless category is themes)
     README.md, *.js              the extension itself; icon.svg only for panels older than glyphs
+
+developers/                       the developer kit: README, AGENTS.md for AI agents, skills/, guides/
 
 templates/extension/             starter for a code extension, with a conforming glyph.svg (copy into extensions/)
 templates/theme-pack/            starter for a gradient-based theme pack (copy into extensions/; never built as is)
