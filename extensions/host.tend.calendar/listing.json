@@ -15,5 +15,5 @@
     "A Tend panel running schema-2 (native ESM) extensions",
     "A desktop or mobile browser tab with ES module support"
   ],
-  "release_notes": "1.5.1: Wording now says Tend, the control panel's name."
+  "release_notes": "1.5.1: Wording now says Tend, the control panel's name. The icon now follows your theme."
 }

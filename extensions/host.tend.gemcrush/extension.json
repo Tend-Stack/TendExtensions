@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Riftfall Edition: an 80-stage match-three campaign with objective contracts, power fusion, charged boosters, a rebalanced five-star mastery system, responsive fullscreen, and persistent arcade progression.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -35,6 +36,7 @@
   "integrity": {
     "README.md": "sha256-5dauEoXVvDQvOD0iSH15aCMFl7ooMNOmuGnG/B8//rg=",
     "arcade-kit.js": "sha256-5wY/6QjkhVQ85bAGsTetIFdOIqk5stXKrEJJJsgqhwg=",
+    "glyph.svg": "sha256-H1iAqsKtDMW+c5MJp+wG2x+KBujLhZDSchsXqDDhck8=",
     "icon.svg": "sha256-/XJSh9aKjkjRdln264Mc/dI6wW4knbIoB29SI66ZSY8=",
     "index.js": "sha256-VHokF4torrBiZ8GekGQ62GKuKtoH3iuxcpaOwfoEyXA="
   }

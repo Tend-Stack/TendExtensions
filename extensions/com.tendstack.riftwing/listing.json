@@ -14,5 +14,5 @@
     "A Tend panel running extension runtime API 1 with the phaser@4 runtime module",
     "A desktop or mobile browser tab with ES module support"
   ],
-  "release_notes": "4.1.2: Wording now says Tend, the control panel's name."
+  "release_notes": "4.1.2: Wording now says Tend, the control panel's name. The icon now follows your theme."
 }

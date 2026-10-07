@@ -163,7 +163,8 @@ Make sure the thumbnail is the same look as the theme and not washed out.
 - Dark mode usually needs a lighter `primary` (L 70-85%); light mode a darker one (L 45-58%).
 - Use `surface.hue` to tint the glass and base tokens toward the photo; keep `chroma` small (0.01-0.04).
 - `icons.hueRotate` recolours the desktop icons relative to emerald (`oklch(70% 0.15 162)`); aim it at your
-  primary hue and keep `saturate` and `brightness` near 1.
+  primary hue and keep `saturate` and `brightness` near 1. `icons.*` also tints every extension's icon tile
+  (see [icons.md](icons.md)).
 - Keep `desktopLabels` at `light` for photos; use `dark` only if the photo is pale under the labels.
 - Test on a bright and a dark moment of the photo, with windows open and with the home screen empty.
 - Describe the look in `description` and the `listing.json` bullets; do not describe features the pack

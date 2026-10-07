@@ -6,6 +6,7 @@
   "author": "TEND STACK LLC",
   "description": "A fast, replayable sky-runner with eight evolving worlds, nine pilots, four difficulty classes, dynamic routes, power cores, contracts, progression, and precision rewards.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -36,6 +37,7 @@
   },
   "integrity": {
     "README.md": "sha256-xV3dcHfNxJ9aXiJniqtUfyYYJjck7hCvF+Yi/MseLHM=",
+    "glyph.svg": "sha256-5SoRGUNs8o6fLf57vMzBWMjJCJ2UFlFpw0zd0dxossY=",
     "icon.svg": "sha256-82gacj2DyzffyipJu95wuiSgItulMVSVhvY5xOXrHug=",
     "index.js": "sha256-+BOrjQa/gTPGSLP4jh6UNsGz5WsV4mwIQsVlCLiruVA="
   }

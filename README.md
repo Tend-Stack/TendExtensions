@@ -51,11 +51,15 @@ integrity verifier, and its web application firewall before a single module exec
   "author": "Tend",
   "description": "Seven-mode calculator …",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": { "module": "index.js", "mount": "tool-window", "size": { "w": 460, "h": 700 } },
   "permissions": ["storage"],
   "integrity": { "index.js": "sha256-…", "engine/parser.js": "sha256-…" }
 }
 ```
+
+`glyph.svg` is the one-colour icon the panel draws on a tile coloured from the active theme
+([docs/icons.md](docs/icons.md)); `icon.svg` stays for panels older than the glyph release.
 
 Next to the manifest, `listing.json` carries what the store shows but the runtime does not need:
 publisher, category, feature bullets, requirements, and the release notes for the current version.

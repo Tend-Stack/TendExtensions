@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "A responsive 50-stage memory campaign with working difficulty, stage, hint, mode, and perk controls. Uses Tend Runtime API 1 and host-owned mobile fullscreen.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -27,6 +28,7 @@
   ],
   "integrity": {
     "arcade-kit.js": "sha256-48M8WWFTlZusyMztUY7xfxh1h3LmhMtxsyezdcNqZ4U=",
+    "glyph.svg": "sha256-LPf/UHjVfdiJq7ZEoAJAz1DvKZhnsBXGCmZg3diONTU=",
     "icon.svg": "sha256-KUxrLeWYVFzwQxGTAQQAah6lDBBg3gem/kmgTf9v3L4=",
     "index.js": "sha256-OEDY1tFDIS2FzeykjQleHkHEQ6bfhfM4LmDluVM8Un0="
   },

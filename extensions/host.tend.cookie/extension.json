@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "A responsive active-idle bakery with unclipped upgrades, prestige, golden events, modes, perks, and quests. Uses Tend Runtime API 1 and host-owned mobile fullscreen.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -27,6 +28,7 @@
   ],
   "integrity": {
     "arcade-kit.js": "sha256-48M8WWFTlZusyMztUY7xfxh1h3LmhMtxsyezdcNqZ4U=",
+    "glyph.svg": "sha256-z5dprxgDgXpn0+EnBce6bzalF4sIcyj97Vlu7MD91zQ=",
     "icon.svg": "sha256-/qXT7RlCF82SYlmfUP5mFnWHzruiYaZjmGHXRnNoVnk=",
     "index.js": "sha256-5ZMtVJm5MvboXq4IJ1H1B0wAr/8z4qM4mowmW97EbEQ="
   },

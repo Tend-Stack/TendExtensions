@@ -1,0 +1,24 @@
+{
+  "schema": 2,
+  "id": "com.example.my-extension",
+  "name": "My Extension",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "One sentence on what this extension does.",
+  "icon": "icon.svg",
+  "glyph": "glyph.svg",
+  "ui": {
+    "module": "index.js",
+    "mount": "tool-window",
+    "size": {
+      "w": 420,
+      "h": 560
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "integrity": {
+    "index.js": "sha256-rebuilt-by-tools-build-py"
+  }
+}

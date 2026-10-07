@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- 24 x 24 grid, 2-unit keyline: keep the drawing inside 2..22. One colour only:
+       currentColor. Cut-outs use fill-rule="evenodd"; a secondary mark uses fill-opacity 0.3..1. -->
+  <path fill="currentColor" fill-rule="evenodd" d="M6 2h12a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4ZM12 7l1.8 3.7 4.1.6-3 2.9.7 4.1-3.6-1.9-3.6 1.9.7-4.1-3-2.9 4.1-.6Z"/>
+</svg>

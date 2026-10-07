@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Merge mastery across an endless target ladder. Runtime API 1, persistent arcade progression, mobile full-screen, and challenge systems.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -27,6 +28,7 @@
   ],
   "integrity": {
     "arcade-kit.js": "sha256-48M8WWFTlZusyMztUY7xfxh1h3LmhMtxsyezdcNqZ4U=",
+    "glyph.svg": "sha256-yCSky5yT0hdYMMNFueBK917qWKMFsO0YH7HXOGfOlsQ=",
     "icon.svg": "sha256-eIhHpVAiFOhKFDNg7lqJIrgGk4siCfgJyt937S5Ljio=",
     "index.js": "sha256-rG3jwR28G8wu9mD/t8FPTRCQDHWXIfnq8vDTqMy35Rg="
   },

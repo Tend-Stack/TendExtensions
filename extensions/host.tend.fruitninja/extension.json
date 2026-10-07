@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Responsive fruit-slicing arcade action with illustrated fruit, denser waves, bosses, modes, perks, and missions. Uses Tend Runtime API 1 and host-owned mobile fullscreen.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -27,6 +28,7 @@
   ],
   "integrity": {
     "arcade-kit.js": "sha256-48M8WWFTlZusyMztUY7xfxh1h3LmhMtxsyezdcNqZ4U=",
+    "glyph.svg": "sha256-ku1K5Q5jFGPBmc/UIk+XK7INfMgMQafYEQ02QwgiMLI=",
     "icon.svg": "sha256-2t6noDze5TQ3ymBt45ozA5kwHsaOBSus2iiqJH+rl4A=",
     "index.js": "sha256-xeUPpgMJGCd2fWJZT+AXlOqPhl5I7R3Q5IDjIExoHJU="
   },

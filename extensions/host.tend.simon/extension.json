@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "A 60-session Simon brain-training campaign with adaptive recall, reverse and timed modes, shifting pads, integrated glyph art, and corrected responsive fullscreen rendering.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -28,6 +29,7 @@
   "integrity": {
     "README.md": "sha256-LTqRWH337+HvqL6eNqIPOU5TTQ6FSVyS6vi9bzyuFUI=",
     "arcade-kit.js": "sha256-5wY/6QjkhVQ85bAGsTetIFdOIqk5stXKrEJJJsgqhwg=",
+    "glyph.svg": "sha256-GPuAbfMFQm3ZMkg+xWZzFT69rjUfT8eWVVYwzsbJ3Is=",
     "icon.svg": "sha256-ykforHocQRrD4kVg/mijL3LzQ3GG1E1+rIsTjzcIMLY=",
     "index.js": "sha256-gG5mAkTrUTJiFVq34KIl4h77SuYu3/siami9cSyDiqg="
   },

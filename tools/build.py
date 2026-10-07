@@ -40,6 +40,11 @@ from typing import Any
 
 from PIL import Image
 
+try:  # imported as `tools.build` (tests) or run as `python tools/build.py`
+    from tools import glyph as glyph_rules
+except ImportError:  # pragma: no cover - script mode puts tools/ itself on sys.path
+    import glyph as glyph_rules
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # ---------- re-implementation of the panel's manifest rules ----------
@@ -879,7 +884,24 @@ def build_zip(ext_dir: Path, dest: Path) -> None:
             zf.writestr(info, path.read_bytes())
 
 
-def build_one(ext_dir: Path, dist_dir: Path, *, revision: str) -> dict[str, Any]:
+def validate_glyph(ext_dir: Path, manifest: dict[str, Any], *, is_theme: bool) -> str | None:
+    """The themed-icon contract (docs/icons.md): a non-theme package must
+    declare a conforming `glyph`; a theme pack carries none (its card is the
+    wallpaper thumb). Returns the glyph text for registry.json, or None."""
+    ext_id = ext_dir.name
+    if is_theme:
+        if "glyph" in manifest:
+            raise BuildError(f"{ext_id}: a theme pack must not declare 'glyph'")
+        return None
+    try:
+        return glyph_rules.validate_glyph_package(ext_dir, manifest, required=True)
+    except glyph_rules.GlyphError as exc:
+        raise BuildError(str(exc)) from None
+
+
+def build_one(
+    ext_dir: Path, dist_dir: Path, *, revision: str, emit_glyph_svg: bool = False
+) -> dict[str, Any]:
     ext_id = ext_dir.name
     manifest = load_json(ext_dir / _MANIFEST_NAME, what="extension.json")
     listing = load_json(ext_dir / _LISTING_NAME, what="listing.json")
@@ -891,8 +913,10 @@ def build_one(ext_dir: Path, dist_dir: Path, *, revision: str) -> dict[str, Any]
     manifest["integrity"] = integrity
     validate_manifest(manifest, ext_id_hint=ext_id)
     validate_theme_files(ext_dir, manifest)
-    if manifest.get("category") == THEME_CATEGORY and listing["category"] != THEME_CATEGORY:
+    is_theme = manifest.get("category") == THEME_CATEGORY
+    if is_theme and listing["category"] != THEME_CATEGORY:
         raise BuildError(f"{ext_id}: listing.json 'category' must be 'themes' for a theme pack")
+    glyph_svg = validate_glyph(ext_dir, manifest, is_theme=is_theme)
     rewrite_manifest(ext_dir, manifest)
 
     version = manifest["version"]
@@ -901,7 +925,7 @@ def build_one(ext_dir: Path, dist_dir: Path, *, revision: str) -> dict[str, Any]
     build_zip(ext_dir, zip_path)
     zip_bytes = zip_path.read_bytes()
 
-    return {
+    entry = {
         "id": ext_id,
         "name": manifest["name"],
         "version": version,
@@ -924,6 +948,13 @@ def build_one(ext_dir: Path, dist_dir: Path, *, revision: str) -> dict[str, Any]
             "sha256": hashlib.sha256(zip_bytes).hexdigest(),
         },
     }
+    if emit_glyph_svg and glyph_svg is not None:
+        # The exact file text, so the signed index carries the store preview
+        # of a package the panel has not downloaded yet. OFF by default: a
+        # panel from before the glyph release checks each index entry against
+        # an exact key set and would reject the whole catalog.
+        entry["glyph_svg"] = glyph_svg
+    return entry
 
 
 def discover_extension_ids(extensions_dir: Path) -> list[str]:
@@ -941,6 +972,7 @@ def run(
     *,
     sequence: int | None = None,
     revision: str | None = None,
+    emit_glyph_svg: bool = False,
 ) -> dict[str, Any]:
     extensions_dir = repo_root / "extensions"
     dist_dir = repo_root / "dist"
@@ -960,7 +992,10 @@ def run(
     if not ids:
         raise BuildError("no extensions found under extensions/")
 
-    entries = [build_one(extensions_dir / ext_id, dist_dir, revision=revision) for ext_id in ids]
+    entries = [
+        build_one(extensions_dir / ext_id, dist_dir, revision=revision, emit_glyph_svg=emit_glyph_svg)
+        for ext_id in ids
+    ]
     entries.sort(key=lambda e: e["id"])
 
     registry = {
@@ -982,10 +1017,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--sequence", type=int, default=None)
     parser.add_argument("--revision", type=str, default=None)
+    parser.add_argument(
+        "--emit-glyph-svg",
+        action="store_true",
+        help="add each package's glyph text to its registry.json entry as `glyph_svg` "
+        "(default off: panels before the glyph release reject unknown index keys)",
+    )
     args = parser.parse_args(argv)
 
     try:
-        registry = run(args.repo_root, sequence=args.sequence, revision=args.revision)
+        registry = run(
+            args.repo_root,
+            sequence=args.sequence,
+            revision=args.revision,
+            emit_glyph_svg=args.emit_glyph_svg,
+        )
     except BuildError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

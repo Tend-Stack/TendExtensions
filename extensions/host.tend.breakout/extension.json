@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Responsive campaign Breakout with live fullscreen relayout, boss walls, power-ups, perks, and fever chains. Uses Tend Runtime API 1 and host-owned mobile fullscreen.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -27,6 +28,7 @@
   ],
   "integrity": {
     "arcade-kit.js": "sha256-48M8WWFTlZusyMztUY7xfxh1h3LmhMtxsyezdcNqZ4U=",
+    "glyph.svg": "sha256-6yc54jUfMVffQBcw1ubMYMLodNsqEDKrXy1sR16JX+c=",
     "icon.svg": "sha256-luJSDzRgWDBsQBpkbO10uZA+qvbazzOvFDJebyEiaj4=",
     "index.js": "sha256-L7T6DKnCRiFpwN1A6EU9nz9RntYxCTKxA20m2GysMw4="
   },

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Legacy icon, shown only by panels older than the glyph release. Keep it, but new panels draw glyph.svg. -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#6366f1"/>
+  <path d="M32 16l5 11 12 2-9 8 3 12-11-6-11 6 3-12-9-8 12-2z" fill="#fff"/>
+</svg>

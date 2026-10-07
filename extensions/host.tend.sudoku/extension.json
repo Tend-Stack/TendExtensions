@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Classic Sudoku \u2014 fill the 9\u00d79 grid so each row, column, and 3\u00d73 box contains digits 1-9. Pure logic, pure flow.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -33,6 +34,7 @@
     "targetFps": 60
   },
   "integrity": {
+    "glyph.svg": "sha256-YHqoavHRdNi9QeG5mvA3/noYSuBCOky72aSHur3SKR8=",
     "icon.svg": "sha256-yCwUjCVt4+bhJhl9X4w8VjolptP0LyQOO11Zyo5AP0E=",
     "index.js": "sha256-yreB8yhuQ4lwXCTRcryK+7AyFO79o5CWkbJnTImM7Lw="
   }

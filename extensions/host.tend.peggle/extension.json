@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Modern arcade ricochet with fever shots, burst pegs, star-rated stages, and responsive desktop/mobile layouts for Tend.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -28,6 +29,7 @@
   "integrity": {
     "README.md": "sha256-uFHEqno1nZJ8F3Y8FXGcnQdnQLkL8byzJRHZwLQLBp8=",
     "arcade-kit.js": "sha256-48M8WWFTlZusyMztUY7xfxh1h3LmhMtxsyezdcNqZ4U=",
+    "glyph.svg": "sha256-Pds7UCiTnIuzDLRm8Rb7PKUK2i/2YqXqQq61plMrSeU=",
     "icon.svg": "sha256-ddtYEDZlWpJJFU5IMj9AYBk7Q+NTTV/j3VWvLa++QY8=",
     "index.js": "sha256-eYIlNs4CWn0GNwFaP2bSotG38dR5Ij4+uOn/h5uOAtE="
   },

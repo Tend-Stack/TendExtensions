@@ -1,0 +1,15 @@
+{
+  "publisher": "Your name",
+  "category": "utilities",
+  "featured": false,
+  "reviewed": true,
+  "features": [
+    "What it does, in a short bullet",
+    "A second bullet",
+    "A third bullet"
+  ],
+  "requirements": [
+    "A Tend panel running extension runtime API 1"
+  ],
+  "release_notes": "Initial release."
+}

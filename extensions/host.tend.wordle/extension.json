@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Guess the hidden word in 6 tries. Green = correct position, yellow = wrong position, gray = not in word. Simple, elegant, addictive.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -33,6 +34,7 @@
     "targetFps": 60
   },
   "integrity": {
+    "glyph.svg": "sha256-WRXbbfbtbkB1T9CEe0QcROOgKXMyFO1w8IptheRigQs=",
     "icon.svg": "sha256-BKb9LQsRw0WgeLaf6TOQqSu5ssWugjG1pCfzDUQWnYo=",
     "index.js": "sha256-QnMhC4PjWAh7P0aXrbn/hobZ0RzSWnVqs7I6m/VzXGI="
   }

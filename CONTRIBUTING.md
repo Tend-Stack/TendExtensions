@@ -12,7 +12,12 @@
    disk every time it runs, so don't hand-maintain the hashes.
 3. Add every other file your extension ships (JS modules, `icon.svg`,
    `README.md`, ...) under the same folder. Don't add dotfiles — `build.py`
-   refuses to package them.
+   refuses to package them. Start from `templates/extension/`.
+3a. Draw `glyph.svg`, the one-colour icon the panel colours from the active
+   theme, and declare it as `"glyph": "glyph.svg"` in `extension.json` (keep
+   `"icon": "icon.svg"` for older panels). The rules and a drawing guide are in
+   [docs/icons.md](docs/icons.md); `tools/build.py` refuses a non-theme package
+   without a conforming glyph. Preview it with `python tools/glyph_sheet.py --png`.
 4. Add `listing.json` next to it with the store-catalog fields the manifest
    doesn't carry:
    ```json
@@ -100,5 +105,8 @@ Panels pick up the new registry on their next scheduled or manual check.
   allowed (`tools/build.py` and `tools/validate_with_panel.py` both check
   this — the second one by running the real core's own
   `cmd/tend-validate-extension`).
+- Every non-theme extension ships a conforming `glyph.svg` (monochrome, no
+  colour of its own); the panel draws the icon tile from the theme. See
+  [docs/icons.md](docs/icons.md).
 - Keep ZIPs deterministic: no dotfiles, no directory entries, sorted member
   order. `tools/build.py` does this for you; don't hand-build the ZIP.

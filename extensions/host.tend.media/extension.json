@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Radio stations, podcasts and audiobooks from OndaCast in one player, in the top bar and on your shelf: subscriptions, a queue, per-show speed, a sleep timer, transcripts, audiobook bookmarks, clips saved to Tend Notes, and Sprout can put anything on for you.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "shell-app",
@@ -31,6 +32,7 @@
     "chunks/Icon-CkCATa2J.js": "sha256-gue1tKPTver/pg6gSkmqa5NDaxBMF0zbdm3tCFXZEXU=",
     "chunks/Row-CbejDMJm.js": "sha256-m1P9LODQEdFctaz8a7EMYKRG+oFxq5Yj2KU9wUtrYQ8=",
     "chunks/model.svelte-A0MofO8E.js": "sha256-KO713jSRgZxIMD5JSCBZTQtjAlT1IfZLMtB90AFcbx0=",
+    "glyph.svg": "sha256-qqRIgQEeU+LAKChWZj/HcWQFjMieQOD04EkDmU6eIwE=",
     "icon.svg": "sha256-SbSAyR4prIUkwozxPbf5VCyQH+gS9mYGZIByD0NeZXU=",
     "index.js": "sha256-ZEVKyepnBlABmDXs975F8QyxTySNliCwfMaT2tPTZbE=",
     "widgets/continue-preview.svg": "sha256-ysFuvId4mqfnxGNxeWXoIAMdO9Vc8Evthpv9GrDR12o=",

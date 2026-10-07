@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "A modern month, week, day and agenda calendar with local events, reminders, ICS import/export, keyboard control and a settings sheet, built to be the panel's default calendar.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -38,6 +39,7 @@
   "integrity": {
     "README.md": "sha256-Vsji/Sdaw3mIprdn/jnTGYphFy1RwMMJq4oIvuCzhGM=",
     "date-utils.js": "sha256-5os08y92QN4tSlyV5ViKgcQl5oC2RaZ2jCCWAMLscLU=",
+    "glyph.svg": "sha256-bJms6RcqwzfDXzmcNckE50eM4GoMaioLiMKF7N5KOoU=",
     "icon.svg": "sha256-vX9D81J1DecqNRwmlxL8QufDvU+oxvG4t60/fSvd+Ps=",
     "ics.js": "sha256-cahlnXF/5V0uWlauBTqkGMQEewnuvqtsz/5INZxXqJI=",
     "index.js": "sha256-oFdAmx/VL+gIUrvSVIrQs3kxrTaDWsjR0fYyc29jv5g=",

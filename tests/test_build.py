@@ -49,7 +49,7 @@ def test_integrity_map_covers_every_shipped_file_and_only_those(fixture_repo: Pa
     manifest = json.loads((ext_dir / "extension.json").read_text())
     integrity = manifest["integrity"]
 
-    assert set(integrity) == {"README.md", "icon.svg", "index.js"}
+    assert set(integrity) == {"README.md", "glyph.svg", "icon.svg", "index.js"}
     for rel, expected in integrity.items():
         actual = build.sha256_b64(ext_dir / rel)
         assert actual == expected, rel
@@ -862,3 +862,108 @@ def test_theme_pack_template_ships_a_valid_thumb() -> None:
 
     with Image.open(REPO_ROOT / "templates" / "theme-pack" / "thumb.png") as img:
         assert img.size == (480, 270)
+
+
+# ---------- themed icon glyph (docs/icons.md) ----------
+
+
+def _fixture_ext(repo: Path) -> Path:
+    return repo / "extensions" / "host.tend.fixture"
+
+
+ENTRY_KEYS = {
+    "id", "name", "version", "publisher", "description", "category", "featured", "reviewed",
+    "features", "requirements", "permissions", "release_notes", "path", "homepage", "package",
+}
+
+
+def test_default_registry_entries_gain_no_new_keys(fixture_repo: Path) -> None:
+    """Panels before the glyph release check each index entry against an exact
+    key set; the default build must not add one."""
+    registry = build.run(fixture_repo, sequence=1, revision=REVISION_A)
+    assert set(registry["extensions"][0]) == ENTRY_KEYS
+    on_disk = json.loads((fixture_repo / "dist" / "registry.json").read_text())
+    assert set(on_disk["extensions"][0]) == ENTRY_KEYS
+
+
+def test_emit_glyph_svg_adds_the_exact_glyph_text(fixture_repo: Path) -> None:
+    registry = build.run(fixture_repo, sequence=1, revision=REVISION_A, emit_glyph_svg=True)
+    entry = registry["extensions"][0]
+    assert set(entry) == ENTRY_KEYS | {"glyph_svg"}
+    assert entry["glyph_svg"] == (_fixture_ext(fixture_repo) / "glyph.svg").read_text(encoding="utf-8")
+    on_disk = json.loads((fixture_repo / "dist" / "registry.json").read_text())
+    assert on_disk["extensions"][0]["glyph_svg"] == entry["glyph_svg"]
+
+
+def test_cli_flag_emits_glyph_svg_only_when_asked(fixture_repo: Path) -> None:
+    args = ["--repo-root", str(fixture_repo), "--sequence", "1", "--revision", REVISION_A]
+    assert build.main(args) == 0
+    assert "glyph_svg" not in json.loads((fixture_repo / "dist" / "registry.json").read_text())["extensions"][0]
+    assert build.main([*args, "--emit-glyph-svg"]) == 0
+    assert "glyph_svg" in json.loads((fixture_repo / "dist" / "registry.json").read_text())["extensions"][0]
+
+
+def test_non_theme_package_without_glyph_is_refused(fixture_repo: Path) -> None:
+    ext = _fixture_ext(fixture_repo)
+    manifest = json.loads((ext / "extension.json").read_text())
+    del manifest["glyph"]
+    (ext / "extension.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(build.BuildError, match=r"\[missing\].*glyph"):
+        build.run(fixture_repo, sequence=1, revision=REVISION_A)
+
+
+def test_glyph_that_breaks_a_rule_fails_the_build_naming_it(fixture_repo: Path) -> None:
+    ext = _fixture_ext(fixture_repo)
+    (ext / "glyph.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h9v9z" fill="#ff0000"/></svg>',
+        encoding="utf-8",
+    )
+    with pytest.raises(build.BuildError, match=r"\[paint\]"):
+        build.run(fixture_repo, sequence=1, revision=REVISION_A)
+
+
+def test_glyph_path_must_name_a_shipped_file(fixture_repo: Path) -> None:
+    ext = _fixture_ext(fixture_repo)
+    manifest = json.loads((ext / "extension.json").read_text())
+    manifest["glyph"] = "missing.svg"
+    (ext / "extension.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(build.BuildError, match=r"\[integrity\]"):
+        build.run(fixture_repo, sequence=1, revision=REVISION_A)
+
+
+def test_theme_pack_needs_no_glyph_and_emits_none(tmp_path: Path) -> None:
+    _copy_theme_pack(tmp_path)
+    registry = build.run(tmp_path, sequence=1, revision=REVISION_A, emit_glyph_svg=True)
+    assert "glyph_svg" not in registry["extensions"][0]
+
+
+def test_theme_pack_must_not_declare_a_glyph(tmp_path: Path) -> None:
+    pack = _copy_theme_pack(tmp_path)
+    manifest = json.loads((pack / "extension.json").read_text())
+    manifest["glyph"] = "glyph.svg"
+    (pack / "extension.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(build.BuildError, match="must not declare 'glyph'"):
+        build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+def test_every_committed_non_theme_extension_ships_a_conforming_glyph() -> None:
+    for ext_dir in sorted((REPO_ROOT / "extensions").iterdir()):
+        manifest = json.loads((ext_dir / "extension.json").read_text())
+        if manifest.get("category") == "themes":
+            assert "glyph" not in manifest
+            continue
+        assert manifest["glyph"] == "glyph.svg", ext_dir.name
+        assert manifest["icon"] == "icon.svg", ext_dir.name  # kept for older panels
+        assert (ext_dir / "glyph.svg").read_text(encoding="utf-8").count("<") > 0
+
+
+def test_extension_template_builds_when_copied_into_extensions(tmp_path: Path) -> None:
+    dst = tmp_path / "extensions" / "com.example.my-extension"
+    dst.parent.mkdir(parents=True)
+    shutil.copytree(REPO_ROOT / "templates" / "extension", dst)
+
+    registry = build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+    assert [e["id"] for e in registry["extensions"]] == ["com.example.my-extension"]
+    manifest = json.loads((dst / "extension.json").read_text())
+    assert manifest["glyph"] == "glyph.svg" and manifest["icon"] == "icon.svg"

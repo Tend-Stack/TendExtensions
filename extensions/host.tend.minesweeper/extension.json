@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Deep Signal v3.0.2: a no-guess Minesweeper expedition with stable in-place field rendering, modern tools, campaign mastery, and responsive fullscreen.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -35,6 +36,7 @@
   "integrity": {
     "README.md": "sha256-PSLvJRw3qXIvlFDwomUwxoLBichafQKYRcN2R660qE0=",
     "arcade-kit.js": "sha256-auisvuEg9+vBiUICThTNrpbArnPZKq+d6K/ftRRyS28=",
+    "glyph.svg": "sha256-w9WxnGIf1nKp7YDcVyQKEkmJpNrxOCdHA/qtO1RnEaE=",
     "icon.svg": "sha256-/luwvKvGetGAhaAi3UjVujbpxZ26EfVB6y5naFsG1Ss=",
     "index.js": "sha256-+1NZfxbLJWdtzie/VMlwUPFyf9PqL2nFSCicS0ZeGDU="
   }

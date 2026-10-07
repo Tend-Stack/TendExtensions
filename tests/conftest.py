@@ -35,6 +35,10 @@ def write_fixture_extension(
     files = {
         "index.js": b"export function mount() { return 1; }\n",
         "icon.svg": b"<svg xmlns='http://www.w3.org/2000/svg'></svg>\n",
+        "glyph.svg": (
+            b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+            b'<path d="M5 5h14v14H5z" fill="currentColor"/></svg>\n'
+        ),
         "README.md": b"# Fixture\n\nA fixture extension for tests.\n",
     }
     if extra_files:
@@ -54,6 +58,7 @@ def write_fixture_extension(
         "author": "Tests",
         "description": "A fixture extension used by the tooling test suite.",
         "icon": "icon.svg",
+        "glyph": "glyph.svg",
         "ui": {"module": "index.js", "mount": "tool-window", "size": {"w": 400, "h": 400}},
         "permissions": ["storage"],
         "integrity": {"index.js": "sha256-not-yet-rebuilt="},

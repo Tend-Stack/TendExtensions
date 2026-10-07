@@ -15,5 +15,5 @@
     "A Tend panel that provides the ondacast capability",
     "Tend Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.7.1: Now called Tend Player (formerly TEND Media); the app id and your library are unchanged."
+  "release_notes": "1.7.1: Now called Tend Player (formerly TEND Media); the app id and your library are unchanged. The icon now follows your theme."
 }

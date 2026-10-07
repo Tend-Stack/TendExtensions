@@ -7,6 +7,7 @@
   "author": "Tend",
   "description": "Eight everyday developer tools in one window: JSON, Base64, URL, JWT, Hash, UUID, Timestamp and a guarded Regex tester. Offline, no network. Native ESM extension.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -28,6 +29,7 @@
   ],
   "integrity": {
     "README.md": "sha256-Tqf/rFpI4D/+PaLvE4TTFux1nOZJjvwaQyHXtkOCvuQ=",
+    "glyph.svg": "sha256-fzjhQz9ReqJOX190hr8dK+x9FEY2HLYXKXwiNPWNA3o=",
     "icon.svg": "sha256-CCd88w9QYqlExuASLDOY8hSi3+w/ym0Lb4Cr51muMjw=",
     "index.js": "sha256-YySoSipR4eYjdCqI0n/qHd77phv1HGf8fYfHEjjTyw4=",
     "lib/base64.js": "sha256-oCvm1zK5pvObUX740CNXtAD2rMB4iUUhHGF1eGbOH88=",

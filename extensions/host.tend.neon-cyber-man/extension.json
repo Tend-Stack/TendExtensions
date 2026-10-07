@@ -7,6 +7,7 @@
   "description": "A modern cyberpunk maze-chase arcade game with adaptive ghost AI, dynamic Phaser 4 lighting and glow filters, power modules, challenges, upgrades, and persistent Cyber-Chip progression.",
   "category": "games",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -30,6 +31,7 @@
     "CHANGELOG.md": "sha256-pCcrIBE+zFG91dFBKkWsAsyjl8qKJqXXAKbIgi0QdcY=",
     "HOST-PHASER4-INTEGRATION.md": "sha256-RNt1n5JoGYNV0iD/wAzuoc/RyuhiebrZQrV6EQV++NE=",
     "README.md": "sha256-ksFUytnYZE/9oKr7KoL3DQF9ggcqzWXvZ1nrSkxN9Rs=",
+    "glyph.svg": "sha256-0Wt2JIO1+8OqD1TP1Rda/b9cl6A90Sgo7/agsTlbEew=",
     "icon.svg": "sha256-ijvyqGh+HJfS0ONuk3Zks3j0vE8kEX9Sy++83KKnA4Q=",
     "index.js": "sha256-s789RHK+8QCvlnq8RTWo0m4sGf6SueyyFu4CexQKeJ8=",
     "src/AudioManager.js": "sha256-1LPY4b6BbwM5QnTw1etsnpr9Wwelo481ZV9Xa8A29UA=",

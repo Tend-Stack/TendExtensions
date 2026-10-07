@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "A polished match puzzle adventure with reliable 4+ resolution, repaired game-wide typography, five-star performance ratings, Flow Pressure play styles, objective levels, special-gem combinations, perks, charged boosters, Runtime API 1 lifecycle management, and immersive mobile play.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -34,6 +35,7 @@
   ],
   "integrity": {
     "README.md": "sha256-TeOLl+ZlEFd99ePokNp10I+ZMllI+cFrdRL1bzf3x9E=",
+    "glyph.svg": "sha256-Lkt/bf0a7Chl1gaEpBrYRsEHnbprN4GexAioe7ZGTVM=",
     "icon.svg": "sha256-VdHCeaUafe33PAI5olG2mN24bablXypzT/MEZ85kZOk=",
     "index.js": "sha256-6x8ZEFy++FUwg2W+56OwL1zkLRhUgI4fijB01ntr3xo="
   }

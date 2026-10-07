@@ -6,6 +6,7 @@
   "author": "Tend",
   "description": "Modern Klondike with fluid physical card dragging, Classic Flow, 36 Odyssey missions, Pulse Rush, daily seeded deals, Momentum combos, hidden Starlight cards, rank progression, tactical perks, rewards, sound, and responsive fullscreen play.",
   "icon": "icon.svg",
+  "glyph": "glyph.svg",
   "ui": {
     "module": "index.js",
     "mount": "tool-window",
@@ -28,6 +29,7 @@
   "integrity": {
     "README.md": "sha256-p/QhVoTp5rWgzH0APyuI1tI4gjB7Vq66vC1decL4tX4=",
     "arcade-kit.js": "sha256-P8nmSaIL+1sEuZ4KzBtnf2edKv5TM6IDvSysJjY1+EQ=",
+    "glyph.svg": "sha256-LCV2eb9qHqI+4ELqfs6elan4RvI1C7PJHJe9Kt1RGs4=",
     "icon.svg": "sha256-2B3r0GFwu6tP77YdrpIVy/2HsjDYu7vyPepA287T63I=",
     "index.js": "sha256-Maoy5wzgdCaO6iOT9mnRR0/KwvIsn/srQk/zlEBBvZk="
   },
