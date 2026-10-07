@@ -20,7 +20,7 @@ Tend panel.
 | **A shelf widget** | A fixed-size card an extension provides for the user's shelf (up to eight per extension) | Part of an extension |
 | **A theme pack** | A code-free extension: wallpaper, palette and shell settings | This repository's registry |
 | **An app that deploys on Tend** | Your own project, deployed from Git (with a `Dockerfile`), from a prebuilt image, or from your own CI | Your Tend panel |
-| **An App Store recipe** | The install description of an app (image or Git build, port, env hints, volumes, database needs) | A community catalog feed users add to their panel; first-party recipes are curated by Tend |
+| **An App Store recipe** | The install description of an app (image or Git build, port, env hints, volumes, database needs) | A pull request adding `recipes/<slug>/` to this repository (published in the signed Tend Community catalog), or a community catalog feed you host; first-party recipes are curated by Tend |
 
 ## Pick your path
 
@@ -76,7 +76,8 @@ it is for maintainers. Your own panel is the public way to see the same result.
 Humans inspect every extension, theme pack, App Store recipe and listing before it is published. Expect questions
 about every file. Reviewers reject code its author can't explain, however it was produced.
 
-There is no automated path that puts a recipe into Tend's first-party App Store: see
+A reviewed recipe in `recipes/` is published as "Community · reviewed by Tend", not as first-party and never as
+`tested` or `certified`; there is no automated path into Tend's first-party App Store. See
 [`skills/tend-app-recipe`](skills/tend-app-recipe/SKILL.md) for what is and is not available to you.
 
 ## Where to get help

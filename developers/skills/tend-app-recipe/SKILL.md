@@ -1,6 +1,6 @@
 ---
 name: tend-app-recipe
-description: Describe an app as a Tend App Store recipe (the install description: image or Git build, port, environment hints, volumes, databases) and publish it as a community catalog feed; also explains the first-party recipe format and why third parties cannot self-certify one. Use when the user wants an app to appear in the App Store or asks how recipes are proposed.
+description: Describe an app as a Tend App Store recipe (the install description: image, port, environment hints, volumes, databases) and either submit it by pull request to this registry's recipes/ folder, to be published in the signed Tend Community catalog, or host it as your own community feed; also explains the first-party recipe format and why third parties cannot self-certify one. Use when the user wants an app to appear in the App Store or asks how recipes are proposed.
 ---
 
 # App Store recipes
@@ -11,21 +11,37 @@ community feed is something each panel administrator reads before adding. You an
 
 ## What is and is not available (read first)
 
-There are two different things called a recipe:
+There are three different things called a recipe:
 
-| | First-party recipe | Community catalog entry |
-|---|---|---|
-| Where it lives | `builtin.json` inside Tend's own source (a private repository) | a JSON file you host over HTTPS |
-| Who changes it | Tend maintainers, with lifecycle evidence and human review | you |
-| How users get it | shipped in every panel's App Store | an administrator adds your URL under **Settings, Catalog sources** |
-| Status shown | `candidate` until evidence-backed review grants more | always `community`, publisher shown as your source, never certified |
+| | First-party recipe | Registry recipe (`recipes/<slug>/`) | Your own community feed |
+|---|---|---|---|
+| Where it lives | `builtin.json` inside Tend's own source (a private repository) | this repository, one folder per recipe | a JSON file you host over HTTPS |
+| Who changes it | Tend maintainers, with lifecycle evidence and human review | you, by pull request; a human reviews and approves | you |
+| How users get it | shipped in every panel's App Store | the signed **Tend Community** catalog, listed by default | an administrator adds your URL under **Settings, Catalog sources** |
+| Status shown | `candidate` until evidence-backed review grants more | `community`, labelled "Community · reviewed by Tend", never certified | `community`, publisher shown as your source, never certified |
 
-**There is no public pull-request or submission flow into the first-party catalog today.** Do not tell the user to open
-a PR for one. What you can do: publish a community feed, and, if you believe the app belongs in the first-party
-catalog, contact the Tend maintainers through [tend.host](https://tend.host) with a tested recipe and expect human
-review that may say no. Nothing here lets you grant `tested` or `certified` yourself.
+**There is a public pull-request path for community recipes**: open a PR that adds `recipes/<slug>/recipe.json` and
+`recipes/<slug>/listing.json` (copy [`templates/recipe/example-notes`](../../../templates/recipe/example-notes)).
+Rules: [`docs/recipes.md`](../../../docs/recipes.md); validator: `python tools/validate_recipe.py recipes/<slug>`.
+**There is still no public flow into the first-party catalog.** Do not tell the user to open a PR for one; a
+reviewed registry recipe can be promoted later by Tend's maintainers, never by the submitter. Nothing here lets you
+grant `tested` or `certified` yourself, and "reviewed" in the label means a person read the recipe, not that Tend
+ran it.
 
-## Community feed format (what you write)
+## Registry recipe (what you write for a PR)
+
+`recipe.json` is one entry of the feed format below, with the registry's stricter rules: every listed key is
+required (lists may be empty) and **no other key is allowed**; `source` is `"image"` only; `source_ref` pins an
+exact version or a digest (no `latest`, `stable`, `main`, tag-less references); `needs_dbs` only (not `needs_db`);
+`category` is one of the closed list in `docs/recipes.md`; `icon` is one emoji; `docs_url` is https; a `password`
+variable has an empty default and is `required`, and no variable named like a secret ships a default; mount paths are
+absolute and never under `/proc`, `/sys`, `/dev`, `/run` or the Docker socket; the `slug` equals the folder name and
+is not a built-in app's slug. `listing.json` (`publisher`, `upstream_url`, `upstream_license`, `recipe_license`,
+`tested_with`, `release_notes`) is for reviewers and is never shipped to panels. Only write in `tested_with` what the
+user actually did on a real panel. Do not add icons, READMEs or any other file to the folder, and do not touch
+anything outside `recipes/<slug>/` (the PR is refused otherwise).
+
+## Community feed format (the format both paths use)
 
 A JSON document with an `entries` array. Hosting limit: the body is at most 2,000,000 bytes. Panels refresh a source
 on adding it, on demand and hourly.
@@ -113,11 +129,14 @@ reviews). Do not fabricate any of these fields.
 ## Verify
 
 ```bash
+python tools/validate_recipe.py recipes/<slug>    # registry recipes: every rule, every problem listed
+python tools/build.py && pytest tests/            # also builds dist/community-catalog.json
 jq -e '.entries | length > 0 and all(.[]; .slug and .name and .source_ref)' feed.json
 docker pull <source_ref> && docker run --rm -p 8080:<default_port> <source_ref>    # does it start, on that port?
 ```
 
-Then add the feed to a panel you administer (**Settings, Catalog sources**), check the entry appears with the right
+For a registry recipe, install it by hand on a panel you administer and describe that in `tested_with`. For your
+own feed, add it to a panel you administer (**Settings, Catalog sources**), check the entry appears with the right
 badge, and run a real install: readiness, first sign-in, restart, data still there.
 
 ## Common refusals
@@ -127,7 +146,7 @@ badge, and run a real install: readiness, first sign-in, restart, data still the
   one entry, an entry that cannot be installed without manual file edits.
 - Inventing recipe fields. Unknown fields are ignored, so they silently do nothing.
 
-Source: panel `internal/catalog/types.go` and `builtin.json` (first-party entry shape), `internal/catalog/catalog.go`
+Source: this repository's `docs/recipes.md`, `tools/validate_recipe.py` and `docs/community-review.md`; panel `internal/catalog/types.go` and `builtin.json` (first-party entry shape), `internal/catalog/catalog.go`
 (`Normalize`), `internal/api/catalog_source_adapters.go` (`parseNative`, formats),
 `internal/api/orchestrator_catalog_sources.go` (`federatedEntryToCatalogEntry`, the trust boundary, refresh),
 `internal/api/catalog_sig.go` (signatures, pinning), `docs/agent/certification-review.md`,

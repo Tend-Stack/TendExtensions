@@ -1,4 +1,4 @@
-# Contributing an extension
+# Contributing an extension, theme pack or recipe
 
 ## Adding a new extension
 
@@ -62,8 +62,10 @@
    ```
    `extensions/host.tend.calendar`'s `reminders.js` and `ics.js` are the
    reference example.
-10. Open a PR. CI re-runs the same build and validates against the pinned
-   core commit.
+10. Open a PR. A public check on the PR (see [What happens to your pull
+    request](#what-happens-to-your-pull-request)) re-runs the build and the
+    tests; after approval, the maintainers' pipeline validates against the
+    pinned core commit.
 
 ## Adding a theme pack
 
@@ -82,6 +84,21 @@ no permissions). Its store card is the wallpaper thumbnail.
    image checks and the WCAG 4.5:1 `primary`/`primaryContent` contrast.
 4. Open a PR with one pack. The full reference is [docs/themes.md](docs/themes.md).
 
+## Adding an App Store recipe
+
+A recipe describes how a panel installs one app from a container image: image, port, environment hints, volumes
+and databases. Merged recipes are published in the signed **Tend Community** catalog, which panels show by default
+as "Community · reviewed by Tend". That never means `tested` or `certified`; only Tend's own first-party catalog
+carries those, and a pull request here does not ask for it.
+
+1. Copy [`templates/recipe/example-notes`](templates/recipe/example-notes) to `recipes/<slug>/` (the folder name is
+   the recipe's `slug`) and edit `recipe.json` and `listing.json`. Nothing else goes in the folder.
+2. Pin an exact image version (never `latest`), declare every state-holding path as a volume, ship no default
+   passwords, one container per recipe. The full rules are in [docs/recipes.md](docs/recipes.md).
+3. Install the app on a panel you administer and say in `listing.json` (`tested_with`) what you actually did.
+4. Validate: `python tools/validate_recipe.py recipes/<slug>`, then `python tools/build.py` and `pytest tests/`.
+5. Open a PR with one recipe.
+
 ## Updating an existing extension
 
 1. Edit the extension's files under `extensions/<id>/`.
@@ -90,13 +107,33 @@ no permissions). Its store card is the wallpaper thumbnail.
    version — it is registry metadata, not a changelog list.
 4. Re-run `tools/build.py` and the tests, then open a PR as above.
 
+## What happens to your pull request
+
+Contributions arrive as GitHub pull requests. Only `extensions/<id>/`, `recipes/<slug>/` and `tests/js/` can be
+changed by a contributor pull request; everything else (tooling, workflows, keys, templates, docs, the Python tests)
+is maintainer-only and is reported as an error.
+
+1. **Public checks.** [`validate-pr.yml`](.github/workflows/validate-pr.yml) runs on GitHub-hosted runners with no
+   secrets and a read-only token: `tools/build.py` (manifests, integrity maps, glyphs, themes, recipes),
+   `tools/validate_recipe.py`, `pytest`, `bun test tests/js`, and reviewer hints (`tools/review_hints.py`) that
+   point a human at `eval`, network calls, remote imports, minified files, new permissions and similar. Hints are
+   not failures. The validators come from the base branch, so a pull request cannot change how it is graded.
+2. **Human review.** A maintainer reads the diff and the checks and approves one exact commit. Pushing again
+   voids the approval, so push your final version before asking for review.
+3. **Import.** The maintainers' pipeline takes the approved commit (rebased onto `main`, your authorship kept),
+   revalidates it against the real panel installer, and releases it. The pull request is closed with a comment naming
+   the `registry-N` release.
+
+The details, and what the maintainers set up, are in [docs/community-review.md](docs/community-review.md).
+
 ## What happens on merge to `main`
 
 `main` is fast-forward-only. Every push to `main` runs the full build and
 validation again, mirrors the verified commit to the public GitHub mirror,
 then signs `registry.json` and creates (or updates) a GitHub release tagged
 `registry-<sequence>` with the built ZIPs and the signed envelope attached.
-Panels pick up the new registry on their next scheduled or manual check.
+Panels pick up the new registry on their next scheduled or manual check. If the release includes recipes, it also
+carries the signed community catalog (`community-catalog.json`, its `.sig` and `tend-catalog-pubkey`).
 
 ## Using an AI coding agent
 
@@ -125,5 +162,7 @@ this repository's own [`AGENTS.md`](AGENTS.md) for the rules here.
 - Every non-theme extension ships a conforming `glyph.svg` (monochrome, no
   colour of its own); the panel draws the icon tile from the theme. See
   [docs/icons.md](docs/icons.md).
+- Recipes: one folder per slug under `recipes/`, only `recipe.json` and `listing.json`, an exact pinned image
+  version, no default secrets (`tools/validate_recipe.py` enforces it; see [docs/recipes.md](docs/recipes.md)).
 - Keep ZIPs deterministic: no dotfiles, no directory entries, sorted member
   order. `tools/build.py` does this for you; don't hand-build the ZIP.

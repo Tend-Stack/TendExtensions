@@ -1,6 +1,6 @@
 # AGENTS.md: working in TendExtensions
 
-This is the official extension registry for Tend (extensions and theme packs). If you are an AI coding agent,
+This is the official extension registry for Tend (extensions, theme packs and community App Store recipes). If you are an AI coding agent,
 read the Tend developer kit first, then follow this repo's rules below.
 
 - Kit instructions: [`developers/AGENTS.md`](developers/AGENTS.md)
@@ -28,13 +28,20 @@ read and explain; say what you did and what you did not verify.
   (`x.y.z`, must increase) for any update.
 - No outbound network from extension code, no remote scripts, no minified-only sources, no dotfiles or build
   artifacts under `extensions/<id>/`.
-- Do not touch `keys/`, signing, or `scripts/publish-verified-main.py`; they belong to maintainers.
+- Community App Store recipes live in `recipes/<slug>/` as exactly `recipe.json` and `listing.json` (start from
+  `templates/recipe/example-notes`, rules in `docs/recipes.md`). Pin an exact image version, ship no default
+  secrets, one container, one recipe per PR. `python tools/validate_recipe.py recipes/<slug>` checks it. Never set
+  or imply `tested`/`certified`, and never add keys the validator does not list.
+- Do not touch `keys/`, signing, `tools/`, `scripts/`, `.github/`, `.gitea/`, `templates/` or `docs/`; they belong
+  to maintainers, and a pull request that changes them is refused (contributors change `extensions/<id>/`,
+  `recipes/<slug>/` and `tests/js/`).
 
 ## Before you say you are done
 
 ```bash
 pip install -r tools/requirements.txt
 python tools/build.py
+python tools/validate_recipe.py            # when you added or changed a recipe
 pytest tests/
 # if a Tend core checkout is available:
 TEND_CORE_CHECKOUT=<path> python tools/validate_with_panel.py

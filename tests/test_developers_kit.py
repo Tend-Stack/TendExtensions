@@ -19,7 +19,9 @@ EXPECTED = {
 
 
 def _markdown_files() -> list[Path]:
-    return sorted(KIT.rglob("*.md")) + [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "AGENTS.md"]
+    extra = [ROOT / "docs" / "recipes.md", ROOT / "docs" / "community-review.md", ROOT / "recipes" / "README.md",
+             ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md"]
+    return sorted(KIT.rglob("*.md")) + [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "AGENTS.md"] + extra
 
 
 def _strip_code(text: str) -> str:
@@ -57,3 +59,15 @@ def test_review_notice_present(name: str) -> None:
     assert "inspected by humans before it is published" in text
     assert "convenience, not the default" in text
     assert "can't explain" in text
+
+
+def test_both_pull_request_templates_match_and_cover_recipes() -> None:
+    github = (ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md").read_text(encoding="utf-8")
+    assert github == (ROOT / ".gitea" / "PULL_REQUEST_TEMPLATE.md").read_text(encoding="utf-8")
+    assert "validate_recipe.py" in github and "AI-generated code" in github
+
+
+def test_recipe_skill_describes_the_public_path() -> None:
+    text = (KIT / "skills" / "tend-app-recipe" / "SKILL.md").read_text(encoding="utf-8")
+    assert "recipes/<slug>/" in text and "validate_recipe.py" in text
+    assert "There is no public pull-request" not in text

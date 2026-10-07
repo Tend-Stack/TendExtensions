@@ -8,8 +8,8 @@
 [![Latest registry release](https://img.shields.io/github/v/release/Tend-Stack/TendExtensions?label=registry&sort=semver)](https://github.com/Tend-Stack/TendExtensions/releases)
 [![Extensions](https://img.shields.io/badge/extensions-26-14b8a6.svg)](#whats-in-the-registry)
 
-Every extension lives here as plain source, in its own folder. A pull request adds one or updates one.
-On merge, CI builds every package, signs the index, and publishes a release that every Tend panel
+Every extension lives here as plain source, in its own folder, next to the community App Store recipes. A pull
+request adds one or updates one. On merge, CI builds every package, signs the index, and publishes a release that every Tend panel
 in the world can verify and install from, with no panel update in between.
 
 </div>
@@ -108,6 +108,15 @@ how the panel looks. Enabled packs appear in the wallpaper picker, and each acco
 Five first-party packs ship here (Nebula, Synthwave, Inkwell, Prism, Skyline). To make your own, copy
 [`templates/theme-pack`](templates/theme-pack) and follow [docs/themes.md](docs/themes.md).
 
+## Community recipes
+
+The registry also carries **App Store recipes**: small, reviewed descriptions of how a panel installs a
+self-hosted app from a container image (image, port, environment hints, volumes, databases). Each lives in
+`recipes/<slug>/`, and the merged set is published as a signed **Tend Community** catalog, listed by default in
+panels as "Community · reviewed by Tend". "Reviewed" means a person read the recipe's text; it is never
+`tested` or `certified`, which only Tend's first-party catalog can claim. To propose one, copy
+[`templates/recipe/example-notes`](templates/recipe/example-notes) and follow [docs/recipes.md](docs/recipes.md).
+
 ## How an extension reaches a panel
 
 ```mermaid
@@ -158,9 +167,15 @@ version:
    pip install -r tools/requirements.txt
    python tools/build.py
    ```
-6. Open a pull request. CI validates the manifest, checks the build is reproducible, and runs your
-   package through the real panel installer. A maintainer reviews the code, tries it in a panel, and
-   merges. Your extension ships in the next `registry-N` release.
+6. Open a pull request. A public check validates the manifest and rebuilds your package on a GitHub-hosted
+   runner (no secrets), with hints that point the reviewer at risky code. A maintainer reviews the code, tries it
+   in a panel and approves that exact commit; the maintainers' pipeline then imports it, runs your package
+   through the real panel installer and releases it. Your extension ships in the next `registry-N` release.
+   How that works, and what stays maintainer-only, is in [docs/community-review.md](docs/community-review.md).
+
+**Add an App Store recipe**: copy [`templates/recipe/example-notes`](templates/recipe/example-notes) to
+`recipes/<slug>/`, pin an exact image version, and run `python tools/validate_recipe.py recipes/<slug>`. The rules
+are in [docs/recipes.md](docs/recipes.md); one recipe per pull request.
 
 **Update an extension you maintain**
 
@@ -203,22 +218,34 @@ developers/                       the developer kit: README, AGENTS.md for AI ag
 
 templates/extension/             starter for a code extension, with a conforming glyph.svg (copy into extensions/)
 templates/theme-pack/            starter for a gradient-based theme pack (copy into extensions/; never built as is)
+templates/recipe/example-notes/  starter for a community recipe (copy to recipes/<slug>/; never built as is)
+
+recipes/<slug>/                  one community App Store recipe: recipe.json + listing.json (nothing else)
+recipes/recipe.schema.json       JSON Schema for recipe.json (tools/validate_recipe.py is the authority)
 
 tools/
     build.py                     validate, rebuild integrity maps, build deterministic ZIPs, write registry.json
     sign.py                      sign registry.json into the published envelope (also --verify)
     validate_with_panel.py       run every built package through the panel's own installer
     release.py                   create or update the registry-N GitHub release and upload its assets
+    validate_recipe.py           validate recipes/ (public rules) and build the community catalog
+    sign_catalog.py              sign the community catalog in the format panels verify
+    review_hints.py              reviewer hints and the contributor-path check for a pull request
+    import_approved.py           import pull requests the Tend Review App approved (Gitea, scheduled)
     mcp_window.py                derive the MCP runtime's core window, version and sequence from a core checkout
     mcp_release.py               publish mcp-runtime-<version> and move the mcp-runtime-latest alias
-    requirements.txt             the only dependency is `cryptography`
+    requirements.txt             the dependencies are `cryptography` and `Pillow`
 
 tests/                           tooling tests (reproducible builds, integrity, signing, panel validation)
 scripts/publish-verified-main.py publishes the exact verified commit to this repository
 .gitea/workflows/ci.yml          the pipeline: build and validate → publish → sign and release
+.gitea/workflows/import-approved.yml  every 10 minutes: import approved community pull requests
+.github/workflows/validate-pr.yml     public pull-request checks (GitHub-hosted, no secrets, read-only token)
 .gitea/workflows/mcp-runtime.yml build, sign and publish the optional MCP component runtime
 docs/icons.md                    the glyph rules and drawing guide (the one canonical icon page)
 docs/themes.md                   how to build and publish a theme pack
+docs/recipes.md                  the recipe rulebook, and how the signed community catalog is published
+docs/community-review.md         pull-request checks, approval and import, and the operator setup
 docs/mcp-runtime.md              what that runtime is, how it is signed, and how a core release re-signs it
 ```
 
