@@ -1,0 +1,61 @@
+name: Import approved community pull requests
+
+# Every 10 minutes: take the GitHub pull requests the Tend Review App approved and put them on `main`. A push to
+# `main` then runs ci.yml, which revalidates against the pinned panel core, signs and releases. The review platform
+# holds no credential for this repository; this job holds no signing key. See docs/community-review.md.
+#
+# Only trusted code runs here: the checkout is `main`, and tools/import_approved.py refuses any pull request that
+# touches tools/, scripts/, workflows, keys or anything else outside extensions/, recipes/<slug>/ and tests/js/.
+# Contributor JavaScript and Python are never executed on this runner (tools/build.py only parses files).
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Report what would be imported without pushing, commenting or closing"
+        required: false
+        default: "false"
+
+concurrency:
+  group: import-approved
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    name: Import approved pull requests
+    runs-on: tend-ci
+    steps:
+      # IMPORT_PUSH_TOKEN: a Gitea token that may push to `main` (a push made with the job's own token would not
+      # start ci.yml). It is used only to push the rebased, already validated commits.
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.IMPORT_PUSH_TOKEN }}
+
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+
+      - run: python -m venv "$RUNNER_TEMP/venv"
+      - name: Install registry tooling dependencies
+        run: $RUNNER_TEMP/venv/bin/python -m pip install -r tools/requirements.txt
+
+      - name: Import approved pull requests
+        env:
+          TEND_REVIEW_APP_LOGIN: ${{ vars.TEND_REVIEW_APP_LOGIN }}
+          GH_PUBLISH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+          DRY_RUN: ${{ gitea.event.inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            $RUNNER_TEMP/venv/bin/python tools/import_approved.py --dry-run
+          else
+            $RUNNER_TEMP/venv/bin/python tools/import_approved.py
+          fi
