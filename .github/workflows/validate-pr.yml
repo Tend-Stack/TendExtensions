@@ -1,0 +1,85 @@
+name: Validate pull request
+
+# Public validation of pull requests, including those from forks. This is the one place the registry runs
+# untrusted contributor code, so it runs on a GitHub-hosted, throw-away runner and never on the self-hosted Gitea
+# runner that signs and releases.
+#
+# Rules this file keeps (tests/test_workflows.py enforces them):
+#   * trigger is `pull_request`, never `pull_request_target`: the token is read-only for forks and no secret is
+#     ever exposed to the pull request's code;
+#   * no `secrets.` anywhere, `permissions: contents: read` and nothing else;
+#   * every action is pinned to a full commit SHA, and checkouts keep no credentials;
+#   * the tooling that judges the pull request (tools/) comes from the BASE commit, so a pull request cannot edit
+#     the validators that grade it. The pull request's own tests still run, as contributor code.
+#
+# The result is this job's own check on the pull request plus annotations and a step summary; the Tend Review App
+# reads that check. Validation against the real panel (tools/validate_with_panel.py) needs the private core and
+# runs on Gitea when the maintainers import an approved pull request.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate pull request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+    steps:
+      # The merge of the pull request into its base: what `main` would contain.
+      - name: Check out the pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Trusted tooling: the validators as they are on the base branch.
+      - name: Check out the base tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: trusted/tools/requirements.txt
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - name: Install the validators' dependencies
+        run: python -m pip install -r trusted/tools/requirements.txt pytest
+
+      - name: Reviewer hints and changed paths
+        run: python trusted/tools/review_hints.py --repo-root pr --base "$BASE_SHA" --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Build and validate (manifests, integrity, glyphs, themes, recipes)
+        if: ${{ !cancelled() }}
+        run: python trusted/tools/build.py --repo-root pr
+
+      - name: Validate community recipes
+        if: ${{ !cancelled() }}
+        run: python trusted/tools/validate_recipe.py --annotate pr/recipes
+
+      - name: Python tests
+        if: ${{ !cancelled() }}
+        working-directory: pr
+        run: python -m pytest tests/ -q
+
+      - name: JavaScript unit tests
+        if: ${{ !cancelled() }}
+        working-directory: pr
+        run: bun test tests/js
