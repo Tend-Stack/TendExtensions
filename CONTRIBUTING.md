@@ -10,15 +10,17 @@
    only needs to exist and be non-empty when you first write the file;
    `tools/build.py` recomputes and rewrites it from the files actually on
    disk every time it runs, so don't hand-maintain the hashes.
-3. Add every other file your extension ships (JS modules, `icon.svg`,
-   `README.md`, ...) under the same folder. Don't add dotfiles — `build.py`
-   refuses to package them. Start from `templates/extension/`.
-3a. Draw `glyph.svg`, the one-colour icon the panel colours from the active
-   theme, and declare it as `"glyph": "glyph.svg"` in `extension.json` (keep
-   `"icon": "icon.svg"` for older panels). The rules and a drawing guide are in
-   [docs/icons.md](docs/icons.md); `tools/build.py` refuses a non-theme package
-   without a conforming glyph. Preview it with `python tools/glyph_sheet.py --png`.
-4. Add `listing.json` next to it with the store-catalog fields the manifest
+3. Add every other file your extension ships (JS modules, `README.md`, ...)
+   under the same folder. Don't add dotfiles — `build.py` refuses to package
+   them. Start from `templates/extension/`.
+4. Draw `glyph.svg`, the one-colour icon the panel colours from the active
+   theme, and declare it as `"glyph": "glyph.svg"` in `extension.json`; the
+   build lists it in `integrity`. The panel never shows a colour you supply.
+   `"icon": "icon.svg"` is deprecated and only for panels older than themed
+   icons. The rules and a drawing guide are in [docs/icons.md](docs/icons.md);
+   `tools/build.py` refuses a non-theme package without a conforming glyph.
+   Preview it with `python tools/glyph_sheet.py --png`.
+5. Add `listing.json` next to it with the store-catalog fields the manifest
    doesn't carry:
    ```json
    {
@@ -33,14 +35,14 @@
    ```
    `listing.json` is never shipped inside the extension's ZIP — it's registry
    metadata only.
-5. Build locally and fix anything `tools/build.py` rejects:
+6. Build locally and fix anything `tools/build.py` rejects:
    ```
    pip install -r tools/requirements.txt
    python tools/build.py
    ```
    This validates every extension's manifest, rebuilds its integrity map,
    and writes `dist/<id>-<version>.zip` plus `dist/registry.json`.
-6. If you have a checkout of the Tend core, validate against its real
+7. If you have a checkout of the Tend core, validate against its real
    install-path checks before opening a PR — this needs a Go toolchain on
    `PATH` for the checkout's own `go run` (a checkout from before the core's
    `backend/` was retired has no `cmd/tend-validate-extension` and is
@@ -48,8 +50,8 @@
    ```
    TEND_CORE_CHECKOUT=/path/to/tend.host python tools/validate_with_panel.py
    ```
-7. Run the tests: `pytest tests/`.
-8. If your extension ships its own pure (no DOM, no host) JS modules with
+8. Run the tests: `pytest tests/`.
+9. If your extension ships its own pure (no DOM, no host) JS modules with
    real logic — date maths, parsing, id/schedule computation — add
    `bun:test` unit tests next to a mirror of the extension under
    `tests/js/<extension-id>/*.test.js` (never inside `extensions/<id>/`
@@ -60,13 +62,14 @@
    ```
    `extensions/host.tend.calendar`'s `reminders.js` and `ics.js` are the
    reference example.
-9. Open a PR. CI re-runs the same build and validates against the pinned
+10. Open a PR. CI re-runs the same build and validates against the pinned
    core commit.
 
 ## Adding a theme pack
 
 A theme pack is an extension with `category: "themes"` and a declarative `theme` block instead of code
-(no `.js`/`.mjs`/`.html`/`.css`/`.svg`/`.wasm` files, no `ui`/`runtime`/`widgets`, no permissions).
+(no `.js`/`.mjs`/`.html`/`.css`/`.svg`/`.wasm` files, so no `glyph` or `icon` either, no `ui`/`runtime`/`widgets`,
+no permissions). Its store card is the wallpaper thumbnail.
 
 1. Copy `templates/theme-pack/` to `extensions/<id>/` (the folder name must equal the manifest `id`) and
    edit `extension.json` and `listing.json` (`category` is `themes` in both).

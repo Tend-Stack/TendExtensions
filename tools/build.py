@@ -7,9 +7,10 @@ For every folder under `extensions/`:
      (every shipped file except `extension.json` and `listing.json` itself)
      and rewrite `extension.json` in place — the integrity map is generated,
      never hand-edited.
-  3. Validate the manifest against the same rules the panel's
-     `parse_manifest` enforces (re-implemented here; this script never
-     imports the panel at runtime — see `validate_with_panel.py` for that).
+  3. Validate the manifest against the same rules the panel enforces
+     (re-implemented here; this script never imports the panel at runtime —
+     see `validate_with_panel.py` for that). A non-theme package must also
+     declare a conforming `glyph` (docs/icons.md); a theme pack must not.
   4. Build a deterministic ZIP at `dist/<id>-<version>.zip` (sorted
      members, fixed mtime, no directory entries, no dotfiles, no
      `listing.json` inside the archive, manifest at the root).
@@ -1013,7 +1014,11 @@ def run(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the TendExtensions registry")
+    parser = argparse.ArgumentParser(
+        description="Build the TendExtensions registry: validate every extension "
+        "(a non-theme package needs a conforming glyph.svg, see docs/icons.md), "
+        "rebuild integrity maps, write dist/<id>-<version>.zip and dist/registry.json"
+    )
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--sequence", type=int, default=None)
     parser.add_argument("--revision", type=str, default=None)

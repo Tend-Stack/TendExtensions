@@ -36,6 +36,9 @@ extensions/<id>/
     thumb.webp         REQUIRED for every pack (photo or gradient), 480 px wide, 240-320 px tall
 ```
 
+A pack carries no `glyph` and no `icon`: the build refuses a `glyph` in a theme pack, and its store card is
+the thumbnail. Extension icons are drawn by the panel on a themed tile, so `icons.*` below tints them too.
+
 Forbidden anywhere in a pack: `.js`, `.mjs`, `.html`, `.htm`, `.css`, `.svg`, `.wasm`, and dotfiles.
 Every shipped file except `extension.json` is pinned in `integrity`; never edit that map by hand, the build
 rewrites it (images included).

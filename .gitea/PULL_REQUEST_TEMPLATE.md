@@ -8,6 +8,9 @@
       name, version `x.y.z`, permissions, `ui.module` + `ui.mount`).
 - [ ] `extensions/<id>/listing.json` is present with `publisher`, `category`,
       `featured`, `reviewed`, `features`, `requirements`, `release_notes`.
+- [ ] Code extensions ship a conforming `glyph.svg` declared as `"glyph": "glyph.svg"`
+      ([docs/icons.md](../docs/icons.md)); no colour of your own, `icon.svg`
+      only for older panels. Theme packs carry neither.
 - [ ] No dotfiles or stray build artifacts under `extensions/<id>/`.
 - [ ] `python tools/build.py` runs clean locally (validates the manifest,
       rebuilds the integrity map, builds the ZIP and `dist/registry.json`).

@@ -50,16 +50,18 @@ integrity verifier, and its web application firewall before a single module exec
   "version": "3.0.1",
   "author": "Tend",
   "description": "Seven-mode calculator …",
-  "icon": "icon.svg",
-  "glyph": "glyph.svg",
+  "icon": "icon.svg",                  // deprecated: only for panels older than themed icons
+  "glyph": "glyph.svg",                // required for every non-theme package
   "ui": { "module": "index.js", "mount": "tool-window", "size": { "w": 460, "h": 700 } },
   "permissions": ["storage"],
   "integrity": { "index.js": "sha256-…", "engine/parser.js": "sha256-…" }
 }
 ```
 
-`glyph.svg` is the one-colour icon the panel draws on a tile coloured from the active theme
-([docs/icons.md](docs/icons.md)); `icon.svg` stays for panels older than the glyph release.
+`glyph.svg` is the one-colour icon the panel draws on a tile coloured from the active theme; no colour of
+yours is ever shown. The registry refuses a non-theme package without a valid one, and the rules live in one
+place, [docs/icons.md](docs/icons.md). `icon.svg` is deprecated and kept only for panels older than the
+glyph release. Theme packs carry neither.
 
 Next to the manifest, `listing.json` carries what the store shows but the runtime does not need:
 publisher, category, feature bullets, requirements, and the release notes for the current version.
@@ -147,14 +149,16 @@ version:
 
 1. Fork this repository and create `extensions/<your.extension.id>/`. Ids are reverse-DNS
    (`com.example.weather`); `host.tend.*` and `com.tendstack.*` are reserved for first-party work.
-2. Write `extension.json` (schema 2) and your ES modules. Declare only the permissions you use.
-3. Write `listing.json`: publisher, category, three to six feature bullets, requirements, release notes.
-4. Build locally and let the tooling rebuild your integrity map:
+2. Start from [`templates/extension`](templates/extension). Write `extension.json` (schema 2) and your ES
+   modules. Declare only the permissions you use.
+3. Draw `glyph.svg` and declare `"glyph": "glyph.svg"` ([docs/icons.md](docs/icons.md)).
+4. Write `listing.json`: publisher, category, three to six feature bullets, requirements, release notes.
+5. Build locally and let the tooling rebuild your integrity map:
    ```bash
    pip install -r tools/requirements.txt
    python tools/build.py
    ```
-5. Open a pull request. CI validates the manifest, checks the build is reproducible, and runs your
+6. Open a pull request. CI validates the manifest, checks the build is reproducible, and runs your
    package through the real panel installer. A maintainer reviews the code, tries it in a panel, and
    merges. Your extension ships in the next `registry-N` release.
 
@@ -169,6 +173,7 @@ version:
 
 - One extension per folder, one folder per pull request.
 - No outbound network, no remote scripts, no minified-only sources. Reviewers read what ships.
+- Every code extension ships a one-colour `glyph.svg` ([docs/icons.md](docs/icons.md)); theme packs ship none.
 - Never edit the `integrity` map by hand; the build rebuilds it and CI compares.
 - Keep third-party code to what the panel allows as a runtime module; today that is `phaser@4`.
 - Be kind in reviews and honest in release notes.
@@ -179,8 +184,10 @@ version:
 extensions/<id>/                 one folder per extension (id = manifest id)
     extension.json               schema-2 manifest: id, name, version, ui, permissions, integrity
     listing.json                 store listing: publisher, category, features, requirements, release notes
-    README.md, icon.svg, *.js    the extension itself
+    glyph.svg                    the themed icon shape (required unless category is themes)
+    README.md, *.js              the extension itself; icon.svg only for panels older than glyphs
 
+templates/extension/             starter for a code extension, with a conforming glyph.svg (copy into extensions/)
 templates/theme-pack/            starter for a gradient-based theme pack (copy into extensions/; never built as is)
 
 tools/
@@ -196,6 +203,7 @@ tests/                           tooling tests (reproducible builds, integrity, 
 scripts/publish-verified-main.py publishes the exact verified commit to this repository
 .gitea/workflows/ci.yml          the pipeline: build and validate → publish → sign and release
 .gitea/workflows/mcp-runtime.yml build, sign and publish the optional MCP component runtime
+docs/icons.md                    the glyph rules and drawing guide (the one canonical icon page)
 docs/themes.md                   how to build and publish a theme pack
 docs/mcp-runtime.md              what that runtime is, how it is signed, and how a core release re-signs it
 ```
