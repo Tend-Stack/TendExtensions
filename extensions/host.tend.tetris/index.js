@@ -43,7 +43,7 @@ function ensureStyle(){
 }
 
 function loadPhaser(host){
-  if(!host.runtime)throw new Error('This game needs tend.host Runtime API 1');
+  if(!host.runtime)throw new Error('This game needs Tend Runtime API 1');
   return host.runtime.require('phaser@4');
 }
 function formatRunTime(ms){
@@ -1013,7 +1013,7 @@ export default function activate(host){
         },220);
       }).catch(function(err){
         clearInterval(iv);
-        loadDiv.innerHTML='<div style="color:#ef4444;font-family:system-ui;padding:20px;text-align:center;font-size:13px">Could not load Phaser.js<br><small style="color:#64748b">The local tend.host Phaser runtime is unavailable</small></div>';
+        loadDiv.innerHTML='<div style="color:#ef4444;font-family:system-ui;padding:20px;text-align:center;font-size:13px">Could not load Phaser.js<br><small style="color:#64748b">The local Tend Phaser runtime is unavailable</small></div>';
         console.error('Tetris: Phaser load failed',err);
       });
     },

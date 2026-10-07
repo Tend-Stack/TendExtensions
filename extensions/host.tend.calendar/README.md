@@ -1,6 +1,6 @@
 # Calendar extension (schema 2)
 
-A modern month, week, day and agenda calendar for tend.host, built to
+A modern month, week, day and agenda calendar for Tend, built to
 be the panel's default calendar — native ESM, no bundler, no iframe,
 no external network. Events live locally through `host.storage`.
 

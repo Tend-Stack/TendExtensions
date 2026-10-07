@@ -441,7 +441,8 @@ def test_theme_pack_zip_is_deterministic_and_has_no_listing(tmp_path: Path) -> N
     assert first == _zip_hashes(tmp_path / "dist")
     import zipfile
 
-    with zipfile.ZipFile(tmp_path / "dist" / "host.tend.theme.nebula-1.0.0.zip") as zf:
+    version = json.loads((tmp_path / "extensions" / "host.tend.theme.nebula" / "extension.json").read_text())["version"]
+    with zipfile.ZipFile(tmp_path / "dist" / f"host.tend.theme.nebula-{version}.zip") as zf:
         assert zf.namelist() == ["README.md", "extension.json", "thumb.webp", "wallpaper.webp"]
 
 

@@ -1,6 +1,6 @@
 # Snake Odyssey: Neon Wilds
 
-A modern tend.host Runtime API 1 rebuild of Snake with two main progression paths.
+A modern Tend Runtime API 1 rebuild of Snake with two main progression paths.
 
 ## Classic Growth
 
@@ -28,7 +28,7 @@ A modern tend.host Runtime API 1 rebuild of Snake with two main progression path
 - Wild Charge abilities: Phase, Overdrive, and Freeze.
 - Persistent ranks, rewards, achievements, daily challenges, and records.
 - Keyboard, WASD, swipe, and mobile directional-pad controls.
-- Gameplay keys are isolated from tend.host workspace navigation.
+- Gameplay keys are isolated from Tend workspace navigation.
 - Container-aware fixed panel, desktop fullscreen, and mobile fullscreen layouts.
 - Rich Web Audio feedback for movement, food, chains, gates, powers, milestones, challenges, completion, and collisions.
 

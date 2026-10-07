@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.calendar",
   "name": "Calendar",
-  "version": "1.5.0",
-  "author": "tend.host",
+  "version": "1.5.1",
+  "author": "Tend",
   "description": "A modern month, week, day and agenda calendar with local events, reminders, ICS import/export, keyboard control and a settings sheet, built to be the panel's default calendar.",
   "icon": "icon.svg",
   "ui": {
@@ -36,7 +36,7 @@
     }
   ],
   "integrity": {
-    "README.md": "sha256-r5sogfqMRkIgSidAklhkI+JN9+L8N09JfFRmgrrDXPM=",
+    "README.md": "sha256-Vsji/Sdaw3mIprdn/jnTGYphFy1RwMMJq4oIvuCzhGM=",
     "date-utils.js": "sha256-5os08y92QN4tSlyV5ViKgcQl5oC2RaZ2jCCWAMLscLU=",
     "icon.svg": "sha256-vX9D81J1DecqNRwmlxL8QufDvU+oxvG4t60/fSvd+Ps=",
     "ics.js": "sha256-cahlnXF/5V0uWlauBTqkGMQEewnuvqtsz/5INZxXqJI=",

@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.theme.nebula",
   "name": "Nebula",
-  "version": "1.0.0",
-  "author": "tend.host",
+  "version": "1.0.1",
+  "author": "Tend",
   "description": "Orchid starlight and teal dust across a violet spiral galaxy.",
   "category": "themes",
   "permissions": [],
@@ -65,7 +65,7 @@
     }
   },
   "integrity": {
-    "README.md": "sha256-wmWSv7SMpNZYBtSjPuTIQNVsZHK6ZJvtW3pyCduev/c=",
+    "README.md": "sha256-xbSq+A/EGUEpSKGZwd2XvOydZjST4Y2iC/HSkJNi+Bk=",
     "thumb.webp": "sha256-uyYU5mwKZW2o/MbEX3WT2pWzsZdqI28MKJEMO5fab8c=",
     "wallpaper.webp": "sha256-zMcyRc9ypB9dL4tSXj83zp2jovgpeh8v5AQvtyfMBHY="
   }

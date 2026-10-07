@@ -1,4 +1,4 @@
-name: Publish the TEND MCP runtime
+name: Publish the Tend MCP runtime
 
 # Build, sign and publish one version of the optional `host.tend.mcp` component
 # runtime: the confined worker image for both platforms, the browser package, and

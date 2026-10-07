@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.minesweeper",
   "name": "Minesweeper Odyssey",
-  "version": "3.0.2",
-  "author": "tend.host",
+  "version": "3.0.3",
+  "author": "Tend",
   "description": "Deep Signal v3.0.2: a no-guess Minesweeper expedition with stable in-place field rendering, modern tools, campaign mastery, and responsive fullscreen.",
   "icon": "icon.svg",
   "ui": {
@@ -33,9 +33,9 @@
     "targetFps": 60
   },
   "integrity": {
-    "README.md": "sha256-Qvz2r9p3lZI2w4nVQ6J52oClx9Fo3MDSsh+wYVabH88=",
-    "arcade-kit.js": "sha256-ZepqG9r5SjYmyXrMGaa5rYAIfnRUtIfbx7N1BOId8l8=",
+    "README.md": "sha256-PSLvJRw3qXIvlFDwomUwxoLBichafQKYRcN2R660qE0=",
+    "arcade-kit.js": "sha256-auisvuEg9+vBiUICThTNrpbArnPZKq+d6K/ftRRyS28=",
     "icon.svg": "sha256-/luwvKvGetGAhaAi3UjVujbpxZ26EfVB6y5naFsG1Ss=",
-    "index.js": "sha256-ykSdomHItbh0Md/EFbrbJg7v1ahuRX6FRS3+n1m48eM="
+    "index.js": "sha256-+1NZfxbLJWdtzie/VMlwUPFyf9PqL2nFSCicS0ZeGDU="
   }
 }

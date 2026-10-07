@@ -26,7 +26,7 @@ a dashboard for something you run: each one is a small ES-module package that th
 own window and talks to through a narrow host API.
 
 Tend is available as **self-hosted** (you run the panel) and as **hosted** panels at
-[tend.host](https://tend.host). Both read this registry the same way.
+[Tend](https://tend.host). Both read this registry the same way.
 
 ## What is an extension?
 
@@ -47,8 +47,8 @@ integrity verifier, and its web application firewall before a single module exec
   "schema": 2,
   "id": "host.tend.calculator",
   "name": "Calculator",
-  "version": "3.0.0",
-  "author": "tend.host",
+  "version": "3.0.1",
+  "author": "Tend",
   "description": "Seven-mode calculator …",
   "icon": "icon.svg",
   "ui": { "module": "index.js", "mount": "tool-window", "size": { "w": 460, "h": 700 } },
@@ -64,32 +64,32 @@ publisher, category, feature bullets, requirements, and the release notes for th
 
 | Extension | Version | Category | What it is |
 |---|---|---|---|
-| **Calculator** (`host.tend.calculator`) | 3.0.0 | productivity | Standard, scientific, graphing, programmer, statistics, financial and converter modes, a real expression engine, a history tape, full keyboard control |
-| **Calendar** (`host.tend.calendar`) | 1.5.0 | productivity | Month, week, day and agenda views with local events, reminders and ICS import/export |
-| **Developer Tools** (`host.tend.devtools`) | 1.0.0 | developer-tools | JSON, Base64, URL, JWT, hash, UUID, timestamp and guarded regex tools in one offline window |
-| **TEND Media** (`host.tend.media`) | 1.0.0 | media | Radio, podcasts and audiobooks from OndaCast with subscriptions, a queue, per-show speed, sleep timer, transcripts and clips to Notes |
-| **Riftwing: Skybound** (`com.tendstack.riftwing`) | 4.1.1 | games | A fast, replayable sky-runner with eight worlds and nine pilots |
-| **2048 Odyssey** (`host.tend.2048`) | 2.0.1 | games | Merge mastery across an endless target ladder |
-| **Breakout Odyssey** (`host.tend.breakout`) | 2.2.0 | games | Campaign Breakout with boss walls and live relayout |
-| **Cookie Empire Odyssey** (`host.tend.cookie`) | 2.2.0 | games | An active-idle bakery with upgrades and prestige |
-| **Fruit Slash Odyssey** (`host.tend.fruitninja`) | 2.2.0 | games | Fruit-slicing arcade action |
-| **Gem Crush Odyssey** (`host.tend.gemcrush`) | 3.0.4 | games | An 80-stage match-three campaign |
-| **Match Puzzle: Odyssey** (`host.tend.matchpuzzle`) | 2.1.1 | games | A polished match puzzle adventure |
-| **Memory Match Odyssey** (`host.tend.memory`) | 2.2.0 | games | A 50-stage memory campaign |
-| **Minesweeper Odyssey** (`host.tend.minesweeper`) | 3.0.2 | games | A no-guess Minesweeper expedition |
-| **Neon Cyber-Man** (`host.tend.neon-cyber-man`) | 1.0.1 | games | A cyberpunk maze-chase arcade game with adaptive ghost AI |
-| **Peggle Odyssey: Arc Light** (`host.tend.peggle`) | 3.0.6 | games | Arcade ricochet with fever shots and star-rated stages |
-| **Simon Odyssey: Neural Pulse** (`host.tend.simon`) | 3.0.3 | games | A 60-session brain-training campaign |
-| **Snake Odyssey: Neon Wilds** (`host.tend.snake`) | 3.1.1 | games | Modern Snake with endless classic growth |
-| **Solitaire Odyssey: Starlight Circuit** (`host.tend.solitaire`) | 3.0.1 | games | Klondike with fluid card dragging and 36 stages |
-| **Sudoku** (`host.tend.sudoku`) | 1.1.0 | games | Classic 9×9 Sudoku |
-| **Tetris** (`host.tend.tetris`) | 3.1.0 | games | The classic, rebuilt with keyboard and touch controls |
-| **Word Guess** (`host.tend.wordle`) | 1.1.0 | games | Guess the hidden word in six tries |
-| **Nebula** (`host.tend.theme.nebula`) | 1.0.0 | themes | Theme pack: orchid starlight and teal dust across a violet spiral galaxy |
-| **Synthwave** (`host.tend.theme.synthwave`) | 1.0.0 | themes | Theme pack: gold contrails over a neon wireframe horizon |
-| **Inkwell** (`host.tend.theme.inkwell`) | 1.0.1 | themes | Theme pack: cyan, cobalt and gold ink blooming beneath rippling water |
-| **Prism** (`host.tend.theme.prism`) | 1.0.0 | themes | Theme pack: a tangerine cube and amber light beams in a quiet concrete gallery |
-| **Skyline** (`host.tend.theme.skyline`) | 1.0.0 | themes | Theme pack: sapphire night over a riverside city, window light glowing gold |
+| **Calculator** (`host.tend.calculator`) | 3.0.1 | productivity | Standard, scientific, graphing, programmer, statistics, financial and converter modes, a real expression engine, a history tape, full keyboard control |
+| **Calendar** (`host.tend.calendar`) | 1.5.1 | productivity | Month, week, day and agenda views with local events, reminders and ICS import/export |
+| **Developer Tools** (`host.tend.devtools`) | 1.0.1 | developer-tools | JSON, Base64, URL, JWT, hash, UUID, timestamp and guarded regex tools in one offline window |
+| **Tend Player** (`host.tend.media`) | 1.7.1 | media | Radio, podcasts and audiobooks from OndaCast with subscriptions, a queue, per-show speed, sleep timer, transcripts and clips to Notes |
+| **Riftwing: Skybound** (`com.tendstack.riftwing`) | 4.1.2 | games | A fast, replayable sky-runner with eight worlds and nine pilots |
+| **2048 Odyssey** (`host.tend.2048`) | 2.0.2 | games | Merge mastery across an endless target ladder |
+| **Breakout Odyssey** (`host.tend.breakout`) | 2.2.1 | games | Campaign Breakout with boss walls and live relayout |
+| **Cookie Empire Odyssey** (`host.tend.cookie`) | 2.2.1 | games | An active-idle bakery with upgrades and prestige |
+| **Fruit Slash Odyssey** (`host.tend.fruitninja`) | 2.2.1 | games | Fruit-slicing arcade action |
+| **Gem Crush Odyssey** (`host.tend.gemcrush`) | 3.0.5 | games | An 80-stage match-three campaign |
+| **Match Puzzle: Odyssey** (`host.tend.matchpuzzle`) | 2.1.2 | games | A polished match puzzle adventure |
+| **Memory Match Odyssey** (`host.tend.memory`) | 2.2.1 | games | A 50-stage memory campaign |
+| **Minesweeper Odyssey** (`host.tend.minesweeper`) | 3.0.3 | games | A no-guess Minesweeper expedition |
+| **Neon Cyber-Man** (`host.tend.neon-cyber-man`) | 1.0.2 | games | A cyberpunk maze-chase arcade game with adaptive ghost AI |
+| **Peggle Odyssey: Arc Light** (`host.tend.peggle`) | 3.0.7 | games | Arcade ricochet with fever shots and star-rated stages |
+| **Simon Odyssey: Neural Pulse** (`host.tend.simon`) | 3.0.4 | games | A 60-session brain-training campaign |
+| **Snake Odyssey: Neon Wilds** (`host.tend.snake`) | 3.1.2 | games | Modern Snake with endless classic growth |
+| **Solitaire Odyssey: Starlight Circuit** (`host.tend.solitaire`) | 3.0.2 | games | Klondike with fluid card dragging and 36 stages |
+| **Sudoku** (`host.tend.sudoku`) | 1.1.1 | games | Classic 9×9 Sudoku |
+| **Tetris** (`host.tend.tetris`) | 3.1.1 | games | The classic, rebuilt with keyboard and touch controls |
+| **Word Guess** (`host.tend.wordle`) | 1.1.1 | games | Guess the hidden word in six tries |
+| **Nebula** (`host.tend.theme.nebula`) | 1.0.1 | themes | Theme pack: orchid starlight and teal dust across a violet spiral galaxy |
+| **Synthwave** (`host.tend.theme.synthwave`) | 1.0.1 | themes | Theme pack: gold contrails over a neon wireframe horizon |
+| **Inkwell** (`host.tend.theme.inkwell`) | 1.0.2 | themes | Theme pack: cyan, cobalt and gold ink blooming beneath rippling water |
+| **Prism** (`host.tend.theme.prism`) | 1.0.1 | themes | Theme pack: a tangerine cube and amber light beams in a quiet concrete gallery |
+| **Skyline** (`host.tend.theme.skyline`) | 1.0.1 | themes | Theme pack: sapphire night over a riverside city, window light glowing gold |
 
 The table is a snapshot; `dist/registry.json` built from `main` is always the authority.
 

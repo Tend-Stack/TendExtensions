@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.theme.inkwell",
   "name": "Inkwell",
-  "version": "1.0.1",
-  "author": "tend.host",
+  "version": "1.0.2",
+  "author": "Tend",
   "description": "Cyan, cobalt and gold ink blooming beneath rippling water.",
   "category": "themes",
   "permissions": [],
@@ -65,7 +65,7 @@
     }
   },
   "integrity": {
-    "README.md": "sha256-bCROqJtsrk5Y3VQSDIkqzZyPg/24N7Ka6P/hO3JjoHo=",
+    "README.md": "sha256-v99M2ISCXHgNFxvRIWYD/TFlkqa3ZQmOvZaQUlpn5GE=",
     "thumb.webp": "sha256-AMLfg1HmXsir14TOCw9eX41iZV4aK+2RRjFAfW1LG2k=",
     "wallpaper.webp": "sha256-3B3HBxgUw5d/eU/vr9o+pMuuruV2yDk2TaSDlHv0wHU="
   }

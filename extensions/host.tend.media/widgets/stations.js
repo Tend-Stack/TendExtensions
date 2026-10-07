@@ -25,7 +25,7 @@ function F(s, d) {
 					A(e, { text: "" });
 				}, g = (e) => {
 					A(e, {
-						text: "Tap ♥ on a station in TEND Media to keep it one tap away.",
+						text: "Tap ♥ on a station in Tend Player to keep it one tap away.",
 						action: "Find stations",
 						onaction: () => E.open()
 					});

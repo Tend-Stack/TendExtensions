@@ -1,6 +1,6 @@
 # Solitaire Odyssey: Starlight Circuit
 
-A modern tend.host Klondike experience built around familiar card strategy, shorter mission sessions, daily seeded deals, score chains, collectible card-back rewards, and tactical powers.
+A modern Tend Klondike experience built around familiar card strategy, shorter mission sessions, daily seeded deals, score chains, collectible card-back rewards, and tactical powers.
 
 ## Main modes
 

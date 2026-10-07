@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.calculator",
   "name": "Calculator",
-  "version": "3.0.0",
-  "author": "tend.host",
+  "version": "3.0.1",
+  "author": "Tend",
   "description": "Seven-mode calculator: standard, scientific, graphing, programmer, statistics, financial and converters, with a real expression engine, a history tape and full keyboard control. Native ESM extension.",
   "icon": "icon.svg",
   "ui": {
@@ -22,7 +22,7 @@
     "storage"
   ],
   "integrity": {
-    "README.md": "sha256-aE/c1yEjbRoTGN2YbylPC3vWUEpPfGC0UxIvLApiNes=",
+    "README.md": "sha256-tVhRtqat5xb7Oe45P1j9d6V/uUbVJL/U6cMmliCFO9c=",
     "converters/currency.js": "sha256-/0MMQbOTwmkzWxL8PMrFfyjoSQOnb5IgDOxdnGsBixY=",
     "converters/units.js": "sha256-lC7M2kRCxweBtScpToua+9f3jD6gJ3t/kSbceecVAHc=",
     "engine/evaluate.js": "sha256-sIIC4eN5l8y9QWl+2ZrsZnPh1+HVi2vVkjWpkh8T1VU=",

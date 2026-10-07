@@ -1,6 +1,6 @@
 Peggle Odyssey: Arc Light v3.0.3
 
-Modern rebuild for tend.host.
+Modern rebuild for Tend.
 
 Highlights:
 - 45-stage campaign with handcrafted and procedural peg fields

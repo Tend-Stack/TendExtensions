@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.theme.prism",
   "name": "Prism",
-  "version": "1.0.0",
-  "author": "tend.host",
+  "version": "1.0.1",
+  "author": "Tend",
   "description": "A tangerine cube and amber light beams in a quiet concrete gallery.",
   "category": "themes",
   "permissions": [],
@@ -70,7 +70,7 @@
     }
   },
   "integrity": {
-    "README.md": "sha256-dh4x5jjZcPDv7zY7Bl6wkfI7yDJ4YJJQiPfe1f4qSd0=",
+    "README.md": "sha256-DWmZy+lf9TaxCVPSSmw8oKkBErcc8SzG0e42ERWwjKo=",
     "thumb.webp": "sha256-BtQZl3gaXhyxfM/YWpltbWIZYu6uHokLMNnSdrdWcgA=",
     "wallpaper.webp": "sha256-4UdPbp+OmffSFMEXBO/qt29ZYTz0UGc8XxaNEFk3xoU="
   }

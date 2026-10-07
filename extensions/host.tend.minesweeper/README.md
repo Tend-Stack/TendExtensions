@@ -1,6 +1,6 @@
 # Minesweeper Odyssey: Deep Signal
 
-A logic-first modern Minesweeper campaign for tend.host Runtime API 1.
+A logic-first modern Minesweeper campaign for Tend Runtime API 1.
 
 ## What changed
 
@@ -15,11 +15,11 @@ A logic-first modern Minesweeper campaign for tend.host Runtime API 1.
 - Click, right-click, double-click/chord, long-press, mobile Reveal/Flag modes, and keyboard controls.
 - Container-aware fixed panel, laptop full-screen, and mobile edge-to-edge layouts.
 
-## tend.host integration
+## Tend integration
 
 The extension declares `runtime.kind: "game"` and uses Runtime API 1 for lifecycle-aware timers, pause/resume behavior, cleanup, and host-owned full screen. It does not request Phaser because the grid renderer is lightweight DOM/CSS.
 
-Desktop uses a fixed 500 × 720 tool window. Mobile can enter the host-owned immersive surface and hide tend.host chrome.
+Desktop uses a fixed 500 × 720 tool window. Mobile can enter the host-owned immersive surface and hide Tend chrome.
 
 ## Controls
 

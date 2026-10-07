@@ -1,5 +1,5 @@
 {
-  "publisher": "TEND Stack",
+  "publisher": "Tend Stack",
   "category": "themes",
   "featured": false,
   "reviewed": true,
@@ -12,5 +12,5 @@
   "requirements": [
     "A Tend panel with theme pack support (the themes extension category)"
   ],
-  "release_notes": "Initial release."
+  "release_notes": "1.0.1: The author now reads Tend."
 }

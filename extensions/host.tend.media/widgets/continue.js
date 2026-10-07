@@ -19,7 +19,7 @@ function v(f, v) {
 			}, m = (e) => {
 				h(e, {
 					text: "Start an episode or an audiobook and pick it up here, right where you left off.",
-					action: "Open TEND Media",
+					action: "Open Tend Player",
 					onaction: () => y.open()
 				});
 			}, v = (n) => {

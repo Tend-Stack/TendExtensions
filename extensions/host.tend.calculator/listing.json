@@ -1,5 +1,5 @@
 {
-  "publisher": "TEND Stack",
+  "publisher": "Tend Stack",
   "category": "productivity",
   "featured": true,
   "reviewed": true,
@@ -13,5 +13,5 @@
     "A Tend panel running schema-2 (native ESM) extensions",
     "A desktop or mobile browser tab with ES module support"
   ],
-  "release_notes": "Initial registry release."
+  "release_notes": "3.0.1: Wording now says Tend, the control panel's name."
 }

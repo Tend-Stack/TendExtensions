@@ -1,4 +1,4 @@
-# Publishing the TEND MCP runtime
+# Publishing the Tend MCP runtime
 
 This registry publishes two unrelated things. Its own extension packages, on
 every green push to `main` (`.gitea/workflows/ci.yml`), and — manually, one
@@ -32,7 +32,7 @@ other name is one no panel can fetch.
 
 ## Running it
 
-**Extensions → Actions → Publish the TEND MCP runtime → Run workflow**, from
+**Extensions → Actions → Publish the Tend MCP runtime → Run workflow**, from
 `main` only, with:
 
 - **core_commit** (the only required input) — the full 40-hex commit on

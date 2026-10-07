@@ -2,9 +2,9 @@
   "schema": 2,
   "id": "host.tend.cookie",
   "name": "Cookie Empire Odyssey",
-  "version": "2.2.0",
-  "author": "tend.host",
-  "description": "A responsive active-idle bakery with unclipped upgrades, prestige, golden events, modes, perks, and quests. Uses tend.host Runtime API 1 and host-owned mobile fullscreen.",
+  "version": "2.2.1",
+  "author": "Tend",
+  "description": "A responsive active-idle bakery with unclipped upgrades, prestige, golden events, modes, perks, and quests. Uses Tend Runtime API 1 and host-owned mobile fullscreen.",
   "icon": "icon.svg",
   "ui": {
     "module": "index.js",
@@ -26,7 +26,7 @@
     "storage"
   ],
   "integrity": {
-    "arcade-kit.js": "sha256-B01xqfcvz3Ca9TfySL44tXedVhP5TOYrszYfysPDxc4=",
+    "arcade-kit.js": "sha256-48M8WWFTlZusyMztUY7xfxh1h3LmhMtxsyezdcNqZ4U=",
     "icon.svg": "sha256-/qXT7RlCF82SYlmfUP5mFnWHzruiYaZjmGHXRnNoVnk=",
     "index.js": "sha256-5ZMtVJm5MvboXq4IJ1H1B0wAr/8z4qM4mowmW97EbEQ="
   },

@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.solitaire",
   "name": "Solitaire Odyssey: Starlight Circuit",
-  "version": "3.0.1",
-  "author": "tend.host",
+  "version": "3.0.2",
+  "author": "Tend",
   "description": "Modern Klondike with fluid physical card dragging, Classic Flow, 36 Odyssey missions, Pulse Rush, daily seeded deals, Momentum combos, hidden Starlight cards, rank progression, tactical perks, rewards, sound, and responsive fullscreen play.",
   "icon": "icon.svg",
   "ui": {
@@ -26,8 +26,8 @@
     "storage"
   ],
   "integrity": {
-    "README.md": "sha256-ySM9JLtYYNTDyApED8kM6iZFKZiGWVT+u2OcbgJeDyw=",
-    "arcade-kit.js": "sha256-yo+hTnkagAH2Yd+vMoeBwRU6trOMMHu++bJ4OaxDC0E=",
+    "README.md": "sha256-p/QhVoTp5rWgzH0APyuI1tI4gjB7Vq66vC1decL4tX4=",
+    "arcade-kit.js": "sha256-P8nmSaIL+1sEuZ4KzBtnf2edKv5TM6IDvSysJjY1+EQ=",
     "icon.svg": "sha256-2B3r0GFwu6tP77YdrpIVy/2HsjDYu7vyPepA287T63I=",
     "index.js": "sha256-Maoy5wzgdCaO6iOT9mnRR0/KwvIsn/srQk/zlEBBvZk="
   },

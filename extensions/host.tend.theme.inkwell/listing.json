@@ -1,5 +1,5 @@
 {
-  "publisher": "TEND Stack",
+  "publisher": "Tend Stack",
   "category": "themes",
   "featured": false,
   "reviewed": true,
@@ -12,5 +12,5 @@
   "requirements": [
     "A Tend panel with theme pack support (the themes extension category)"
   ],
-  "release_notes": "New full-resolution wallpaper (2000 px, no upscaling) without the tank walls; lighter download."
+  "release_notes": "1.0.2: The author now reads Tend."
 }

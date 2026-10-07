@@ -1,6 +1,6 @@
-# Neon Cyber-Man for tend.host
+# Neon Cyber-Man for Tend
 
-A production-oriented, procedural Phaser 4 maze-chase extension designed for the tend.host schema-2 game runtime.
+A production-oriented, procedural Phaser 4 maze-chase extension designed for the Tend schema-2 game runtime.
 
 ## Runtime
 
@@ -9,11 +9,11 @@ A production-oriented, procedural Phaser 4 maze-chase extension designed for the
 - 1280×720 responsive canvas with `Phaser.Scale.FIT`
 - WebGL renderer, Arcade Physics enabled, max 8 dynamic lights
 - No external images, fonts, audio, APIs, CDNs, or network dependencies
-- Persistent progression uses `host.storage` (permission-scoped tend.host storage), not `localStorage`
+- Persistent progression uses `host.storage` (permission-scoped Tend storage), not `localStorage`
 
 ## Architecture
 
-- `index.js` — tend.host extension entry point / lifecycle integration
+- `index.js` — Tend extension entry point / lifecycle integration
 - `src/GameConfig.js` — Phaser config and scene assembly
 - `src/Player.js` — forgiving buffered tile movement, corner grace, instant reversal, dash state, trail and glow
 - `src/Ghost.js` — ghost finite state machine and identity-specific target logic
@@ -62,6 +62,6 @@ A production-oriented, procedural Phaser 4 maze-chase extension designed for the
 
 ## Installation requirement
 
-This extension intentionally declares `runtime.modules: ["phaser@4"]`. The current tend.host main branch only accepts `phaser@3`, so install the host Phaser 4 runtime support first. See `HOST-PHASER4-INTEGRATION.md`.
+This extension intentionally declares `runtime.modules: ["phaser@4"]`. The current Tend main branch only accepts `phaser@3`, so install the host Phaser 4 runtime support first. See `HOST-PHASER4-INTEGRATION.md`.
 
-Once host support is deployed, upload `neon-cyber-man-v1.0.1.zip` through the normal tend.host extension installer.
+Once host support is deployed, upload `neon-cyber-man-v1.0.1.zip` through the normal Tend extension installer.

@@ -2,7 +2,7 @@
   "schema": 2,
   "id": "com.tendstack.riftwing",
   "name": "Riftwing: Skybound",
-  "version": "4.1.1",
+  "version": "4.1.2",
   "author": "TEND STACK LLC",
   "description": "A fast, replayable sky-runner with eight evolving worlds, nine pilots, four difficulty classes, dynamic routes, power cores, contracts, progression, and precision rewards.",
   "icon": "icon.svg",
@@ -35,8 +35,8 @@
     "targetFps": 60
   },
   "integrity": {
-    "README.md": "sha256-pRRxlyx1CxBfxitqf2ld0q6qwVr2SkXzdtEfi7GrnbQ=",
+    "README.md": "sha256-xV3dcHfNxJ9aXiJniqtUfyYYJjck7hCvF+Yi/MseLHM=",
     "icon.svg": "sha256-82gacj2DyzffyipJu95wuiSgItulMVSVhvY5xOXrHug=",
-    "index.js": "sha256-yX9c1RuUQ0L6YJBpv6nPWXEWP9wHJRfL2umAVJ+5BfI="
+    "index.js": "sha256-+BOrjQa/gTPGSLP4jh6UNsGz5WsV4mwIQsVlCLiruVA="
   }
 }

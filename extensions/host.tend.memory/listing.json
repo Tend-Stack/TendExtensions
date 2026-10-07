@@ -1,5 +1,5 @@
 {
-  "publisher": "TEND Stack",
+  "publisher": "Tend Stack",
   "category": "games",
   "featured": false,
   "reviewed": true,
@@ -12,5 +12,5 @@
     "A Tend panel running extension runtime API 1",
     "A desktop or mobile browser tab with ES module support"
   ],
-  "release_notes": "Initial registry release."
+  "release_notes": "2.2.1: Wording now says Tend, the control panel's name."
 }

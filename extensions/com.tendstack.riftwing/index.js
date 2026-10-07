@@ -1,4 +1,4 @@
-// Riftwing: Skybound — TEND STACK LLC / tend.host Runtime API 1 game extension.
+// Riftwing: Skybound — TEND STACK LLC / Tend Runtime API 1 game extension.
 // Procedural Phaser 4 sky-runner with world progression, perks and rewards.
 
 var FUO_STYLE_ID = 'fuo-extension-style';
@@ -1510,7 +1510,7 @@ function createGame(parent, storage, profile, runtimeModule, display) {
 }
 
 export default function activate(host) {
-  if (!host.runtime) throw new Error('Riftwing requires tend.host Runtime API 1.');
+  if (!host.runtime) throw new Error('Riftwing requires Tend Runtime API 1.');
   ensureStyle();
   var profile = defaultProfile();
   var ready = host.storage.get(STORAGE_KEY).then(function (raw) {
@@ -1546,7 +1546,7 @@ export default function activate(host) {
       root.addEventListener('pointerdown', focusGameInput, true);
       document.addEventListener('fullscreenchange', syncFullscreenFocus);
       var loader = document.createElement('div'); loader.className = 'fuo-loader';
-      loader.innerHTML = '<div class="fuo-loader-card"><div class="fuo-loader-mark">TEND STACK ARCADE</div><div class="fuo-loader-title">Riftwing</div><div class="fuo-loader-sub">Opening the Skybound rifts…</div><div class="fuo-loader-track"><div class="fuo-loader-fill"></div></div></div>';
+      loader.innerHTML = '<div class="fuo-loader-card"><div class="fuo-loader-mark">Tend Stack Arcade</div><div class="fuo-loader-title">Riftwing</div><div class="fuo-loader-sub">Opening the Skybound rifts…</div><div class="fuo-loader-track"><div class="fuo-loader-fill"></div></div></div>';
       root.appendChild(loader);
       var fill = loader.querySelector('.fuo-loader-fill'), progress = 0;
       loaderTimer = host.runtime.timers.setInterval(function () { progress = Math.min(90, progress + rand(4, 10)); if (fill) fill.style.width = progress + '%'; }, 90);
@@ -1563,7 +1563,7 @@ export default function activate(host) {
         }, 180);
       } catch (error) {
         if (loaderTimer) { host.runtime.timers.clearInterval(loaderTimer); loaderTimer = null; }
-        loader.innerHTML = '<div class="fuo-loader-card"><div class="fuo-loader-error"><strong>Riftwing could not start.</strong><br>Update tend.host and verify Runtime API 1.</div></div>';
+        loader.innerHTML = '<div class="fuo-loader-card"><div class="fuo-loader-error"><strong>Riftwing could not start.</strong><br>Update Tend and verify Runtime API 1.</div></div>';
         console.error('Riftwing: Skybound failed to load', error);
       }
     },

@@ -19,7 +19,7 @@ refused outright rather than silently skipped.
 
 Requires `dist/*.zip` to already exist — run `tools/build.py` first — and
 the core checkout's own `go` toolchain on `PATH` (CI installs it from
-`public-core/go.mod`; locally, whatever `go` you use to build tend.host
+`public-core/go.mod`; locally, whatever `go` you use to build Tend
 works, since `go run` builds against the checkout's own go.mod/go.sum).
 """
 from __future__ import annotations
@@ -45,7 +45,7 @@ class ValidationError(Exception):
 
 def _require_go_core(core_checkout: Path) -> None:
     """Refuses clearly, before ever shelling out, when core_checkout is not
-    a Go tend.host checkout new enough to carry cmd/tend-validate-extension
+    a Go Tend checkout new enough to carry cmd/tend-validate-extension
     (the command this script depends on)."""
     if not (core_checkout / "go.mod").is_file():
         raise ValidationError(f"{core_checkout} does not look like a Tend core checkout (no go.mod)")

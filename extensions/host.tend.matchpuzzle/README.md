@@ -1,6 +1,6 @@
 # Match Puzzle: Odyssey 2.1.1
 
-A fixed-size tend.host match-puzzle extension aligned with Extension Runtime API 1.
+A fixed-size Tend match-puzzle extension aligned with Extension Runtime API 1.
 
 
 ## 2.1.1 — typography and layout repair

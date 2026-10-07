@@ -1,6 +1,6 @@
 # Calculator extension (schema 2)
 
-A seven-mode calculator for tend.host and the reference implementation
+A seven-mode calculator for Tend and the reference implementation
 for v2 native ESM extensions — runs in-process, no iframe, no bundler,
 no dependencies, real host API for storage and theme.
 

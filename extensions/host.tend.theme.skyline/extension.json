@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.theme.skyline",
   "name": "Skyline",
-  "version": "1.0.0",
-  "author": "tend.host",
+  "version": "1.0.1",
+  "author": "Tend",
   "description": "Sapphire night over a riverside city, window light glowing gold.",
   "category": "themes",
   "permissions": [],
@@ -65,7 +65,7 @@
     }
   },
   "integrity": {
-    "README.md": "sha256-bo/XUfOnQgBsc4GblviHAh1juj6oxLXbpj/MPXhwwLw=",
+    "README.md": "sha256-95rOk7kZqggXjvHirnHQaz6ZF+ZbXPGT/dZe9QvH4sY=",
     "thumb.webp": "sha256-wZXg9Oe3MXy2wf96rZ6/92JUcIKH5uBLQGbeFV7d4cg=",
     "wallpaper.webp": "sha256-e9Zo8xEXfYhZkvPuuvd6LNaOg60jD5QcgNwYUQHKSxE="
   }

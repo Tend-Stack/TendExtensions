@@ -61,7 +61,7 @@ def write_fixture_extension(
     (ext_dir / "extension.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
     listing = {
-        "publisher": "TEND Stack",
+        "publisher": "Tend Stack",
         "category": "utilities",
         "featured": False,
         "reviewed": True,

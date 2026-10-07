@@ -1,6 +1,6 @@
-# tend.host Phaser 4.2.1 Runtime Integration
+# Tend Phaser 4.2.1 Runtime Integration
 
-The current tend.host runtime deliberately owns engine resolution. Extensions declare a module id and cannot select a CDN or arbitrary URL. That is the right architecture; Phaser 4 should be added as a second host module rather than replacing Phaser 3.
+The current Tend runtime deliberately owns engine resolution. Extensions declare a module id and cannot select a CDN or arbitrary URL. That is the right architecture; Phaser 4 should be added as a second host module rather than replacing Phaser 3.
 
 ## 1. Install Phaser 4 in the frontend
 

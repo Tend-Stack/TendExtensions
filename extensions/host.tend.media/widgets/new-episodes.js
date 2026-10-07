@@ -21,7 +21,7 @@ function v(f, v) {
 				h(e, { text: "Checking your shows…" });
 			}, m = (e) => {
 				h(e, {
-					text: "Follow shows in TEND Media and their new episodes land here.",
+					text: "Follow shows in Tend Player and their new episodes land here.",
 					action: "Find shows",
 					onaction: () => y.open()
 				});

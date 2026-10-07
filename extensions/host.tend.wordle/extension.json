@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.wordle",
   "name": "Word Guess",
-  "version": "1.1.0",
-  "author": "tend.host",
+  "version": "1.1.1",
+  "author": "Tend",
   "description": "Guess the hidden word in 6 tries. Green = correct position, yellow = wrong position, gray = not in word. Simple, elegant, addictive.",
   "icon": "icon.svg",
   "ui": {

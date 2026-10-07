@@ -1,6 +1,6 @@
 # Gem Crush Odyssey — Riftfall Edition
 
-A complete tend.host Runtime API 1 match-three campaign rebuilt for desktop panels, laptop fullscreen, and mobile immersive play.
+A complete Tend Runtime API 1 match-three campaign rebuilt for desktop panels, laptop fullscreen, and mobile immersive play.
 
 ## What changed in 3.0.0
 
@@ -24,14 +24,14 @@ Every gem in a detected match is removed. Four-, five-, T-, and L-shaped formati
 
 Generated boards contain no automatic starting matches and always include at least one legal move. Dead boards reshuffle without consuming a move.
 
-## tend.host integration
+## Tend integration
 
 - Schema 2 native ES module.
 - Runtime API 1, `kind: game`.
 - Runtime-managed timers, animation frames, visibility pause/resume, and cleanup.
 - Host-owned fullscreen through `host.runtime.display`.
 - Fixed 500 × 720 desktop panel with responsive fullscreen and mobile layouts.
-- Scoped tend.host storage only; no external network access.
+- Scoped Tend storage only; no external network access.
 
 ## Layout correction in 3.0.2
 

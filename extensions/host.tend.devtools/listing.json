@@ -1,5 +1,5 @@
 {
-  "publisher": "TEND Stack",
+  "publisher": "Tend Stack",
   "category": "developer-tools",
   "featured": false,
   "reviewed": true,
@@ -15,5 +15,5 @@
     "A desktop or mobile browser tab with ES module support",
     "A secure context (https or localhost) for hashing and clipboard copy"
   ],
-  "release_notes": "Initial release."
+  "release_notes": "1.0.1: Wording now says Tend, the control panel's name."
 }

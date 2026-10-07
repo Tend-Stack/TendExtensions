@@ -2,9 +2,9 @@
   "schema": 2,
   "id": "host.tend.devtools",
   "name": "Developer Tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "category": "developer-tools",
-  "author": "tend.host",
+  "author": "Tend",
   "description": "Eight everyday developer tools in one window: JSON, Base64, URL, JWT, Hash, UUID, Timestamp and a guarded Regex tester. Offline, no network. Native ESM extension.",
   "icon": "icon.svg",
   "ui": {

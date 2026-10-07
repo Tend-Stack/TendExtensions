@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create or update the GitHub release that publishes one version of the TEND
+"""Create or update the GitHub release that publishes one version of the Tend
 MCP component runtime.
 
 Run from the repository root as a module, so `tools.release`'s HTTP boundary is
@@ -280,7 +280,7 @@ def release_body(
     that expires and this is the artifact that does not.
     """
     lines = [
-        f"TEND MCP component runtime {version}.",
+        f"Tend MCP component runtime {version}.",
         f"Revision: {revision}",
         f"Signing key id: {EXPECTED_KEY_ID}",
     ]
@@ -621,7 +621,7 @@ def sync_runtime_release(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Create/update the GitHub release for one TEND MCP runtime version"
+        description="Create/update the GitHub release for one Tend MCP runtime version"
     )
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--version", required=True)

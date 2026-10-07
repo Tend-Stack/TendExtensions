@@ -1,10 +1,10 @@
 {
   "schema": 2,
   "id": "host.tend.media",
-  "name": "TEND Media",
-  "version": "1.7.0",
-  "author": "tend.host",
-  "description": "Radio stations, podcasts and audiobooks from OndaCast in one player, in the top bar and on your shelf: subscriptions, a queue, per-show speed, a sleep timer, transcripts, audiobook bookmarks, clips saved to TEND Notes, and Sprout can put anything on for you.",
+  "name": "Tend Player",
+  "version": "1.7.1",
+  "author": "Tend",
+  "description": "Radio stations, podcasts and audiobooks from OndaCast in one player, in the top bar and on your shelf: subscriptions, a queue, per-show speed, a sleep timer, transcripts, audiobook bookmarks, clips saved to Tend Notes, and Sprout can put anything on for you.",
   "icon": "icon.svg",
   "ui": {
     "module": "index.js",
@@ -25,28 +25,28 @@
     "documents.write"
   ],
   "integrity": {
-    "README.md": "sha256-csz+UM/SkPZOh5y7x077tJUaitpktd1YwXRnE0U51XI=",
+    "README.md": "sha256-ncsk7ha/p3sQq+JslWaC2l2JX4/RLHW1wGPwDeZFhKg=",
     "chunks/Cover-CFUQKa8h.js": "sha256-ftwsupLO+oJglGm6lC0CvllFxEGkturcWKq6o3fyhYE=",
     "chunks/Hint-DzWqDMB2.js": "sha256-oX/bct/2jS5hgxlVAg6CGrbPK61xE+NeziXIbzzukVc=",
     "chunks/Icon-CkCATa2J.js": "sha256-gue1tKPTver/pg6gSkmqa5NDaxBMF0zbdm3tCFXZEXU=",
     "chunks/Row-CbejDMJm.js": "sha256-m1P9LODQEdFctaz8a7EMYKRG+oFxq5Yj2KU9wUtrYQ8=",
     "chunks/model.svelte-A0MofO8E.js": "sha256-KO713jSRgZxIMD5JSCBZTQtjAlT1IfZLMtB90AFcbx0=",
     "icon.svg": "sha256-SbSAyR4prIUkwozxPbf5VCyQH+gS9mYGZIByD0NeZXU=",
-    "index.js": "sha256-Jbb1LGMR5PvlDzYHeH24clrGI4ioFma56nbMivieuSw=",
+    "index.js": "sha256-ZEVKyepnBlABmDXs975F8QyxTySNliCwfMaT2tPTZbE=",
     "widgets/continue-preview.svg": "sha256-ysFuvId4mqfnxGNxeWXoIAMdO9Vc8Evthpv9GrDR12o=",
-    "widgets/continue.js": "sha256-ixSjPua0qwcu6qfbRfh+6pKW/cbBWIa8L+ZBu4rNIc8=",
+    "widgets/continue.js": "sha256-nKMh7/IHZfUFYAsGAPJwZa0PLPi9mQBvYu/wHpiPYSs=",
     "widgets/new-episodes-preview.svg": "sha256-qgF7hoDFjvMXtZDG6gCkdSpLf/d2c3exCu8UZJQuFX0=",
-    "widgets/new-episodes.js": "sha256-qj596jc3ICirTbBs+NrUeU+h6aZU0STvoU0rKNdSsZM=",
+    "widgets/new-episodes.js": "sha256-BRnCbhW7xDXrvZxIsAlLL+1NFM6zP11HL764qFvMspE=",
     "widgets/now-playing-preview.svg": "sha256-z6EyYb/o0GG9mCxUIgZYq2FjgapyI4sdES3qYLLrlk0=",
-    "widgets/now-playing.js": "sha256-bpYpekpfc9kItrQkWAzptj3mV0gTpGJ6+kj8I5yrwzM=",
+    "widgets/now-playing.js": "sha256-/gEAs9InDOcmJT1apkTRHDiGvVzn1IvqygUFdSEXKP4=",
     "widgets/stations-preview.svg": "sha256-sqhHMsNRhKCBfzHvqKuSXjBP0DVZSmIGAqMfoKu6rw8=",
-    "widgets/stations.js": "sha256-saWossefV1B/ffdz6smtFn6WEf8J2rX02eSltNMekGw="
+    "widgets/stations.js": "sha256-nv4c5vehz1hHEn8jNWBPYt5J+gh5fmCRHZgEpY0nyj0="
   },
   "widgets": [
     {
       "id": "now-playing",
       "name": "Now playing",
-      "description": "What TEND Media is playing, with play/pause and next. Resume where you left off when nothing is on.",
+      "description": "What Tend Player is playing, with play/pause and next. Resume where you left off when nothing is on.",
       "sizes": [
         "small",
         "wide"

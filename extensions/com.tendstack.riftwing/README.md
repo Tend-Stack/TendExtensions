@@ -1,7 +1,7 @@
 # Riftwing: Skybound
 
-A high-speed tend.host arcade extension from TEND STACK LLC. Riftwing uses
-tend.host Runtime API 1 and the locally bundled Phaser 4 engine for smooth,
+A high-speed Tend arcade extension from TEND STACK LLC. Riftwing uses
+Tend Runtime API 1 and the locally bundled Phaser 4 engine for smooth,
 60 FPS play, hidden-window pausing, deterministic teardown, and runtime
 performance telemetry.
 
@@ -25,7 +25,7 @@ During each run, the top HUD includes a live level-completion meter. It shows ga
 
 ## Progression
 
-The profile stores best scores, coins, XP, player level, selected character/world/perk, cumulative quest progress and daily supplies through the scoped tend.host storage API.
+The profile stores best scores, coins, XP, player level, selected character/world/perk, cumulative quest progress and daily supplies through the scoped Tend storage API.
 
 ## Performance and packaging
 
@@ -57,7 +57,7 @@ The right-edge vertical notification was replaced by a shallow 326 × 56 glass d
 ## v4.0.0 Riftwing relaunch
 
 - Rebranded with an independent TEND STACK LLC identity.
-- Migrated from direct vendor loading to tend.host Runtime API 1.
+- Migrated from direct vendor loading to Tend Runtime API 1.
 - Added runtime-controlled 60 FPS policy, pause-when-hidden, cleanup, and
   full-screen focus.
 - Reduced per-frame HUD draw work and repeated text updates.

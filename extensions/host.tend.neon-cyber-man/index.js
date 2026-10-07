@@ -28,7 +28,7 @@ function loadingMarkup() {
 }
 
 export default function activate(host) {
-  if (!host?.runtime) throw new Error('Neon Cyber-Man requires tend.host Runtime API 1.');
+  if (!host?.runtime) throw new Error('Neon Cyber-Man requires Tend Runtime API 1.');
   if (!host?.storage) throw new Error('Neon Cyber-Man requires the storage permission.');
   ensureStyles();
   let game = null;
@@ -59,7 +59,7 @@ export default function activate(host) {
       }).catch((error) => {
         console.error('Neon Cyber-Man failed to initialize', error);
         if (!root) return;
-        root.innerHTML = `<div class="ncm-loading"><div class="ncm-loader-card"><b class="ncm-error">CYBER-GRID OFFLINE</b><span>${String(error?.message || error)}</span><span>Confirm tend.host exposes runtime module phaser@4.</span></div></div>`;
+        root.innerHTML = `<div class="ncm-loading"><div class="ncm-loader-card"><b class="ncm-error">CYBER-GRID OFFLINE</b><span>${String(error?.message || error)}</span><span>Confirm Tend exposes runtime module phaser@4.</span></div></div>`;
       });
     },
 

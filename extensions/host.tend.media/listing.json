@@ -1,5 +1,5 @@
 {
-  "publisher": "TEND Stack",
+  "publisher": "Tend Stack",
   "category": "media",
   "featured": true,
   "reviewed": true,
@@ -13,7 +13,7 @@
   ],
   "requirements": [
     "A Tend panel that provides the ondacast capability",
-    "TEND Notes installed with a notebook, to save clips (optional)"
+    "Tend Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.7.0: Next and previous on your headphones, car or keyboard media keys now skip +30 / −15 seconds (or your own skip sizes) inside podcasts and audiobooks, so you can skip ads hands-free. Next moves on to the next episode only near the end. Turn it off under Preferences → Headphone buttons skip."
+  "release_notes": "1.7.1: Now called Tend Player (formerly TEND Media); the app id and your library are unchanged."
 }

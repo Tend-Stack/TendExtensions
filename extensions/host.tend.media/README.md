@@ -1,4 +1,4 @@
-# TEND Media
+# Tend Player
 
 Radio stations, podcasts and audiobooks from [OndaCast](https://ondacast.com), inside Tend.
 
@@ -12,7 +12,7 @@ Radio stations, podcasts and audiobooks from [OndaCast](https://ondacast.com), i
 - **Top bar:** what is playing (artwork, station/show/book and song/episode/chapter) appears in the panel's top bar with play/pause, and keeps playing while the window is minimized.
 - **Sprout:** ask him to play a show ("the latest Morbid"), a named episode, an audiobook (it resumes) or a station ("something for coding"). When a show you follow publishes a new episode he offers it once: "There's a new episode of … Want me to play it?"
 - **Shelf widgets:** Now playing, New episodes from your shows, Continue listening and Favorite stations, small or wide. Tap one to play it.
-- **Clip to Notes:** saves the last 30 seconds, with its transcript, as a note in TEND Notes.
+- **Clip to Notes:** saves the last 30 seconds, with its transcript, as a note in Tend Notes.
 - **Narrow window:** a compact now-playing view that shares the same state.
 
 ## Permissions
@@ -21,6 +21,6 @@ Radio stations, podcasts and audiobooks from [OndaCast](https://ondacast.com), i
 |---|---|
 | `ondacast` | Read OndaCast's public catalog through the panel, and use the panel's media session (top bar, Sprout, widgets). Nothing about you is sent to OndaCast; audio plays from the publisher's own address. |
 | `storage` | Keep your subscriptions, queue, progress, speeds and bookmarks on the panel, keyed by your user id. |
-| `documents.read`, `documents.write` | Find a notebook and create a note when you press Clip to Notes. TEND Media never reads or changes existing notes. |
+| `documents.read`, `documents.write` | Find a notebook and create a note when you press Clip to Notes. Tend Player never reads or changes existing notes. |
 
 `index.js`, `widgets/` and `chunks/` are a build of the Svelte source in `Rubirosa/Tend-Media` on the project's Gitea.

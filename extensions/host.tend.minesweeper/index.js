@@ -529,7 +529,7 @@ export { BoardCore, buildMission, calculateRating, createSeededRandom };
 export default function activate(host) {
   ensureStyles();
   if (!host.runtime || host.runtime.api !== 1 || host.runtime.kind !== 'game') {
-    throw new Error('Minesweeper Odyssey requires tend.host Extension Runtime API 1 as a game.');
+    throw new Error('Minesweeper Odyssey requires Tend Extension Runtime API 1 as a game.');
   }
 
   const arcade = createArcade(host, {

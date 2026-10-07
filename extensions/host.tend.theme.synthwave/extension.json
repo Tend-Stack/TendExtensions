@@ -2,8 +2,8 @@
   "schema": 2,
   "id": "host.tend.theme.synthwave",
   "name": "Synthwave",
-  "version": "1.0.0",
-  "author": "tend.host",
+  "version": "1.0.1",
+  "author": "Tend",
   "description": "Gold contrails over a neon wireframe horizon.",
   "category": "themes",
   "permissions": [],
@@ -69,7 +69,7 @@
     }
   },
   "integrity": {
-    "README.md": "sha256-G0NCPS4XyTGrQNpkDk7iK241gIOt/wJWHf70BJGIjLE=",
+    "README.md": "sha256-XaqIwMzsHone9O81v3uK03gYxvXiR4fGDoMw8D32qT4=",
     "thumb.webp": "sha256-gd/JzsNZm/+coarIMoHmDBhWQ0++mPVFwYvABC9e018=",
     "wallpaper.webp": "sha256-WTtauN3UxE51cM7+tfgA9+2wRo9l/joWLh1fWN4Ul2A="
   }

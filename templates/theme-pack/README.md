@@ -1,6 +1,6 @@
 # My Theme
 
-A gradient-based TEND theme pack: no wallpaper photo, no code, no permissions.
+A gradient-based Tend theme pack: no wallpaper photo, no code, no permissions.
 
 ## Using this template (delete this section before you publish)
 

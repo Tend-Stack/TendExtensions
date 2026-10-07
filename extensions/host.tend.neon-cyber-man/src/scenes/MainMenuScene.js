@@ -24,7 +24,7 @@ export function createMainMenuScene(Phaser) {
       this.drawBackdrop();
       roundedPanel(this, 34, 30, 1212, 660, { fill: 0x06101b, fillAlpha: 0.88, stroke: 0x173953, accent: COLORS.cyan, radius: 26 });
 
-      neonText(this, 78, 72, 'TEND.HOST // ARCADE GRID', 12, COLORS.cyan, { bold: true, letterSpacing: 3, shadowBlur: 8 });
+      neonText(this, 78, 72, 'Tend // Arcade Grid', 12, COLORS.cyan, { bold: true, letterSpacing: 3, shadowBlur: 8 });
       const title = neonText(this, 78, 108, 'NEON CYBER-MAN', 48, COLORS.white, { bold: true, letterSpacing: 2, shadowColor: COLORS.magenta, shadowBlur: 24 });
       this.tweens.add({ targets: title, alpha: { from: 0.84, to: 1 }, duration: 1100, yoyo: true, repeat: -1 });
       neonText(this, 80, 165, 'OUTRUN THE HUNTERS. BREAK THE GRID. OWN THE NIGHT.', 13, 0x91a6bd, { bold: true, letterSpacing: 1.2, shadow: false });
