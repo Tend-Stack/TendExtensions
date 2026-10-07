@@ -107,6 +107,32 @@ jobs:
           print("signer round-trip OK (throwaway key)")
           PY
 
+      - name: Prove the community catalog signer round-trips (throwaway key, never the real one)
+        run: |
+          $RUNNER_TEMP/venv/bin/python - <<'PY'
+          import base64
+          import os
+          import subprocess
+          import sys
+
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+          key = Ed25519PrivateKey.generate()
+          seed_b64 = base64.b64encode(key.private_bytes_raw()).decode()
+          pub_b64 = base64.b64encode(key.public_key().public_bytes_raw()).decode()
+
+          env = dict(os.environ, TEND_COMMUNITY_CATALOG_SIGNING_KEY=seed_b64)
+          subprocess.run([sys.executable, "tools/sign_catalog.py", "sign"], check=True, env=env)
+          subprocess.run(
+              [sys.executable, "tools/sign_catalog.py", "verify", "dist/community-catalog.json", "--public-key", pub_b64],
+              check=True,
+          )
+          # The throwaway signature must not travel with the unsigned build output into the release job.
+          for name in ("community-catalog.json.sig", "tend-catalog-pubkey"):
+              os.remove(os.path.join("dist", name))
+          print("community catalog signer round-trip OK (throwaway key)")
+          PY
+
       - uses: https://j.santanafam.com/Rubirosa/gh-actions-upload-artifact@v4
         with:
           name: registry-dist
@@ -166,6 +192,19 @@ jobs:
         env:
           TEND_REGISTRY_SIGNING_KEY: ${{ secrets.TEND_REGISTRY_SIGNING_KEY }}
         run: $RUNNER_TEMP/venv/bin/python tools/sign.py sign
+
+      # Panels show the community catalog by default, so it is signed only with its own key and only when that
+      # key is configured; until then the release carries the registry alone (tools/release.py attaches the
+      # catalog only as a signed set).
+      - name: Sign the community catalog with its production key
+        env:
+          TEND_COMMUNITY_CATALOG_SIGNING_KEY: ${{ secrets.TEND_COMMUNITY_CATALOG_SIGNING_KEY }}
+        run: |
+          if [ -z "$TEND_COMMUNITY_CATALOG_SIGNING_KEY" ]; then
+            echo "TEND_COMMUNITY_CATALOG_SIGNING_KEY is not set: the community catalog is not published"
+          else
+            $RUNNER_TEMP/venv/bin/python tools/sign_catalog.py sign
+          fi
 
       - name: Create or update the GitHub release
         env:

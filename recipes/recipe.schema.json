@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Tend-Stack/TendExtensions/recipes/recipe.schema.json",
+  "title": "Tend community recipe (recipes/<slug>/recipe.json)",
+  "description": "One entry of the native community catalog feed a panel reads. tools/validate_recipe.py is the authority and adds rules a schema cannot express (pinned image tag, no default secrets, built-in slugs, folder name equals slug).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["slug", "name", "tagline", "category", "icon", "source", "source_ref", "default_port", "suggested_name", "env_hints", "volumes", "docs_url", "notes", "tags", "needs_dbs"],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "tagline": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "category": { "enum": ["AI", "Analytics", "Automation", "Content", "Database", "Developer", "Education", "Mail", "Media", "Monitoring", "Observability", "Productivity", "Other"] },
+    "icon": { "type": "string", "minLength": 1, "maxLength": 8, "description": "one emoji" },
+    "source": { "const": "image" },
+    "source_ref": { "type": "string", "maxLength": 255, "description": "image reference with an exact tag or a digest; never latest" },
+    "default_port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "suggested_name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,30}$" },
+    "env_hints": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "kind", "default", "description", "required"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$" },
+          "kind": { "enum": ["text", "password", "url", "timezone"] },
+          "default": { "type": "string", "maxLength": 200 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "volumes": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name_suffix", "mount_path", "description"],
+        "properties": {
+          "name_suffix": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,30}$" },
+          "mount_path": { "type": "string", "pattern": "^/", "maxLength": 200 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }
+      }
+    },
+    "docs_url": { "type": "string", "pattern": "^https://", "maxLength": 300 },
+    "notes": { "type": "string", "minLength": 1, "maxLength": 600 },
+    "tags": { "type": "array", "maxItems": 8, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,23}$" } },
+    "needs_dbs": { "type": "array", "maxItems": 5, "uniqueItems": true, "items": { "enum": ["postgres", "mysql", "mariadb", "redis", "clickhouse"] } }
+  }
+}

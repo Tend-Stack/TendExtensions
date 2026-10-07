@@ -3,7 +3,8 @@
 
 Tag `registry-<sequence>` on the published commit. Assets: every
 `dist/<id>-<version>.zip`, `dist/registry.json`, and
-`dist/tend-extension-registry-v1.json`. Talks to the GitHub REST API
+`dist/tend-extension-registry-v1.json`, plus the signed community catalog (`community-catalog.json`, its `.sig`
+and `tend-catalog-pubkey`) when all three exist. Talks to the GitHub REST API
 directly with `urllib` (no extra dependency) using `GH_PUBLISH_TOKEN`.
 Idempotent: re-running for an existing tag deletes and re-uploads any
 asset with a matching name, so a retried CI run converges instead of
@@ -132,6 +133,9 @@ def classify_failure(exc: BaseException) -> tuple[str, bool]:
     return (f"unclassified release failure: {type(exc).__name__}", False)
 
 
+COMMUNITY_CATALOG_ASSETS = ("community-catalog.json", "community-catalog.json.sig", "tend-catalog-pubkey")
+
+
 def dist_assets(dist_dir: Path) -> list[Path]:
     assets = sorted(dist_dir.glob("*.zip"))
     for name in ("registry.json", "tend-extension-registry-v1.json"):
@@ -139,6 +143,11 @@ def dist_assets(dist_dir: Path) -> list[Path]:
     missing = [p for p in assets if not p.is_file()]
     if missing:
         raise ReleaseError(f"missing expected dist asset(s): {[str(p) for p in missing]}")
+    # The signed community catalog travels as one unit: catalog, detached signature and public key. The unsigned
+    # catalog build.py always writes is never attached on its own (the signing key may not be configured yet).
+    community = [dist_dir / name for name in COMMUNITY_CATALOG_ASSETS]
+    if all(p.is_file() for p in community):
+        assets.extend(community)
     return assets
 
 

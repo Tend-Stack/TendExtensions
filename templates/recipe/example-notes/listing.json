@@ -1,0 +1,8 @@
+{
+  "publisher": "Your name or organisation",
+  "upstream_url": "https://example.com/notes",
+  "upstream_license": "MIT",
+  "recipe_license": "MIT",
+  "tested_with": "Tend 0.10.0: installed, signed in, restarted, data kept",
+  "release_notes": "First version of the recipe."
+}

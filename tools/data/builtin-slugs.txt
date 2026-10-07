@@ -1,0 +1,38 @@
+# Slugs of the first-party App Store catalog (public: every app is listed on tend.host).
+# A community recipe may not reuse one: a panel shows the built-in and hides the community entry.
+# Refreshed by a maintainer when the first-party catalog gains an app.
+actual-budget
+clickhouse
+collabora
+dragonfly
+emby
+ghost
+gitea
+grafana
+immich
+jellyfin
+keydb
+mailpit
+mariadb
+meilisearch
+mongodb
+mysql
+n8n
+nextcloud
+ollama
+openmaic
+paperless-ngx
+plausible
+plex
+postgres
+rabbitmq
+radarr
+redis
+seerr
+sonarr
+stirling-pdf
+umami
+uptime-kuma
+vaultwarden
+vchord-postgres
+wordpress

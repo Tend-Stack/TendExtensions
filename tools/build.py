@@ -43,8 +43,10 @@ from PIL import Image
 
 try:  # imported as `tools.build` (tests) or run as `python tools/build.py`
     from tools import glyph as glyph_rules
+    from tools import validate_recipe as recipe_rules
 except ImportError:  # pragma: no cover - script mode puts tools/ itself on sys.path
     import glyph as glyph_rules
+    import validate_recipe as recipe_rules
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -1010,7 +1012,25 @@ def run(
     (dist_dir / "registry.json").write_text(
         json.dumps(registry, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
     )
+    build_community_catalog(repo_root, dist_dir, sequence=sequence, revision=revision)
     return registry
+
+
+def build_community_catalog(repo_root: Path, dist_dir: Path, *, sequence: int, revision: str) -> int | None:
+    """Validate `recipes/` and write dist/community-catalog.json (signed later, in the release job).
+
+    Returns the number of recipes, or None when the repository has no `recipes/` directory. An empty directory
+    still yields a valid, empty catalog, so panels that already added the source keep a verifiable feed."""
+    recipes_dir = repo_root / recipe_rules.RECIPES_DIRNAME
+    if not recipes_dir.is_dir():
+        return None
+    try:
+        recipes = recipe_rules.load_recipes(recipes_dir)
+        body = recipe_rules.build_catalog(recipes, sequence=sequence, revision=revision)
+    except recipe_rules.RecipeError as exc:
+        raise BuildError("invalid recipe(s):\n  " + "\n  ".join(exc.errors)) from exc
+    (dist_dir / recipe_rules.COMMUNITY_CATALOG_NAME).write_bytes(body)
+    return len(recipes)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1045,6 +1065,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {entry['id']}  {entry['version']}  {entry['package']['name']}")
     print(f"sequence={registry['sequence']} revision={registry['revision']}")
     print(f"wrote {len(registry['extensions'])} package(s) + dist/registry.json")
+    catalog_path = args.repo_root / "dist" / recipe_rules.COMMUNITY_CATALOG_NAME
+    if catalog_path.is_file():
+        recipes = json.loads(catalog_path.read_text(encoding="utf-8"))["entries"]
+        print(f"wrote {len(recipes)} community recipe(s) + dist/{recipe_rules.COMMUNITY_CATALOG_NAME}")
     return 0
 
 

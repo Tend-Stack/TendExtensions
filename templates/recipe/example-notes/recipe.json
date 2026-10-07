@@ -1,0 +1,38 @@
+{
+  "slug": "example-notes",
+  "name": "Example Notes",
+  "tagline": "A small self-hosted notes app",
+  "category": "Productivity",
+  "icon": "📝",
+  "source": "image",
+  "source_ref": "ghcr.io/example/notes:1.4.2",
+  "default_port": 8080,
+  "suggested_name": "notes",
+  "env_hints": [
+    {
+      "key": "ADMIN_PASSWORD",
+      "kind": "password",
+      "default": "",
+      "description": "Password for the first administrator account.",
+      "required": true
+    },
+    {
+      "key": "TZ",
+      "kind": "timezone",
+      "default": "UTC",
+      "description": "Time zone used for note timestamps.",
+      "required": false
+    }
+  ],
+  "volumes": [
+    {
+      "name_suffix": "data",
+      "mount_path": "/data",
+      "description": "Notes, attachments and the SQLite database."
+    }
+  ],
+  "docs_url": "https://example.com/notes/docs",
+  "notes": "First run: open the app and sign in as admin with the password you set at install.",
+  "tags": ["notes", "markdown"],
+  "needs_dbs": []
+}
