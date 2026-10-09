@@ -20,7 +20,7 @@ jobs:
     name: Build and validate the registry
     runs-on: tend-ci
     env:
-      CORE_COMMIT: 8240d26ec0b35b96a400569e582c1a2867f239e0
+      CORE_COMMIT: 6ce25dbb107ef0ffc09b44afe41afb3af9722dda
       WORKSPACE: ${{ gitea.workspace }}
     steps:
       # Full history: the registry sequence is `git rev-list --count HEAD`,
