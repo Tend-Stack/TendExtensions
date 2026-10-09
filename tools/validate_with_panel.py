@@ -17,7 +17,11 @@ import directly — was deleted for good: the whole stack is Go now. A
 checkout older than that has no `cmd/tend-validate-extension` and is
 refused outright rather than silently skipped.
 
-Requires `dist/*.zip` to already exist — run `tools/build.py` first — and
+Stack recipes (`recipes/<slug>/` with `"kind": "stack"`) are checked the same way: each `compose.yaml` goes through
+the core's `cmd/tend-validate-compose`, which loads it with the panel's own compose engine (refusals and variables
+without a value fail). A core without that command is refused when a stack recipe exists.
+
+Requires `dist/*.zip` to already exist (unless the repository has only stack recipes to check) — run `tools/build.py` first — and
 the core checkout's own `go` toolchain on `PATH` (CI installs it from
 `public-core/go.mod`; locally, whatever `go` you use to build Tend
 works, since `go run` builds against the checkout's own go.mod/go.sum).
@@ -91,6 +95,56 @@ def run_validator(core_checkout: Path, zips: list[Path]) -> list[dict]:
     return results
 
 
+def find_stack_recipes(repo_root: Path) -> list[tuple[str, Path]]:
+    """(suggested stack name, compose.yaml) for every `recipes/<slug>/` that declares `"kind": "stack"`."""
+    found: list[tuple[str, Path]] = []
+    recipes_dir = repo_root / "recipes"
+    if not recipes_dir.is_dir():
+        return found
+    for folder in sorted(p for p in recipes_dir.iterdir() if p.is_dir()):
+        try:
+            recipe = json.loads((folder / "recipe.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue  # validate_recipe.py reports an unreadable recipe
+        if isinstance(recipe, dict) and recipe.get("kind") == "stack":
+            found.append((str(recipe.get("suggested_name") or "recipe"), folder / "compose.yaml"))
+    return found
+
+
+def run_compose_validator(core_checkout: Path, name: str, compose_file: Path) -> dict:
+    """Runs `go run ./cmd/tend-validate-compose --name <name> <file>` from core_checkout and returns its JSON
+    report ({ok, refused, warnings, notices, missing, services}). Exit 0 and 1 both print the report; 2 does not."""
+    if not (core_checkout / "cmd" / "tend-validate-compose").is_dir():
+        raise ValidationError(
+            f"{core_checkout} has no cmd/tend-validate-compose, which stack recipes are checked with; "
+            "point TEND_CORE_CHECKOUT / --core at a checkout that has it."
+        )
+    cmd = ["go", "run", "./cmd/tend-validate-compose", "--name", name, str(compose_file.resolve())]
+    proc = subprocess.run(cmd, cwd=core_checkout, capture_output=True, text=True)
+    if proc.returncode not in (0, 1):
+        raise ValidationError(f"cmd/tend-validate-compose exited {proc.returncode}:\n{proc.stderr}")
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise ValidationError(
+            f"cmd/tend-validate-compose did not print valid JSON: {exc}\nstdout: {proc.stdout}\nstderr: {proc.stderr}"
+        ) from exc
+
+
+def report_stacks(stacks: list[tuple[Path, dict]]) -> int:
+    """One OK/FAIL line per stack recipe (refusals and missing variables fail), returns the failure count."""
+    failures = 0
+    for compose_file, result in stacks:
+        label = f"{compose_file.parent.name}/{compose_file.name}"
+        problems = [f"{i['path']}: {i['message']}" for key in ("refused", "missing") for i in result.get(key, [])]
+        if result.get("ok") and not problems:
+            print(f"OK    {label}  (stack, {len(result.get('services', []))} services)")
+        else:
+            failures += 1
+            print(f"FAIL  {label}: " + "; ".join(problems or ["the panel would not deploy it"]))
+    return failures
+
+
 def report(results: list[dict]) -> int:
     """Prints one OK/FAIL line per package and a summary line, then returns
     the process exit status — the same report shape this script has always
@@ -128,18 +182,24 @@ def main(argv: list[str] | None = None) -> int:
 
     dist_dir = args.repo_root / "dist"
     zips = sorted(dist_dir.glob("*.zip"))
-    if not zips:
+    stack_recipes = find_stack_recipes(args.repo_root)
+    if not zips and not stack_recipes:
         print(f"error: no ZIPs found in {dist_dir} — run tools/build.py first", file=sys.stderr)
         return 1
 
     try:
         _require_go_core(core_checkout)
-        results = run_validator(core_checkout, zips)
+        results = run_validator(core_checkout, zips) if zips else []
+        stacks = [(path, run_compose_validator(core_checkout, name, path)) for name, path in stack_recipes]
     except ValidationError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    return report(results)
+    status = report(results) if results else 0
+    stack_failures = report_stacks(stacks)
+    if stacks:
+        print(f"{len(stacks) - stack_failures}/{len(stacks)} stack recipe(s) passed panel validation")
+    return 1 if status or stack_failures else 0
 
 
 if __name__ == "__main__":

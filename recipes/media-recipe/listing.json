@@ -1,0 +1,8 @@
+{
+  "publisher": "Tend",
+  "upstream_url": "https://www.plex.tv/",
+  "upstream_license": "Plex Media Server: proprietary (free to run). Seerr: MIT. Sonarr, Radarr, Prowlarr: GPL-3.0. BusyBox: GPL-2.0.",
+  "recipe_license": "MIT",
+  "tested_with": "Not installed on a panel yet. Checked with the public validator and the panel's own compose loader; every image tag confirmed on its registry on 2026-10-08.",
+  "release_notes": "First version: five apps, three storage questions (movies, tv, downloads), optional graphics chip for Plex."
+}

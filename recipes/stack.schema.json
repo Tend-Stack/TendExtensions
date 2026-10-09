@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Tend-Stack/TendExtensions/recipes/stack.schema.json",
+  "title": "Tend community stack recipe (recipes/<slug>/recipe.json with kind \"stack\")",
+  "description": "A stack recipe is recipe.json + listing.json + compose.yaml. The community catalog entry is built from recipe.json and the compose file (kind, source compose, empty source_ref, the file inline and its sha256). tools/validate_recipe.py is the authority and checks compose.yaml, which no schema here can express.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["slug", "name", "tagline", "category", "icon", "kind", "suggested_name", "docs_url", "notes", "tags"],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "tagline": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "category": { "enum": ["AI", "Analytics", "Automation", "Content", "Database", "Developer", "Education", "Mail", "Media", "Monitoring", "Observability", "Productivity", "Other"] },
+    "icon": { "type": "string", "minLength": 1, "maxLength": 8, "description": "one emoji" },
+    "kind": { "const": "stack" },
+    "suggested_name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,30}$" },
+    "docs_url": { "type": "string", "pattern": "^https://", "maxLength": 300 },
+    "notes": { "type": "string", "minLength": 1, "maxLength": 600 },
+    "tags": { "type": "array", "maxItems": 8, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,23}$" } }
+  }
+}

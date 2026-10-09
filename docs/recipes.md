@@ -16,7 +16,8 @@ recipes/<slug>/recipe.json     one entry of the community catalog feed a panel r
 recipes/<slug>/listing.json    reviewer metadata: who, upstream licence, what you tested (never shipped to panels)
 ```
 
-Nothing else may live in a recipe folder (no icons, no READMEs, no dotfiles). Start from
+Nothing else may live in a recipe folder (no icons, no READMEs, no dotfiles); a [stack recipe](#stack-recipes) also
+carries `compose.yaml`. Start from
 [`templates/recipe/example-notes`](../templates/recipe/example-notes), copy it to `recipes/<your-slug>/` and edit
 both files. The folder name must equal `slug`. One recipe per pull request. The machine-readable shape is
 [`recipes/recipe.schema.json`](../recipes/recipe.schema.json); [`tools/validate_recipe.py`](../tools/validate_recipe.py)
@@ -47,7 +48,7 @@ Fields that only first-party recipes may carry (`build`, `publisher`, `assurance
 | `tags` | up to 8 lowercase words |
 | `needs_dbs` | engines Tend links for the app: `postgres`, `mysql`, `mariadb`, `redis`, `clickhouse` |
 
-One container per recipe: databases are linked through `needs_dbs`, never bundled. Refused on sight: privileged
+One container per image recipe (a [stack recipe](#stack-recipes) is the exception): databases are linked through `needs_dbs`, never bundled. Refused on sight: privileged
 mode, host networking, the Docker socket, default credentials, an entry that needs manual file edits to start.
 
 ## `listing.json`
@@ -56,6 +57,49 @@ mode, host networking, the Docker socket, default credentials, an entry that nee
 recipe is yours to license, and this registry is MIT), `tested_with` (the panel version and what you exercised:
 installed, signed in, restarted, data kept) and `release_notes`. Only describe what you did. Reviewers read it
 first, and it is never part of what panels download.
+
+## Stack recipes
+
+A **stack recipe** installs several services from one compose file, such as a media server with its request and
+indexer apps. It lives in `recipes/<slug>/` as exactly three files: `recipe.json` with `"kind": "stack"`,
+`listing.json` (as above) and `compose.yaml`. Panels show it as a "Bundle" card and open the compose file in the
+stack review; the person can read every line before anything runs.
+
+`recipe.json` of a stack carries only `slug name tagline category icon kind suggested_name docs_url notes tags`
+(all required; the field rules are the same as above). It has no `source`, `source_ref`, `default_port`,
+`env_hints`, `volumes` or `needs_dbs`: the compose file says all of that. See
+[`recipes/stack.schema.json`](../recipes/stack.schema.json).
+
+The catalog entry that `tools/build.py` writes carries the file inline, so the signature covers its bytes:
+`kind: "stack"`, `source: "compose"`, an **empty `source_ref`**, `default_port: 0`, empty `env_hints`, `volumes` and
+`needs_dbs`, `compose` (the file text, at most 64 KiB) and `compose_sha256` (lowercase hex). A panel that predates
+stacks skips an entry with an empty `source_ref`, so it never installs a stack as an image app. A panel that reads
+stacks withholds an entry whose file is missing, too large or does not match its hash.
+
+`compose.yaml` is held to a stricter subset than the panel accepts (the panel has the last word, and
+`tools/validate_with_panel.py` runs `cmd/tend-validate-compose` on every stack recipe):
+
+- Top-level keys: `services`, `volumes`, `x-tend`. Named volumes only, each mounted by some service.
+- Every `image` pinned to an exact version or digest; no `build`, no `ports` (use `expose`), no host paths, no
+  `privileged`, `network_mode`, `cap_add` or Docker socket.
+- A mount target is an absolute container path with no `:`, `,` or whitespace (mount options hide there).
+- `devices` only `/dev/dri` (or a `renderD<N>` node) mapped to the same path, and only with
+  `x-tend: {gpu: optional}` on that service, so a server without a graphics chip still deploys.
+- Environment variables whose names look like secrets (`PASSWORD`, `TOKEN`, `API_KEY`, ...) are written only as
+  `${NAME}`; no literal default. Other `${NAME}` references need a default (`${NAME:-value}`), except
+  `${TEND_URL_<SERVICE>}` and `${TEND_HOST_<SERVICE>}`, which Tend fills in with each service's address.
+- Every service that exposes a port has `x-tend.web_port`, one of its exposed ports.
+- `x-tend.storage.<name>` asks where the person keeps files: only `prompt` and `mount_root` (an absolute container
+  path). The name must equal a top-level volume, every mount of that volume must be exactly at `mount_root`, and no
+  two questions may share or nest a target. A recipe never carries a folder, a default host path or an answer: the
+  person chooses, or keeps the default "Let Tend keep them".
+- Say what the person must do on first run in `notes` (for example that the first visitor to a new media server
+  becomes its owner).
+
+```bash
+python tools/validate_recipe.py recipes/<slug>                      # recipe.json, listing.json, compose.yaml
+TEND_CORE_CHECKOUT=<panel checkout> python tools/validate_with_panel.py   # the panel's own compose loader
+```
 
 ## Check it
 

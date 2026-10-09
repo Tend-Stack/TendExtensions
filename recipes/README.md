@@ -9,6 +9,9 @@ python tools/validate_recipe.py recipes/<slug>
 python tools/build.py        # also writes dist/community-catalog.json
 ```
 
+A recipe with `"kind": "stack"` also holds a `compose.yaml` (several services from one compose file); see
+"Stack recipes" in [`docs/recipes.md`](../docs/recipes.md).
+
 A merged recipe is published, signed by Tend, in `community-catalog.json` and appears in panels as
 "Community · reviewed by Tend". Review is by humans, one recipe per pull request, and approval never makes a recipe
 `tested` or `certified`; only Tend's first-party catalog carries that.

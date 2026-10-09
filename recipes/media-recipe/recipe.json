@@ -1,0 +1,12 @@
+{
+  "slug": "media-recipe",
+  "name": "Home Media: Plex, Seerr, Sonarr, Radarr, Prowlarr",
+  "tagline": "Stream your library, request shows and movies, and keep them organised",
+  "category": "Media",
+  "icon": "🎬",
+  "kind": "stack",
+  "suggested_name": "media",
+  "docs_url": "https://wiki.servarr.com/",
+  "notes": "The first person to open Plex or Seerr becomes its owner, so open both yourself right after install. To link Plex to your account, set PLEX_CLAIM (from plex.tv/claim, valid 4 minutes) in an env set before the first deploy. Then: Seerr uses sonarr:8989 and radarr:7878 with their API keys; Prowlarr uses http://sonarr:8989 and http://radarr:7878; Plex libraries are /movies and /tv.",
+  "tags": ["media", "plex", "seerr", "sonarr", "radarr", "prowlarr", "arr"]
+}

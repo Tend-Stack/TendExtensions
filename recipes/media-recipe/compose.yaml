@@ -1,0 +1,152 @@
+# Home Media: Plex, Seerr, Sonarr, Radarr and Prowlarr in one Tend stack.
+#
+# Three storage questions: movies, tv and downloads. "Let Tend keep them" (the
+# default) uses a Docker volume Tend backs up; a folder answer uses a folder on
+# the server that Tend never deletes, moves or backs up. Each question mounts at
+# its own path, so no mount sits inside another.
+x-tend:
+  storage:
+    movies:
+      prompt: Where are your movies?
+      mount_root: /movies
+    tv:
+      prompt: Where are your TV shows?
+      mount_root: /tv
+    downloads:
+      prompt: Where should downloads go?
+      mount_root: /downloads
+
+services:
+  # Runs once on every deploy. A new Docker volume starts owned by root, but the
+  # apps run as user 1000: this gives that user a library folder that is still
+  # empty and owned by root, and touches nothing else, so a folder you chose
+  # and already use is left exactly as it is.
+  folders:
+    image: busybox:1.38.0
+    user: "0:0"
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - |
+        for d in /movies /tv /downloads; do
+          if [ "$$(stat -c %u "$$d")" = "0" ] && [ -z "$$(ls -A "$$d")" ]; then
+            chown 1000:1000 "$$d"
+          fi
+        done
+    volumes:
+      - movies:/movies
+      - tv:/tv
+      - downloads:/downloads
+
+  plex:
+    image: plexinc/pms-docker:1.43.4.10903-e5521bd8c
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      PLEX_UID: "1000"
+      PLEX_GID: "1000"
+      # Optional. A claim token from plex.tv/claim (valid for 4 minutes) links
+      # Plex to your account at first start. Without it, the first person to
+      # open Plex becomes its owner.
+      PLEX_CLAIM: ${PLEX_CLAIM:-}
+      ADVERTISE_IP: ${TEND_URL_PLEX}:443
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - plex-config:/config
+      - movies:/movies
+      - tv:/tv
+    expose:
+      - "32400"
+    depends_on:
+      folders:
+        condition: service_completed_successfully
+    x-tend:
+      web_port: 32400
+      gpu: optional
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:v3.5.0
+    init: true
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+    volumes:
+      - seerr-config:/app/config
+    expose:
+      - "5055"
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/settings/public || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    x-tend:
+      web_port: 5055
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:4.0.20
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - sonarr-config:/config
+      - tv:/tv
+      - downloads:/downloads
+    expose:
+      - "8989"
+    depends_on:
+      folders:
+        condition: service_completed_successfully
+    x-tend:
+      web_port: 8989
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:6.4.4
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - radarr-config:/config
+      - movies:/movies
+      - downloads:/downloads
+    expose:
+      - "7878"
+    depends_on:
+      folders:
+        condition: service_completed_successfully
+    x-tend:
+      web_port: 7878
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:2.6.5
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - prowlarr-config:/config
+    expose:
+      - "9696"
+    x-tend:
+      web_port: 9696
+
+volumes:
+  movies: {}
+  tv: {}
+  downloads: {}
+  plex-config: {}
+  seerr-config: {}
+  sonarr-config: {}
+  radarr-config: {}
+  prowlarr-config: {}

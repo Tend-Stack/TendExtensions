@@ -28,7 +28,7 @@ read and explain; say what you did and what you did not verify.
   (`x.y.z`, must increase) for any update.
 - No outbound network from extension code, no remote scripts, no minified-only sources, no dotfiles or build
   artifacts under `extensions/<id>/`.
-- Community App Store recipes live in `recipes/<slug>/` as exactly `recipe.json` and `listing.json` (start from
+- Community App Store recipes live in `recipes/<slug>/` as exactly `recipe.json` and `listing.json` (a `"kind": "stack"` recipe adds `compose.yaml`) (start from
   `templates/recipe/example-notes`, rules in `docs/recipes.md`). Pin an exact image version, ship no default
   secrets, one container, one recipe per PR. `python tools/validate_recipe.py recipes/<slug>` checks it. Never set
   or imply `tested`/`certified`, and never add keys the validator does not list.

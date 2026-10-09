@@ -292,3 +292,246 @@ def test_cli(tmp_path: Path, capsys) -> None:
     out = capsys.readouterr()
     assert "::error file=recipes/bad-app/recipe.json" in out.out and "category must be one of" in out.err
     assert vr.main([str(tmp_path / "ok-app")]) == 0
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Stack recipes (kind "stack"): recipe.json + listing.json + compose.yaml, the Media Recipe as the reference.
+# ---------------------------------------------------------------------------------------------------------------
+
+MEDIA = REPO_ROOT / "recipes" / "media-recipe"
+
+
+def media_compose() -> str:
+    return (MEDIA / "compose.yaml").read_text(encoding="utf-8")
+
+
+def stack_problems(text: str) -> list[str]:
+    return vr.validate_stack_compose(text)
+
+
+def write_stack(root: Path, slug: str = "media-recipe", *, compose: str | None = None, recipe: dict | None = None) -> Path:
+    folder = root / slug
+    folder.mkdir(parents=True)
+    r = recipe if recipe is not None else json.loads((MEDIA / "recipe.json").read_text(encoding="utf-8"))
+    (folder / "recipe.json").write_text(json.dumps({**r, "slug": slug}), encoding="utf-8")
+    shutil.copy(MEDIA / "listing.json", folder / "listing.json")
+    (folder / "compose.yaml").write_text(compose if compose is not None else media_compose(), encoding="utf-8")
+    return folder
+
+
+def test_media_recipe_passes_and_matches_the_stack_schema() -> None:
+    entry = vr.validate_recipe_dir(MEDIA, builtin_slugs=BUILTIN)
+    assert entry["kind"] == "stack" and entry["source"] == "compose" and entry["source_ref"] == ""
+    assert entry["default_port"] == 0 and entry["env_hints"] == [] and entry["volumes"] == [] and entry["needs_dbs"] == []
+    assert entry["compose"] == media_compose()
+    import hashlib
+
+    assert entry["compose_sha256"] == hashlib.sha256(media_compose().encode("utf-8")).hexdigest()
+    schema = json.loads((REPO_ROOT / "recipes" / "stack.schema.json").read_text(encoding="utf-8"))
+    assert set(schema["properties"]) == set(vr.STACK_RECIPE_KEYS) == set(schema["required"])
+    assert list(schema["properties"]["category"]["enum"]) == list(vr.CATEGORIES)
+
+
+def test_media_recipe_shape() -> None:
+    import yaml
+
+    doc = yaml.safe_load(media_compose())
+    services = doc["services"]
+    assert sorted(services) == ["folders", "plex", "prowlarr", "radarr", "seerr", "sonarr"]
+    # Only Plex maps the graphics device, and only as an optional one.
+    gpu = [n for n, s in services.items() if "devices" in s]
+    assert gpu == ["plex"] and services["plex"]["x-tend"]["gpu"] == "optional"
+    assert services["plex"]["environment"]["ADVERTISE_IP"] == "${TEND_URL_PLEX}:443"
+    assert services["plex"]["environment"]["PLEX_CLAIM"] == "${PLEX_CLAIM:-}"
+    # Three storage questions, each at its own path, none nested.
+    storage = doc["x-tend"]["storage"]
+    assert {k: v["mount_root"] for k, v in storage.items()} == {"movies": "/movies", "tv": "/tv", "downloads": "/downloads"}
+    assert all(set(v) == {"prompt", "mount_root"} for v in storage.values())
+    # Every image is pinned (no latest, no bare name).
+    assert all(vr.check_image_reference(s["image"]) is None for s in services.values())
+    assert "first person" in json.loads((MEDIA / "recipe.json").read_text())["notes"]
+
+
+def test_stack_recipe_json_rules() -> None:
+    recipe = json.loads((MEDIA / "recipe.json").read_text(encoding="utf-8"))
+    assert vr.validate_recipe_data(recipe, folder="media-recipe", builtin_slugs=BUILTIN) == []
+    for key in ("source", "source_ref", "default_port", "env_hints", "volumes", "needs_dbs"):
+        errs = vr.validate_recipe_data({**recipe, key: "x"}, builtin_slugs=BUILTIN)
+        assert any(key in e and "image recipe" in e for e in errs), key
+    missing = {k: v for k, v in recipe.items() if k != "suggested_name"}
+    assert any("missing required key 'suggested_name'" in e for e in vr.validate_recipe_data(missing, builtin_slugs=BUILTIN))
+    assert any("unknown key 'extra'" in e for e in vr.validate_recipe_data({**recipe, "extra": 1}, builtin_slugs=BUILTIN))
+    # An image recipe may not use the key.
+    errs = vr.validate_recipe_data({**good(), "kind": "app"}, builtin_slugs=BUILTIN)
+    assert any("'kind'" in e for e in errs)
+
+
+def test_stack_folder_layout(tmp_path: Path) -> None:
+    folder = write_stack(tmp_path)
+    assert vr.validate_recipe_dir(folder, builtin_slugs=BUILTIN)["kind"] == "stack"
+    (folder / "README.md").write_text("no")
+    with pytest.raises(vr.RecipeError, match="README.md: not allowed"):
+        vr.validate_recipe_dir(folder, builtin_slugs=BUILTIN)
+    (folder / "README.md").unlink()
+    (folder / "compose.yaml").unlink()
+    with pytest.raises(vr.RecipeError, match="compose.yaml: missing"):
+        vr.validate_recipe_dir(folder, builtin_slugs=BUILTIN)
+    # An image recipe may not ship a compose file.
+    image = write_recipe(tmp_path, "image-app")
+    (image / "compose.yaml").write_text("services: {}\n")
+    with pytest.raises(vr.RecipeError, match="compose.yaml: not allowed"):
+        vr.validate_recipe_dir(image, builtin_slugs=BUILTIN)
+
+
+@pytest.mark.parametrize(
+    "old,new,fragment",
+    [
+        ("plexinc/pms-docker:1.43.4.10903-e5521bd8c", "plexinc/pms-docker:latest", "moving tag"),
+        ("plexinc/pms-docker:1.43.4.10903-e5521bd8c", "plexinc/pms-docker", "must pin a version"),
+        ("    expose:\n      - \"5055\"\n", "    ports:\n      - \"5055:5055\"\n", "ports: not allowed"),
+        ("    image: lscr.io/linuxserver/sonarr:4.0.20\n", "    build: .\n", "build: not allowed"),
+        ("      - sonarr-config:/config\n", "      - /srv/sonarr:/config\n", "host paths are not allowed"),
+        ("      - sonarr-config:/config\n", "      - ./sonarr:/config\n", "host paths are not allowed"),
+        ("      - sonarr-config:/config\n", "      - /var/run/docker.sock:/config\n", "host paths are not allowed"),
+        ("    restart: unless-stopped\n    environment:\n      TZ: ${TZ:-Etc/UTC}\n      PUID", "    privileged: true\n    restart: unless-stopped\n    environment:\n      TZ: ${TZ:-Etc/UTC}\n      PUID", "privileged: not allowed"),
+        ("      - /dev/dri:/dev/dri\n", "      - /dev/sda:/dev/sda\n", "only /dev/dri"),
+        ("      - /dev/dri:/dev/dri\n", "      - /dev/dri:/dev/video0\n", "same path"),
+        ("      gpu: optional\n", "", "needs `x-tend: {gpu: optional}`"),
+        ("      web_port: 9696\n", "", "has no x-tend.web_port"),
+        ("      web_port: 9696\n", "      web_port: 1234\n", "must be one of the ports the service exposes"),
+        ("      PUID: \"1000\"\n      PGID: \"1000\"\n    volumes:\n      - prowlarr", "      PUID: \"1000\"\n      PGID: \"1000\"\n      API_TOKEN: abc123\n    volumes:\n      - prowlarr", "looks like a secret"),
+        ("      TZ: ${TZ:-Etc/UTC}\n    volumes:\n      - seerr-config", "      TZ: ${TZ}\n    volumes:\n      - seerr-config", "has no default"),
+        ("      TZ: ${TZ:-Etc/UTC}\n    volumes:\n      - seerr-config", "      TZ: ${TEND_URL_NOPE}\n    volumes:\n      - seerr-config", "has no default"),
+        ("      TZ: ${TZ:-Etc/UTC}\n    volumes:\n      - seerr-config", "      TZ: $HOME\n    volumes:\n      - seerr-config", "literal dollar"),
+        ("  prowlarr-config: {}\n", "  prowlarr-config: {}\n  unused: {}\n", "no service mounts it"),
+        ("  prowlarr-config: {}\n", "  prowlarr-config:\n    driver: local\n", "must be empty"),
+        ("      folders:\n        condition: service_completed_successfully\n    x-tend:\n      web_port: 8989", "      nope:\n        condition: service_started\n    x-tend:\n      web_port: 8989", "not another service"),
+        ("    restart: \"no\"\n", "    restart: no\n", "restart"),
+        ("services:\n  # Runs once", "networks: {}\nservices:\n  # Runs once", "top-level key 'networks'"),
+    ],
+)
+def test_stack_compose_rules(old: str, new: str, fragment: str) -> None:
+    text = media_compose()
+    assert old in text, old
+    errors = stack_problems(text.replace(old, new, 1))
+    assert any(fragment in e for e in errors), (fragment, errors)
+
+
+def test_stack_compose_hygiene() -> None:
+    assert any("not valid YAML" in e for e in stack_problems("services: [unclosed"))
+    assert any("duplicate key" in e for e in stack_problems("services:\n  a:\n    image: x/a:1\n  a:\n    image: x/a:2\n"))
+    assert any("carriage returns" in e for e in stack_problems(media_compose().replace("\n", "\r\n")))
+    assert any("larger than" in e for e in stack_problems("# " + "x" * vr.MAX_COMPOSE_BYTES + "\nservices: {}\n"))
+    assert any("at least one service" in e for e in stack_problems("services: {}\n"))
+    cyc = "services:\n  a:\n    image: x/a:1\n    depends_on: [b]\n  b:\n    image: x/b:1\n    depends_on: [a]\n"
+    assert any("cycle" in e for e in stack_problems(cyc))
+    # secrets as bare references and an empty default are fine; the key looks secret but ships no value
+    ok = "services:\n  a:\n    image: x/a:1\n    environment:\n      API_TOKEN: ${API_TOKEN}\n      DB_PASSWORD: ${DB_PASSWORD:-}\n"
+    assert stack_problems(ok) == []
+
+
+# The P7a security review: bind options cannot hide in a mount target or mount_root, a recipe carries no folder or
+# default path, and no two questions share or nest a target.
+
+
+def storage_compose(questions: str, volumes: str = "      - movies:/movies\n      - tv:/tv\n") -> str:
+    return (
+        "x-tend:\n  storage:\n" + questions + "services:\n  app:\n    image: x/app:1.2.3\n    volumes:\n" + volumes
+        + "volumes:\n  movies: {}\n  tv: {}\n"
+    )
+
+
+MOVIES_TV = "    movies:\n      prompt: Movies\n      mount_root: /movies\n    tv:\n      prompt: Shows\n      mount_root: /tv\n"
+
+
+def test_storage_baseline_is_valid() -> None:
+    assert stack_problems(storage_compose(MOVIES_TV)) == []
+
+
+@pytest.mark.parametrize("target", ["/data:z", "/data:rshared", "/data,ro", "/da ta", "/data\\t"])
+def test_mount_target_and_mount_root_refuse_bind_options_and_whitespace(target: str) -> None:
+    root = f'    movies:\n      prompt: Movies\n      mount_root: "{target}"\n'
+    errors = stack_problems(storage_compose(root, volumes='      - type: volume\n        source: movies\n        target: /movies\n'))
+    assert any("mount_root" in e and "smuggle" in e for e in errors), errors
+    ok_root = "    movies:\n      prompt: Movies\n      mount_root: /movies\n"
+    errors = stack_problems(storage_compose(ok_root, volumes=f'      - type: volume\n        source: movies\n        target: "{target}"\n      - tv:/tv\n'))
+    assert any("target" in e and "smuggle" in e for e in errors), errors
+    # The short form splits on ':' so the option shows up as a bad third part.
+    errors = stack_problems(storage_compose(ok_root, volumes=f"      - movies:{target}\n      - tv:/tv\n"))
+    assert errors, "a short-form mount with an option-carrying target must be refused"
+
+
+@pytest.mark.parametrize("extra", ["      path: /mnt/movies\n", "      default: /mnt/movies\n", "      kind: folder\n", "      host_path: /etc\n", "      answer: {}\n"])
+def test_storage_question_carries_only_prompt_and_mount_root(extra: str) -> None:
+    errors = stack_problems(storage_compose(MOVIES_TV.replace("      mount_root: /movies\n", "      mount_root: /movies\n" + extra)))
+    assert any("never a folder, a default path or an answer" in e for e in errors), errors
+
+
+def test_storage_mount_root_must_be_absolute_and_normalised() -> None:
+    for root in ("movies", "/movies/", "/a/../b", "/"):
+        text = storage_compose(MOVIES_TV.replace("mount_root: /movies", f"mount_root: {root}"))
+        assert any("mount_root" in e for e in stack_problems(text)), root
+
+
+@pytest.mark.parametrize(
+    "roots",
+    [("/media", "/media"), ("/media", "/media/tv"), ("/media/tv", "/media")],
+    ids=["same", "outer-first", "inner-first"],
+)
+def test_storage_questions_cannot_share_or_nest_a_target(roots: tuple[str, str]) -> None:
+    questions = (
+        f"    movies:\n      prompt: Movies\n      mount_root: {roots[0]}\n"
+        f"    tv:\n      prompt: Shows\n      mount_root: {roots[1]}\n"
+    )
+    errors = stack_problems(storage_compose(questions, volumes=f"      - movies:{roots[0]}\n      - tv:{roots[1]}\n"))
+    assert any("share or nest" in e for e in errors), errors
+
+
+def test_storage_question_rules() -> None:
+    wrong = storage_compose(MOVIES_TV.replace("    tv:", "    music:"))
+    assert any("no volume of the same name" in e for e in stack_problems(wrong))
+    off = storage_compose(MOVIES_TV, volumes="      - movies:/elsewhere\n      - tv:/tv\n")
+    assert any("must mount at /movies" in e for e in stack_problems(off))
+    noprompt = storage_compose(MOVIES_TV.replace("      prompt: Movies\n", ""))
+    assert any("prompt" in e for e in stack_problems(noprompt))
+
+
+def test_load_recipes_sorts_stacks_with_image_recipes_and_builds_the_catalog(tmp_path: Path) -> None:
+    write_recipe(tmp_path, "zeta-notes")
+    write_stack(tmp_path, "alpha-media")
+    recipes = vr.load_recipes(tmp_path, builtin_slugs=BUILTIN)
+    assert [r["slug"] for r in recipes] == ["alpha-media", "zeta-notes"]
+    body = vr.build_catalog(recipes, sequence=9, revision=REVISION_A)
+    assert body == vr.build_catalog(recipes, sequence=9, revision=REVISION_A)
+    entries = {e["slug"]: e for e in json.loads(body)["entries"]}
+    stack, image = entries["alpha-media"], entries["zeta-notes"]
+    # A panel that predates stacks keeps an entry only with a source_ref: the stack has none, the app has one.
+    assert stack["source_ref"] == "" and image["source_ref"]
+    assert set(image) == set(vr.RECIPE_KEYS)
+    assert {"kind", "compose", "compose_sha256"} <= set(stack) and "kind" not in image
+    assert len(stack["compose_sha256"]) == 64 and stack["compose_sha256"] == stack["compose_sha256"].lower()
+
+
+def test_build_emits_a_stack_entry_and_refuses_a_bad_stack(tmp_path: Path) -> None:
+    from conftest import write_fixture_extension
+
+    write_fixture_extension(tmp_path / "extensions")
+    (tmp_path / "recipes").mkdir()
+    write_stack(tmp_path / "recipes", "media-recipe")
+    build.run(tmp_path, sequence=3, revision=REVISION_A)
+    first = (tmp_path / "dist" / "community-catalog.json").read_bytes()
+    build.run(tmp_path, sequence=3, revision=REVISION_A)
+    assert (tmp_path / "dist" / "community-catalog.json").read_bytes() == first  # reproducible
+    entry = json.loads(first)["entries"][0]
+    assert entry["kind"] == "stack" and entry["compose"] == media_compose()
+    write_stack(tmp_path / "recipes", "bad-stack", compose=media_compose().replace(":1.43.4.10903-e5521bd8c", ":latest"))
+    with pytest.raises(build.BuildError, match="invalid recipe"):
+        build.run(tmp_path, sequence=3, revision=REVISION_A)
+
+
+def test_cli_reports_stack_problems_with_annotations(tmp_path: Path, capsys) -> None:
+    write_stack(tmp_path, "bad-stack", compose=media_compose().replace("    expose:\n      - \"5055\"\n", "    ports:\n      - \"5055:5055\"\n"))
+    assert vr.main(["--annotate", str(tmp_path / "bad-stack")]) == 1
+    out = capsys.readouterr()
+    assert "::error file=recipes/bad-stack/compose.yaml" in out.out and "ports: not allowed" in out.err
+    assert vr.main([str(MEDIA)]) == 0
