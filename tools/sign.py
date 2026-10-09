@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
-"""Sign dist/registry.json into the published envelope
-dist/tend-extension-registry-v1.json.
+"""Sign the registry into the published envelopes.
+
+Two assets are signed with the same key and shipped in the same release:
+
+    dist/registry.json      -> dist/tend-extension-registry-v1.json     (domain ...-v1\\n)
+    dist/registry-v1.1.json -> dist/tend-extension-registry-v1.1.json   (domain ...-v1.1\\n)
+
+v1 is what every v0.10.x panel reads and carries no `glyph_svg`; v1.1 is the same payload plus each listing's
+`glyph_svg`, read by panels that know it (v0.11.1+, which fall back to v1). The domains differ, so a v1 signature
+never validates a v1.1 document and the reverse.
 
 Envelope shape and canonicalisation mirror `_verify_envelope` /
 `_canonical_payload` in the Tend panel core
@@ -40,8 +48,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 
 DOMAIN = b"tend-extension-registry-v1\n"
+DOMAIN_V11 = b"tend-extension-registry-v1.1\n"
 EXPIRY_SECONDS = 365 * 24 * 60 * 60
 ENVELOPE_NAME = "tend-extension-registry-v1.json"
+ENVELOPE_NAME_V11 = "tend-extension-registry-v1.1.json"
+REGISTRY_NAME_V11 = "registry-v1.1.json"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -70,7 +81,9 @@ def _load_private_key(seed_b64: str) -> Ed25519PrivateKey:
     return Ed25519PrivateKey.from_private_bytes(seed)
 
 
-def sign_registry(registry: dict[str, Any], seed_b64: str, *, issued_at: int | None = None) -> dict[str, Any]:
+def sign_registry(
+    registry: dict[str, Any], seed_b64: str, *, issued_at: int | None = None, domain: bytes = DOMAIN
+) -> dict[str, Any]:
     private_key = _load_private_key(seed_b64)
     public_bytes = private_key.public_key().public_bytes_raw()
     key_id = key_id_for(public_bytes)
@@ -84,7 +97,7 @@ def sign_registry(registry: dict[str, Any], seed_b64: str, *, issued_at: int | N
     payload["expires_at"] = expires_at
 
     canonical = canonical_payload(payload)
-    signature = private_key.sign(DOMAIN + canonical)
+    signature = private_key.sign(domain + canonical)
 
     return {
         "schema": 1,
@@ -94,7 +107,7 @@ def sign_registry(registry: dict[str, Any], seed_b64: str, *, issued_at: int | N
     }
 
 
-def verify_envelope(envelope: dict[str, Any], public_key_b64: str) -> dict[str, Any]:
+def verify_envelope(envelope: dict[str, Any], public_key_b64: str, *, domain: bytes = DOMAIN) -> dict[str, Any]:
     """Verify an envelope against a base64 raw-32-byte public key. Returns
     the payload on success; raises SignError on any mismatch. Mirrors the
     strict shape checks in the panel's `_verify_envelope`."""
@@ -132,7 +145,7 @@ def verify_envelope(envelope: dict[str, Any], public_key_b64: str) -> dict[str, 
 
     canonical = canonical_payload(payload)
     try:
-        Ed25519PublicKey.from_public_bytes(public_bytes).verify(signature, DOMAIN + canonical)
+        Ed25519PublicKey.from_public_bytes(public_bytes).verify(signature, domain + canonical)
     except InvalidSignature as exc:
         raise SignError("signature does not verify against the given public key") from exc
 
@@ -161,16 +174,32 @@ def cmd_sign(args: argparse.Namespace) -> int:
         print(f"error: {registry_path} not found — run tools/build.py first", file=sys.stderr)
         return 1
 
+    jobs = [(registry, ENVELOPE_NAME, DOMAIN)]
+    glyphs_path = args.repo_root / "dist" / REGISTRY_NAME_V11
     try:
-        envelope = sign_registry(registry, seed_b64)
-    except SignError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        jobs.append((json.loads(glyphs_path.read_text(encoding="utf-8")), ENVELOPE_NAME_V11, DOMAIN_V11))
+    except FileNotFoundError:
+        print(f"error: {glyphs_path} not found — run tools/build.py first", file=sys.stderr)
         return 1
 
-    out_path = args.repo_root / "dist" / ENVELOPE_NAME
-    out_path.write_text(json.dumps(envelope, indent=2, sort_keys=True, ensure_ascii=True) + "\n", encoding="utf-8")
-    print(f"wrote {out_path}  key_id={envelope['key_id']}  sequence={envelope['payload']['sequence']}")
+    issued_at = int(time.time())  # one instant for both assets
+    for document, name, domain in jobs:
+        try:
+            envelope = sign_registry(document, seed_b64, issued_at=issued_at, domain=domain)
+        except SignError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        out_path = args.repo_root / "dist" / name
+        out_path.write_text(
+            json.dumps(envelope, indent=2, sort_keys=True, ensure_ascii=True) + "\n", encoding="utf-8"
+        )
+        print(f"wrote {out_path}  key_id={envelope['key_id']}  sequence={envelope['payload']['sequence']}")
     return 0
+
+
+def domain_for(envelope_path: str | Path) -> bytes:
+    """The signature domain an envelope is verified under, from its published file name."""
+    return DOMAIN_V11 if Path(envelope_path).name == ENVELOPE_NAME_V11 else DOMAIN
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
@@ -184,7 +213,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        verify_envelope(envelope, args.public_key)
+        verify_envelope(envelope, args.public_key, domain=domain_for(args.envelope))
     except SignError as exc:
         print(f"FAIL  {exc}", file=sys.stderr)
         return 1

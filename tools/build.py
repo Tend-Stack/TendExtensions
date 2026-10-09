@@ -961,6 +961,9 @@ def build_one(
     return entry
 
 
+REGISTRY_GLYPHS_NAME = "registry-v1.1.json"  # unsigned input of tend-extension-registry-v1.1.json
+
+
 def discover_extension_ids(extensions_dir: Path) -> list[str]:
     if not extensions_dir.is_dir():
         raise BuildError(f"{extensions_dir} does not exist")
@@ -996,22 +999,32 @@ def run(
     if not ids:
         raise BuildError("no extensions found under extensions/")
 
-    entries = [
-        build_one(extensions_dir / ext_id, dist_dir, revision=revision, emit_glyph_svg=emit_glyph_svg)
-        for ext_id in ids
+    full_entries = [
+        build_one(extensions_dir / ext_id, dist_dir, revision=revision, emit_glyph_svg=True) for ext_id in ids
     ]
-    entries.sort(key=lambda e: e["id"])
+    full_entries.sort(key=lambda e: e["id"])
+    # registry.json is what tend-extension-registry-v1.json is signed from, and every v0.10.x panel rejects an
+    # entry key outside its exact set, so by default it carries no glyph_svg. registry-v1.1.json is the same
+    # document plus glyph_svg; it is signed into tend-extension-registry-v1.1.json for v0.11.1+ panels.
+    legacy_entries = [{k: v for k, v in e.items() if k != "glyph_svg"} for e in full_entries]
+    generated_at = int(time.time())
 
-    registry = {
-        "schema": 1,
-        "registry_id": "tend-extensions",
-        "sequence": sequence,
-        "revision": revision,
-        "generated_at": int(time.time()),
-        "extensions": entries,
-    }
+    def document(entries: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "schema": 1,
+            "registry_id": "tend-extensions",
+            "sequence": sequence,
+            "revision": revision,
+            "generated_at": generated_at,
+            "extensions": entries,
+        }
+
+    registry = document(full_entries if emit_glyph_svg else legacy_entries)
     (dist_dir / "registry.json").write_text(
         json.dumps(registry, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
+    )
+    (dist_dir / REGISTRY_GLYPHS_NAME).write_text(
+        json.dumps(document(full_entries), indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
     )
     build_community_catalog(repo_root, dist_dir, sequence=sequence, revision=revision)
     return registry

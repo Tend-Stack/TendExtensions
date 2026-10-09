@@ -96,7 +96,7 @@ def test_registry_key_domain_separation_is_not_reused() -> None:
 def test_release_attaches_the_catalog_only_as_a_signed_set(tmp_path: Path) -> None:
     dist = tmp_path / "dist"
     dist.mkdir()
-    for name in ("a-1.0.0.zip", "registry.json", "tend-extension-registry-v1.json", sc.CATALOG_NAME):
+    for name in ("a-1.0.0.zip", "registry.json", "tend-extension-registry-v1.json", "tend-extension-registry-v1.1.json", sc.CATALOG_NAME):
         (dist / name).write_bytes(b"x")
     names = [p.name for p in release.dist_assets(dist)]
     assert sc.CATALOG_NAME not in names  # unsigned: not published

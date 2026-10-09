@@ -96,14 +96,16 @@ jobs:
 
           env = dict(os.environ, TEND_REGISTRY_SIGNING_KEY=seed_b64)
           subprocess.run([sys.executable, "tools/sign.py", "sign"], check=True, env=env)
-          subprocess.run(
-              [
-                  sys.executable, "tools/sign.py", "--verify",
-                  "dist/tend-extension-registry-v1.json",
-                  "--public-key", pub_b64,
-              ],
-              check=True,
-          )
+          for name in ("tend-extension-registry-v1.json", "tend-extension-registry-v1.1.json"):
+              subprocess.run(
+                  [sys.executable, "tools/sign.py", "--verify", f"dist/{name}", "--public-key", pub_b64],
+                  check=True,
+              )
+          import json
+          v1 = json.load(open("dist/tend-extension-registry-v1.json"))["payload"]["extensions"]
+          v11 = json.load(open("dist/tend-extension-registry-v1.1.json"))["payload"]["extensions"]
+          assert not any("glyph_svg" in e for e in v1), "v1 must stay free of glyph_svg for v0.10.x panels"
+          assert any("glyph_svg" in e for e in v11), "v1.1 must carry glyph_svg"
           print("signer round-trip OK (throwaway key)")
           PY
 

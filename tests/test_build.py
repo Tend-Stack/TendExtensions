@@ -981,3 +981,14 @@ def test_extension_template_builds_when_copied_into_extensions(tmp_path: Path) -
     assert [e["id"] for e in registry["extensions"]] == ["com.example.my-extension"]
     manifest = json.loads((dst / "extension.json").read_text())
     assert manifest["glyph"] == "glyph.svg" and manifest["icon"] == "icon.svg"
+
+
+def test_build_writes_the_v11_document_with_glyphs_and_a_glyph_free_registry(fixture_repo: Path) -> None:
+    registry = build.run(fixture_repo, sequence=1, revision=REVISION_A)
+    dist = fixture_repo / "dist"
+    legacy = json.loads((dist / "registry.json").read_text())
+    glyphs = json.loads((dist / build.REGISTRY_GLYPHS_NAME).read_text())
+    assert legacy == registry
+    assert set(legacy["extensions"][0]) == ENTRY_KEYS
+    assert set(glyphs["extensions"][0]) == ENTRY_KEYS | {"glyph_svg"}
+    assert {k: v for k, v in glyphs.items() if k != "extensions"} == {k: v for k, v in legacy.items() if k != "extensions"}

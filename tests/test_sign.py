@@ -110,3 +110,48 @@ def test_verify_rejects_bad_validity_window() -> None:
 def test_sign_rejects_a_malformed_key() -> None:
     with pytest.raises(sign.SignError, match="32 raw bytes"):
         sign.sign_registry(_fake_registry(), base64.b64encode(b"too-short").decode())
+
+
+# ---------- the v1.1 asset (docs/icons.md, Registry index) ----------
+
+
+def test_v11_domain_is_distinct_and_cross_verification_fails() -> None:
+    seed_b64, pub_b64 = _keypair()
+    assert sign.DOMAIN_V11 == b"tend-extension-registry-v1.1\n"
+    v1 = sign.sign_registry(_fake_registry(), seed_b64, issued_at=1_758_000_000)
+    v11 = sign.sign_registry(_fake_registry(), seed_b64, issued_at=1_758_000_000, domain=sign.DOMAIN_V11)
+    assert v1["signature"] != v11["signature"]
+    sign.verify_envelope(v11, pub_b64, domain=sign.DOMAIN_V11)
+    with pytest.raises(sign.SignError):
+        sign.verify_envelope(v11, pub_b64)  # a v1.1 signature never validates as v1
+    with pytest.raises(sign.SignError):
+        sign.verify_envelope(v1, pub_b64, domain=sign.DOMAIN_V11)
+
+
+def test_cli_signs_both_assets_and_v1_stays_free_of_glyph_svg(fixture_repo, monkeypatch) -> None:
+    from tools import build
+
+    seed_b64, pub_b64 = _keypair()
+    build.run(fixture_repo, sequence=4, revision=REVISION_A)
+    dist = fixture_repo / "dist"
+    monkeypatch.setenv("TEND_REGISTRY_SIGNING_KEY", seed_b64)
+    assert sign.main(["--repo-root", str(fixture_repo)]) == 0
+
+    v1 = json.loads((dist / sign.ENVELOPE_NAME).read_text())
+    v11 = json.loads((dist / sign.ENVELOPE_NAME_V11).read_text())
+    assert sign.main(["--verify", str(dist / sign.ENVELOPE_NAME), "--public-key", pub_b64]) == 0
+    assert sign.main(["--verify", str(dist / sign.ENVELOPE_NAME_V11), "--public-key", pub_b64]) == 0
+    assert v1["payload"]["issued_at"] == v11["payload"]["issued_at"]
+
+    # The v1 payload is exactly what the default build produced before the v1.1 asset existed.
+    legacy = json.loads((dist / "registry.json").read_text())
+    expected_v1 = dict(legacy, issued_at=v1["payload"]["issued_at"], expires_at=v1["payload"]["expires_at"])
+    assert v1["payload"] == expected_v1
+    assert not any("glyph_svg" in e for e in v1["payload"]["extensions"])
+    assert all("glyph_svg" in e for e in v11["payload"]["extensions"])
+    # Apart from glyph_svg and the signing times, the two payloads are the same document.
+    stripped = [{k: v for k, v in e.items() if k != "glyph_svg"} for e in v11["payload"]["extensions"]]
+    assert stripped == v1["payload"]["extensions"]
+    assert {k: v for k, v in v11["payload"].items() if k != "extensions"} == {
+        k: v for k, v in v1["payload"].items() if k != "extensions"
+    }

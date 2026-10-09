@@ -96,7 +96,7 @@ def run_validator(core_checkout: Path, zips: list[Path]) -> list[dict]:
     return results
 
 
-def check_listing_glyphs(dist_dir: Path) -> list[str]:
+def check_listing_glyphs(dist_dir: Path, name: str = "registry.json") -> list[str]:
     """Problems with the `glyph_svg` strings in dist/registry.json, empty when none.
 
     The panel keeps a listing's `glyph_svg` only if it passes its glyph rules, and silently drops it otherwise (the
@@ -105,12 +105,12 @@ def check_listing_glyphs(dist_dir: Path) -> list[str]:
     Checked only when the index carries `glyph_svg` at all (`build.py --emit-glyph-svg`); then a package that declares
     a glyph must carry exactly its text, and one that declares none must carry none."""
     problems: list[str] = []
-    registry = json.loads((dist_dir / "registry.json").read_text(encoding="utf-8"))
-    if not any("glyph_svg" in entry for entry in registry["extensions"]):
+    registry = json.loads((dist_dir / name).read_text(encoding="utf-8"))
+    if name == "registry.json" and not any("glyph_svg" in entry for entry in registry["extensions"]):
         return []  # the default legacy index carries none (see tools/build.py --emit-glyph-svg)
     for entry in registry["extensions"]:
-        name = entry["package"]["name"]
-        with zipfile.ZipFile(dist_dir / name) as zf:
+        package = entry["package"]["name"]
+        with zipfile.ZipFile(dist_dir / package) as zf:
             manifest = json.loads(zf.read("extension.json"))
             declared = manifest.get("glyph")
             expected = zf.read(declared).decode("utf-8") if isinstance(declared, str) else None
@@ -224,16 +224,18 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     status = report(results) if results else 0
-    if zips and (dist_dir / "registry.json").is_file():
-        glyph_problems = check_listing_glyphs(dist_dir)
+    for index in ("registry.json", "registry-v1.1.json"):
+        if not (zips and (dist_dir / index).is_file()):
+            continue
+        glyph_problems = check_listing_glyphs(dist_dir, index)
         for problem in glyph_problems:
-            print(f"FAIL  registry.json: {problem}")
+            print(f"FAIL  {index}: {problem}")
         if glyph_problems:
             status = 1
-        elif any("glyph_svg" in e for e in json.loads((dist_dir / "registry.json").read_text())["extensions"]):
-            print(f"OK    registry.json  (glyph_svg matches the validated glyph in {len(zips)} package(s))")
+        elif any("glyph_svg" in e for e in json.loads((dist_dir / index).read_text())["extensions"]):
+            print(f"OK    {index}  (glyph_svg matches the validated glyph in {len(zips)} package(s))")
         else:
-            print("OK    registry.json  (legacy index, no glyph_svg)")
+            print(f"OK    {index}  (legacy index, no glyph_svg)")
     stack_failures = report_stacks(stacks)
     if stacks:
         print(f"{len(stacks) - stack_failures}/{len(stacks)} stack recipe(s) passed panel validation")

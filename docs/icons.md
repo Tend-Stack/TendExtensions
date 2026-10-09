@@ -54,10 +54,15 @@ covered) and `missing` (a non-theme package declares one).
 
 ## Registry index
 
-`python tools/build.py --emit-glyph-svg` adds each code package's glyph text to its `registry.json` entry as
-`glyph_svg` (theme packs carry none), so the store can preview an extension before it is installed. It is off
-by default and must stay off for the published release. The signed envelope is built from `registry.json`,
-and every v0.10.x panel reads that same release asset, `tend-extension-registry-v1.json` of the newest
-`registry-<sequence>` release, and rejects the whole catalog on an entry key outside its exact set. v0.11.0 is
-the first panel that accepts `glyph_svg`. Turn it on for the published asset only through a separate asset
-that v0.11.0+ panels prefer.
+Two signed assets ride in every `registry-<sequence>` release, from one key:
+
+| Asset | Signature domain | `glyph_svg` | Read by |
+| --- | --- | --- | --- |
+| `tend-extension-registry-v1.json` | `tend-extension-registry-v1\n` | never | every panel; the only one v0.10.x reads |
+| `tend-extension-registry-v1.1.json` | `tend-extension-registry-v1.1\n` | every code package | panels that know it (v0.11.1+), which fall back to v1 |
+
+v0.10.x rejects the whole catalog on an entry key outside its exact set, so the v1 asset must stay free of
+`glyph_svg` (a test pins it). The build writes `dist/registry.json` (the v1 input) and `dist/registry-v1.1.json`
+(the v1.1 input, theme packs carry no glyph); `tools/sign.py` signs both with one `issued_at`, and the CI
+round-trip verifies both under a throwaway key. `build.py --emit-glyph-svg` additionally puts the glyph into
+`registry.json`; leave it off for anything published.

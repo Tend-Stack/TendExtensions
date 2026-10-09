@@ -99,6 +99,7 @@ def _write_dist(dist_dir: Path) -> None:
     (dist_dir / "host.tend.fixture-1.0.0.zip").write_bytes(b"pretend zip bytes")
     (dist_dir / "registry.json").write_text(json.dumps({"schema": 1, "sequence": 5}), encoding="utf-8")
     (dist_dir / "tend-extension-registry-v1.json").write_text(json.dumps({"schema": 1}), encoding="utf-8")
+    (dist_dir / "tend-extension-registry-v1.1.json").write_text(json.dumps({"schema": 1}), encoding="utf-8")
 
 
 def test_sync_release_creates_when_no_existing_release(tmp_path: Path) -> None:
@@ -120,9 +121,9 @@ def test_sync_release_creates_when_no_existing_release(tmp_path: Path) -> None:
 
     result = release.sync_release(dist_dir, 5, REVISION_A, api_fn=fake_api)
 
-    assert result == {"tag": "registry-5", "sequence": 5, "revision": REVISION_A, "asset_count": 3}
+    assert result == {"tag": "registry-5", "sequence": 5, "revision": REVISION_A, "asset_count": 4}
     upload_calls = [p for m, p in calls if m == "POST" and p.startswith("https://uploads.github.com/")]
-    assert len(upload_calls) == 3
+    assert len(upload_calls) == 4
     delete_calls = [p for m, p in calls if m == "DELETE"]
     assert delete_calls == []
 
@@ -160,7 +161,7 @@ def test_sync_release_replaces_existing_assets(tmp_path: Path) -> None:
         "/releases/assets/333",
     ]
     upload_calls = [p for m, p in calls if m == "POST" and p.startswith("https://uploads.github.com/")]
-    assert len(upload_calls) == 3
+    assert len(upload_calls) == 4
     # No second POST /releases — an existing release is reused, not recreated.
     assert ("POST", "/releases") not in calls
 
