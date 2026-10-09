@@ -878,8 +878,8 @@ ENTRY_KEYS = {
 
 
 def test_default_registry_entries_gain_no_new_keys(fixture_repo: Path) -> None:
-    """Panels before the glyph release check each index entry against an exact
-    key set; the default build must not add one."""
+    """v0.10.x panels read the same signed asset and check each index entry against an exact key set
+    (v0.10.24 internal/api/extensions_registry_fetch.go:346); the default build must not add one."""
     registry = build.run(fixture_repo, sequence=1, revision=REVISION_A)
     assert set(registry["extensions"][0]) == ENTRY_KEYS
     on_disk = json.loads((fixture_repo / "dist" / "registry.json").read_text())
@@ -891,8 +891,6 @@ def test_emit_glyph_svg_adds_the_exact_glyph_text(fixture_repo: Path) -> None:
     entry = registry["extensions"][0]
     assert set(entry) == ENTRY_KEYS | {"glyph_svg"}
     assert entry["glyph_svg"] == (_fixture_ext(fixture_repo) / "glyph.svg").read_text(encoding="utf-8")
-    on_disk = json.loads((fixture_repo / "dist" / "registry.json").read_text())
-    assert on_disk["extensions"][0]["glyph_svg"] == entry["glyph_svg"]
 
 
 def test_cli_flag_emits_glyph_svg_only_when_asked(fixture_repo: Path) -> None:
@@ -901,6 +899,22 @@ def test_cli_flag_emits_glyph_svg_only_when_asked(fixture_repo: Path) -> None:
     assert "glyph_svg" not in json.loads((fixture_repo / "dist" / "registry.json").read_text())["extensions"][0]
     assert build.main([*args, "--emit-glyph-svg"]) == 0
     assert "glyph_svg" in json.loads((fixture_repo / "dist" / "registry.json").read_text())["extensions"][0]
+
+
+def test_every_real_listing_carries_a_glyph_unless_it_is_a_theme_pack(tmp_path: Path) -> None:
+    import shutil
+
+    shutil.copytree(REPO_ROOT / "extensions", tmp_path / "extensions")
+    registry = build.run(tmp_path, sequence=1, revision=REVISION_A, emit_glyph_svg=True)
+    for entry in registry["extensions"]:
+        manifest = json.loads((tmp_path / "extensions" / entry["id"] / "extension.json").read_text())
+        if manifest.get("category") == "themes":
+            assert "glyph_svg" not in entry, entry["id"]
+        else:
+            assert entry["glyph_svg"].lstrip().startswith("<svg"), entry["id"]
+            assert entry["glyph_svg"] == (tmp_path / "extensions" / entry["id"] / manifest["glyph"]).read_text(
+                encoding="utf-8"
+            )
 
 
 def test_non_theme_package_without_glyph_is_refused(fixture_repo: Path) -> None:

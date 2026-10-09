@@ -54,7 +54,10 @@ covered) and `missing` (a non-theme package declares one).
 
 ## Registry index
 
-`python tools/build.py --emit-glyph-svg` adds each package's glyph text to its `registry.json` entry as
-`glyph_svg`, so the store can preview an extension before it is installed. It is off by default: a panel
-from before the glyph release checks each index entry against an exact key set and would reject the whole
-catalog. Turn it on only once every supported panel accepts the key.
+`python tools/build.py --emit-glyph-svg` adds each code package's glyph text to its `registry.json` entry as
+`glyph_svg` (theme packs carry none), so the store can preview an extension before it is installed. It is off
+by default and must stay off for the published release. The signed envelope is built from `registry.json`,
+and every v0.10.x panel reads that same release asset, `tend-extension-registry-v1.json` of the newest
+`registry-<sequence>` release, and rejects the whole catalog on an entry key outside its exact set. v0.11.0 is
+the first panel that accepts `glyph_svg`. Turn it on for the published asset only through a separate asset
+that v0.11.0+ panels prefer.

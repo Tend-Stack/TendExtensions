@@ -100,3 +100,23 @@ def test_every_stack_recipe_loads_in_the_reference_core() -> None:
         if not result.get("ok"):
             failures.append(f"{compose_file}: {result.get('refused')} {result.get('missing')}")
     assert not failures, "\n".join(failures)
+
+
+def test_listing_glyphs_must_match_the_packages_validated_glyph(fixture_repo: Path) -> None:
+    import json
+
+    build.run(fixture_repo, sequence=1, revision=REVISION_A)
+    dist = fixture_repo / "dist"
+    assert validate_with_panel.check_listing_glyphs(dist) == []  # legacy index: nothing to check
+    build.run(fixture_repo, sequence=1, revision=REVISION_A, emit_glyph_svg=True)
+    assert validate_with_panel.check_listing_glyphs(dist) == []
+
+    registry = json.loads((dist / "registry.json").read_text())
+    registry["extensions"][0]["glyph_svg"] += " "
+    (dist / "registry.json").write_text(json.dumps(registry))
+    assert "does not match" in validate_with_panel.check_listing_glyphs(dist)[0]
+
+    registry["extensions"][0]["glyph_svg"] = registry["extensions"][0]["glyph_svg"].rstrip()
+    registry["extensions"][0]["glyph_svg"] = "<svg/>"
+    (dist / "registry.json").write_text(json.dumps(registry))
+    assert validate_with_panel.check_listing_glyphs(dist)

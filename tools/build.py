@@ -953,9 +953,10 @@ def build_one(
     }
     if emit_glyph_svg and glyph_svg is not None:
         # The exact file text, so the signed index carries the store preview
-        # of a package the panel has not downloaded yet. OFF by default: a
-        # panel from before the glyph release checks each index entry against
-        # an exact key set and would reject the whole catalog.
+        # of a package the panel has not downloaded yet. OFF by default: the
+        # signed envelope is built from this file, and every v0.10.x panel
+        # reads that same asset (tend-extension-registry-v1.json) and rejects
+        # an entry key outside its exact set (docs/icons.md, Registry index).
         entry["glyph_svg"] = glyph_svg
     return entry
 
@@ -1046,7 +1047,7 @@ def main(argv: list[str] | None = None) -> int:
         "--emit-glyph-svg",
         action="store_true",
         help="add each package's glyph text to its registry.json entry as `glyph_svg` "
-        "(default off: panels before the glyph release reject unknown index keys)",
+        "(default off: v0.10.x panels read the same signed asset and reject unknown index keys)",
     )
     args = parser.parse_args(argv)
 
