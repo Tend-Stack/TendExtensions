@@ -113,28 +113,58 @@ def fetch_public_asset(url: str, *, timeout: int, max_bytes: int, user_agent: st
     raise AssertionError("unreachable read retry state")
 
 
+def error_detail(exc: BaseException) -> str:
+    """GitHub's explanation of an HTTP error: its `message` and each `errors[]` entry's resource, field and code
+    (never the raw body, and never the token, even if the body echoed it). Empty when there is nothing readable."""
+    if not isinstance(exc, urllib.error.HTTPError):
+        return ""
+    try:
+        document = json.loads(exc.read(65536))
+    except (OSError, ValueError):
+        return ""
+    if not isinstance(document, dict):
+        return ""
+    parts = [str(document.get("message", ""))[:300]]
+    for entry in (document.get("errors") or [])[:10]:
+        if isinstance(entry, dict):
+            parts.append(
+                "/".join(str(entry.get(k)) for k in ("resource", "field", "code") if entry.get(k))
+                + (f" ({str(entry['message'])[:200]})" if entry.get("message") else "")
+            )
+        else:
+            parts.append(str(entry)[:200])
+    text = "; ".join(p for p in parts if p)
+    token = os.environ.get("GH_PUBLISH_TOKEN")
+    return text.replace(token, "***") if token else text
+
+
 def classify_failure(exc: BaseException) -> tuple[str, bool]:
     """Classify a release failure the way scripts/publish-verified-main.py
     classifies git push failures: a message safe to print (never the raw
     response body, which could contain incidental token fragments or other
     authority text) plus whether it's a permanent, non-retryable failure."""
     if isinstance(exc, urllib.error.HTTPError):
-        status = exc.code
-        if status in (401, 403):
-            return (
-                "GitHub rejected the publish token (401/403); verify GH_PUBLISH_TOKEN scope and repository access",
-                True,
-            )
-        if status == 404:
-            return ("GitHub reported the release repository or endpoint does not exist", True)
-        if status == 422:
-            return ("GitHub rejected the request as unprocessable (422); check tag/asset naming for a collision", True)
-        if status in (502, 503, 504):
-            return (f"GitHub API returned a transient server error ({status})", False)
-        return (f"GitHub API returned an unclassified HTTP {status} error", False)
+        message, permanent = _classify_http(exc.code)
+        detail = error_detail(exc)
+        return (f"{message}: {detail}" if detail else message, permanent)
     if isinstance(exc, (urllib.error.URLError, TimeoutError, ConnectionError)):
         return ("GitHub API transport failed (connection, DNS, or timeout)", False)
     return (f"unclassified release failure: {type(exc).__name__}", False)
+
+
+def _classify_http(status: int) -> tuple[str, bool]:
+    if status in (401, 403):
+        return (
+            "GitHub rejected the publish token (401/403); verify GH_PUBLISH_TOKEN scope and repository access",
+            True,
+        )
+    if status == 404:
+        return ("GitHub reported the release repository or endpoint does not exist", True)
+    if status == 422:
+        return ("GitHub rejected the request as unprocessable (422); check tag/asset naming for a collision", True)
+    if status in (502, 503, 504):
+        return (f"GitHub API returned a transient server error ({status})", False)
+    return (f"GitHub API returned an unclassified HTTP {status} error", False)
 
 
 COMMUNITY_CATALOG_ASSETS = ("community-catalog.json", "community-catalog.json.sig", "tend-catalog-pubkey")

@@ -28,6 +28,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -234,7 +235,23 @@ def _sync_assets(rel: dict, paths: list[Path], *, api_fn) -> None:
         api_fn(f"{upload_url}?name={path.name}", method="POST", binary=path.read_bytes())
 
 
-def publish(directory: Path, version: str, revision: str, *, api_fn=release.api) -> dict:
+def wait_for_commit(revision: str, *, api_fn, attempts: int = 30, delay: float = 20.0, sleep=time.sleep) -> None:
+    """The release tag is created on `revision`, which only exists on GitHub once the mirror job has pushed
+    main. A dispatch right after a push can get ahead of it; GitHub then answers 422 on the release create."""
+    for attempt in range(attempts):
+        try:
+            api_fn(f"/commits/{revision}")
+            return
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (404, 422):
+                raise
+        if attempt + 1 < attempts:
+            print(f"commit {revision[:12]} is not on GitHub yet; waiting ({attempt + 1}/{attempts})")
+            sleep(delay)
+    raise IpmetaError(f"commit {revision[:12]} never appeared on GitHub; the mirror job has not published it")
+
+
+def publish(directory: Path, version: str, revision: str, *, api_fn=release.api, sleep=time.sleep) -> dict:
     if not VERSION_RE.fullmatch(version):
         raise IpmetaError(f"version {version!r} is not YYYY.MM")
     if not re.fullmatch(r"[0-9a-f]{40}", revision):
@@ -246,6 +263,7 @@ def publish(directory: Path, version: str, revision: str, *, api_fn=release.api)
     if SIGNATURE not in names or MANIFEST not in names:
         raise IpmetaError("manifest.json and manifest.json.sig must both exist")
     paths = [directory / n for n in names]
+    wait_for_commit(revision, api_fn=api_fn, sleep=sleep)
     # The immutable versioned release first, then the moving alias, so the alias never points at a
     # version whose own release does not exist. Inside the alias the data files are replaced before the
     # manifest: a panel that reads in between sees a checksum mismatch, keeps its data and tries later.
@@ -323,7 +341,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except urllib.error.URLError as exc:
         message, _ = release.classify_failure(exc)
-        print(f"error: {message}", file=sys.stderr)
+        where = f" [{exc.code} {exc.url.split('?')[0]}]" if isinstance(exc, urllib.error.HTTPError) else ""
+        print(f"error: {message}{where}", file=sys.stderr)
         return 1
     return 0
 

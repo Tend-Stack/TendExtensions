@@ -159,6 +159,7 @@ def test_publish_creates_the_versioned_release_then_moves_the_alias(tmp_path: Pa
     (d / "manifest.json").write_bytes(raw)
     (d / "manifest.json.sig").write_bytes(ip.sign_manifest(raw, seed))
     calls: list[tuple[str, str]] = []
+    created_payloads: list[dict] = []
     releases: dict[str, dict] = {
         "ipmeta-latest": {"id": 7, "upload_url": "https://uploads.github.com/repos/Tend-Stack/TendExtensions/releases/7/assets{?name}",
                           "assets": [{"name": "city.mmdb", "id": 70}, {"name": "old.bin", "id": 71}]}
@@ -166,6 +167,8 @@ def test_publish_creates_the_versioned_release_then_moves_the_alias(tmp_path: Pa
 
     def fake(path: str, *, method: str = "GET", payload=None, binary=None):
         calls.append((method, path))
+        if method == "GET" and path.startswith("/commits/"):
+            return {}
         if method == "GET":
             tag = path.rsplit("/", 1)[1]
             if tag in releases:
@@ -174,6 +177,7 @@ def test_publish_creates_the_versioned_release_then_moves_the_alias(tmp_path: Pa
         if method == "POST" and path == "/releases":
             releases[payload["tag_name"]] = {"id": 5, "upload_url": "https://uploads.github.com/repos/Tend-Stack/TendExtensions/releases/5/assets{?name}", "assets": []}
             assert payload["target_commitish"] == REVISION_A
+            created_payloads.append(payload)
             return releases[payload["tag_name"]]
         return {}
 
@@ -182,6 +186,11 @@ def test_publish_creates_the_versioned_release_then_moves_the_alias(tmp_path: Pa
     uploads = [p.split("name=")[1] for m, p in calls if m == "POST" and p.startswith("https://uploads")]
     # per release: data files, then the signature, the manifest last
     assert uploads == ["country.mmdb", "asn.mmdb", "city.mmdb", "manifest.json.sig", "manifest.json"] * 2
+    # the request GitHub sees: exactly these keys, a 40-hex sha as target, string make_latest, short body
+    assert [sorted(p) for p in created_payloads] == [sorted(["tag_name", "target_commitish", "name", "body", "draft", "prerelease", "make_latest"])]
+    p = created_payloads[0]
+    assert p["tag_name"] == "ipmeta-2026.10" and re.fullmatch(r"[0-9a-f]{40}", p["target_commitish"])
+    assert p["draft"] is False and p["prerelease"] is False and p["make_latest"] == "false" and len(p["body"]) < 1000
     created = [i for i, (m, p) in enumerate(calls) if (m, p) == ("POST", "/releases")]
     assert len(created) == 1 and created[0] < calls.index(("DELETE", "/releases/assets/70"))
     assert ("DELETE", "/releases/assets/71") in calls  # stale asset dropped from the alias
@@ -233,3 +242,28 @@ def test_workflow_publishes_only_when_not_dry() -> None:
     t = _text()
     block = t[t.index("Create or update the GitHub releases") :]
     assert "env.DRY_RUN == 'false'" in block.split("run:")[0]
+
+
+def test_publish_waits_for_the_mirrored_commit_then_gives_up(tmp_path: Path) -> None:
+    d = _dir(tmp_path)
+    raw = ip.build_manifest(d, "2026.10", published_at="t", attribution="a")
+    (d / "manifest.json").write_bytes(raw)
+    (d / "manifest.json.sig").write_bytes(b"x" * 64)
+    waits: list[float] = []
+
+    def missing(path: str, **kw):
+        raise urllib.error.HTTPError(path, 422, "no", {}, None)
+
+    with pytest.raises(ip.IpmetaError, match="never appeared"):
+        ip.publish(d, "2026.10", REVISION_A, api_fn=missing, sleep=waits.append)
+    assert len(waits) == 29
+
+
+def test_error_detail_reports_message_and_errors_but_never_the_token(monkeypatch) -> None:
+    from tools import release
+
+    monkeypatch.setenv("GH_PUBLISH_TOKEN", "s3cret-token")
+    body = json.dumps({"message": "Validation Failed s3cret-token", "errors": [{"resource": "Release", "code": "invalid", "field": "target_commitish"}]})
+    exc = urllib.error.HTTPError("https://api.github.com/repos/x/releases", 422, "x", {}, io.BytesIO(body.encode()))
+    text, permanent = release.classify_failure(exc)
+    assert "Validation Failed ***" in text and "Release/target_commitish/invalid" in text and "s3cret" not in text and permanent
