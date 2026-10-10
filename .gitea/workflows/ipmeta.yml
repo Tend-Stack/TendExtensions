@@ -49,8 +49,9 @@ jobs:
       # makes the run refuse before it downloads anything, so an unpinned schedule fails loudly.
       PINNED_CORE_COMMIT: "25c8ce1129f2b65e18d0fab11a331544371e8af4"
       CORE_COMMIT_INPUT: ${{ gitea.event.inputs.core_commit }}
-      # Publish only on the schedule, or on a dispatch that said dry_run false.
-      DRY_RUN: ${{ gitea.event_name == 'schedule' && 'false' || (gitea.event.inputs.dry_run == 'false' && 'false' || 'true') }}
+      # Publish only on the schedule, or on a dispatch that said dry_run false. A boolean input
+      # arrives as a boolean or as the string 'false' depending on how it was dispatched: accept both.
+      DRY_RUN: ${{ gitea.event_name == 'schedule' && 'false' || ((gitea.event.inputs.dry_run == false || gitea.event.inputs.dry_run == 'false') && 'false' || 'true') }}
       GITEA_REF: ${{ gitea.ref }}
       GITEA_SHA: ${{ gitea.sha }}
       # The pinned registry key (internal/api/extensions_registry_fetch.go registryPublicKeyB64). The
