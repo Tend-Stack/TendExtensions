@@ -234,6 +234,7 @@ tools/
     import_approved.py           import pull requests the Tend Review App approved (Gitea, scheduled)
     mcp_window.py                derive the MCP runtime's core window, version and sequence from a core checkout
     mcp_release.py               publish mcp-runtime-<version> and move the mcp-runtime-latest alias
+    ipmeta_release.py            fetch, manifest, sign and publish the ipmeta-<YYYY.MM> data release
     requirements.txt             the dependencies are `cryptography` and `Pillow`
 
 tests/                           tooling tests (reproducible builds, integrity, signing, panel validation)
@@ -242,6 +243,7 @@ scripts/publish-verified-main.py publishes the exact verified commit to this rep
 .gitea/workflows/import-approved.yml  every 10 minutes: import approved community pull requests
 .github/workflows/validate-pr.yml     public pull-request checks (GitHub-hosted, no secrets, read-only token)
 .gitea/workflows/mcp-runtime.yml build, sign and publish the optional MCP component runtime
+.gitea/workflows/ipmeta.yml      monthly: sign and publish the offline IP data (docs/ipmeta.md)
 docs/icons.md                    the glyph rules and drawing guide (the one canonical icon page)
 docs/themes.md                   how to build and publish a theme pack
 docs/recipes.md                  the recipe rulebook, and how the signed community catalog is published

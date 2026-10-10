@@ -34,6 +34,9 @@ _HEX40_RE = re.compile(r"[0-9a-f]{40}")
 
 ApiFn = Callable[..., Any]
 
+# Seconds per REST call; tools/ipmeta_release.py raises it for the large offline IP data files.
+API_TIMEOUT = 120
+
 
 class ReleaseError(Exception):
     """A permanent (non-retryable) failure. The message is safe to print —
@@ -80,7 +83,7 @@ def api(path: str, *, method: str = "GET", payload: dict | None = None, binary: 
             "Content-Type": "application/octet-stream" if binary is not None else "application/json",
         },
     )
-    with _OPENER.open(request, timeout=120) as response:
+    with _OPENER.open(request, timeout=API_TIMEOUT) as response:
         body = response.read()
         return json.loads(body) if body else {}
 

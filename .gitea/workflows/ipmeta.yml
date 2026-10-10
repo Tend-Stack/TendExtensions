@@ -1,0 +1,175 @@
+name: Publish the offline IP data
+
+# Monthly: download the DB-IP Lite country, ASN and city databases (CC BY 4.0), run the panel's own
+# publish check against the very bytes about to be signed, write manifest.json, sign it with the
+# registry key and publish the GitHub releases `ipmeta-YYYY.MM` and the moving `ipmeta-latest`.
+# Panels download from `ipmeta-latest` and trust it only if the signature verifies against the pinned
+# registry key. See docs/ipmeta.md.
+#
+# Manual runs are dry by default: everything runs except the publish, and the manifest is printed.
+# Run one with
+#
+#   POST /api/v1/repos/Rubirosa/TendExtensions/actions/workflows/ipmeta.yml/dispatches
+#   {"ref": "main", "inputs": {"dry_run": "true"}}
+#
+# A scheduled run always publishes. Dispatch with dry_run "false" to publish by hand.
+#
+# The panel core is the one source of truth for the field names, the sanity answers and the manifest
+# shape, so the check is built from a pinned core commit exactly as mcp-runtime.yml builds the runtime:
+# the commit is a pin in this file (CORE_COMMIT) or a dispatch input, never "whatever main is today".
+
+concurrency:
+  group: ipmeta
+  cancel-in-progress: false
+
+on:
+  schedule:
+    - cron: "0 4 3 * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Download, check, sign and verify; print the manifest; publish nothing"
+        type: boolean
+        default: true
+      core_commit:
+        description: "Full 40-hex commit on Rubirosa/tend.host to build tend-ipmeta-check from. Empty: the pin in this file"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Check, sign and publish the IP data
+    runs-on: tend-ci
+    timeout-minutes: 90
+    env:
+      # Pin to a core commit that contains cmd/tend-ipmeta-check (the SI5 merge). The all-zero value
+      # makes the run refuse before it downloads anything, so an unpinned schedule fails loudly.
+      PINNED_CORE_COMMIT: "0000000000000000000000000000000000000000"
+      CORE_COMMIT_INPUT: ${{ gitea.event.inputs.core_commit }}
+      # Publish only on the schedule, or on a dispatch that said dry_run false.
+      DRY_RUN: ${{ gitea.event_name == 'schedule' && 'false' || (gitea.event.inputs.dry_run == 'false' && 'false' || 'true') }}
+      GITEA_REF: ${{ gitea.ref }}
+      GITEA_SHA: ${{ gitea.sha }}
+      # The pinned registry key (internal/api/extensions_registry_fetch.go registryPublicKeyB64). The
+      # signature is verified against it before anything is published, so a wrong secret fails here.
+      REGISTRY_PUBLIC_KEY_B64: yi68zm6gAuttvyH9TUyo/oiC002cCzgrGHbjp8BdxOA=
+    steps:
+      - name: Resolve and validate the core commit
+        run: |
+          set -euo pipefail
+          CORE_COMMIT="${CORE_COMMIT_INPUT:-$PINNED_CORE_COMMIT}"
+          echo "$CORE_COMMIT" | grep -Eq '^[0-9a-f]{40}$' \
+            || { echo "core_commit must be a full lowercase 40-hex commit sha" >&2; exit 1; }
+          test "$CORE_COMMIT" != "0000000000000000000000000000000000000000" \
+            || { echo "PINNED_CORE_COMMIT is not set: pin a core commit with cmd/tend-ipmeta-check, or dispatch with core_commit" >&2; exit 1; }
+          echo "CORE_COMMIT=$CORE_COMMIT" >> "$GITHUB_ENV"
+          echo "dry run: $DRY_RUN"
+
+      # The release tags are created on this commit and must exist on GitHub, which mirrors only main
+      # (scripts/publish-verified-main.py).
+      - name: Refuse to publish from anything but main
+        run: |
+          test "$GITEA_REF" = "refs/heads/main" \
+            || { echo "this workflow runs only from main, got '$GITEA_REF'" >&2; exit 1; }
+
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@v7
+        with:
+          ref: ${{ gitea.sha }}
+          persist-credentials: false
+
+      # Read-only on the core repository: the check is built from it and nothing is written back.
+      - name: Check out the panel core at the pinned commit
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@v7
+        with:
+          repository: Rubirosa/tend.host
+          ref: ${{ env.CORE_COMMIT }}
+          path: core
+          fetch-depth: 0
+          token: ${{ secrets.CORE_REPOSITORY_TOKEN }}
+          persist-credentials: false
+
+      - name: Verify the core checkout is the commit that was named
+        run: test "$(git -C core rev-parse HEAD)" = "$CORE_COMMIT"
+
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+
+      # Private virtualenv per job: the runner's tool-cache site-packages is shared by every job on
+      # tend-ci across three repositories.
+      - run: python -m venv "$RUNNER_TEMP/venv"
+      - name: Install registry tooling dependencies
+        run: $RUNNER_TEMP/venv/bin/python -m pip install -r tools/requirements.txt
+
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.sum
+
+      # No secret in this step or the next two: downloading and checking carry no authority.
+      - name: Download the DB-IP Lite databases (current month, else the previous one)
+        run: |
+          set -euo pipefail
+          DIR="$RUNNER_TEMP/ipmeta"
+          rm -rf "$DIR"
+          $RUNNER_TEMP/venv/bin/python -m tools.ipmeta_release fetch --out "$DIR" --version-out "$RUNNER_TEMP/ipmeta-version"
+          echo "IPMETA_VERSION=$(cat "$RUNNER_TEMP/ipmeta-version")" >> "$GITHUB_ENV"
+
+      # The panel's own check: record field names, the two sanity answers (1.1.1.1 is AS13335, 8.8.8.8
+      # is in US) and the organisation recorded for every hosting ASN. Nothing is signed if it fails.
+      - name: Run tend-ipmeta-check on the downloaded files
+        run: |
+          set -euo pipefail
+          DIR="$RUNNER_TEMP/ipmeta"
+          ( cd core && go run ./cmd/tend-ipmeta-check -version "$IPMETA_VERSION" "$DIR" ) | tee "$RUNNER_TEMP/ipmeta-check.txt"
+          # The attribution string comes from the check, i.e. from the constant of the core it was built from.
+          ATTRIBUTION="$($RUNNER_TEMP/venv/bin/python -c 'import json,sys; print(json.loads(sys.stdin.readline())["attribution"])' < "$RUNNER_TEMP/ipmeta-check.txt")"
+          test -n "$ATTRIBUTION"
+          echo "IPMETA_ATTRIBUTION=$ATTRIBUTION" >> "$GITHUB_ENV"
+
+      - name: Write manifest.json
+        run: |
+          set -euo pipefail
+          $RUNNER_TEMP/venv/bin/python -m tools.ipmeta_release manifest \
+            --dir "$RUNNER_TEMP/ipmeta" --version "$IPMETA_VERSION" --attribution "$IPMETA_ATTRIBUTION"
+
+      # The only step the signing secret reaches. It is read from the environment by the signer, never
+      # written to a file, never echoed. The signature is then verified against the pinned registry key
+      # and against the files, exactly as a panel does, before anything is published.
+      - name: Sign the manifest with the registry key and verify it
+        env:
+          TEND_REGISTRY_SIGNING_KEY: ${{ secrets.TEND_REGISTRY_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${TEND_REGISTRY_SIGNING_KEY:-}" \
+            || { echo "TEND_REGISTRY_SIGNING_KEY is not set on this repository" >&2; exit 1; }
+          $RUNNER_TEMP/venv/bin/python -m tools.ipmeta_release sign --dir "$RUNNER_TEMP/ipmeta"
+          $RUNNER_TEMP/venv/bin/python -m tools.ipmeta_release verify \
+            --dir "$RUNNER_TEMP/ipmeta" --public-key "$REGISTRY_PUBLIC_KEY_B64"
+
+      - name: Report the release
+        run: |
+          cd "$RUNNER_TEMP/ipmeta"
+          echo "release ipmeta-$IPMETA_VERSION (dry run: $DRY_RUN)"
+          sha256sum *.mmdb manifest.json manifest.json.sig
+          echo "--- manifest.json"
+          cat manifest.json
+
+      # The immutable ipmeta-<version> release first, then the moving ipmeta-latest assets.
+      - name: Create or update the GitHub releases
+        if: ${{ env.DRY_RUN == 'false' }}
+        env:
+          GH_PUBLISH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          $RUNNER_TEMP/venv/bin/python -m tools.ipmeta_release publish \
+            --dir "$RUNNER_TEMP/ipmeta" --version "$IPMETA_VERSION" --revision "$GITEA_SHA"
+
+      - name: Remove the downloaded databases
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ipmeta" "$RUNNER_TEMP/ipmeta-version" "$RUNNER_TEMP/ipmeta-check.txt"
