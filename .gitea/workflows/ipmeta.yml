@@ -47,7 +47,7 @@ jobs:
     env:
       # Pin to a core commit that contains cmd/tend-ipmeta-check (the SI5 merge). The all-zero value
       # makes the run refuse before it downloads anything, so an unpinned schedule fails loudly.
-      PINNED_CORE_COMMIT: "0000000000000000000000000000000000000000"
+      PINNED_CORE_COMMIT: "25c8ce1129f2b65e18d0fab11a331544371e8af4"
       CORE_COMMIT_INPUT: ${{ gitea.event.inputs.core_commit }}
       # Publish only on the schedule, or on a dispatch that said dry_run false.
       DRY_RUN: ${{ gitea.event_name == 'schedule' && 'false' || (gitea.event.inputs.dry_run == 'false' && 'false' || 'true') }}
