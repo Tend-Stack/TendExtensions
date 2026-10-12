@@ -55,6 +55,14 @@ on:
         type: boolean
         default: false
 
+# One publish at a time. A core push now dispatches whenever the published window
+# does not cover its VERSION, so two pushes inside one build can dispatch twice;
+# queued, the second run sees the alias already covering that version and refuses
+# instead of racing the first to the next sequence.
+concurrency:
+  group: mcp-runtime
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
