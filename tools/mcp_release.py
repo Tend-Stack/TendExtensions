@@ -13,11 +13,15 @@ importable rather than duplicated:
         --dry-run-out OUT [--alias-envelope current-alias.json]
 
 Tag and release name: `mcp-runtime-<version>`, on the published main sha. Assets,
-all five required and named exactly:
+all six required and named exactly:
 
     runtime-linux-amd64.json   runtime-linux-arm64.json   the signed envelopes
     service-linux-amd64.zip    service-linux-arm64.zip    the worker images
     tend-mcp-ui.zip                                       the browser package
+    runtime-inputs.json                                   the inputs digest this runtime
+                                                          was built from (the core's
+                                                          `inputs.Published` shape); the next
+                                                          core push compares against it
 
 Those names are not this tool's choice: a panel builds its download URLs from
 them (`internal/mcp/distribution.assetName` in the panel core), so an asset
@@ -39,11 +43,16 @@ release nobody may quietly change:
     one mistake that produces a release which looks valid and can never install.
 
 Besides the version release it publishes the alias release `mcp-runtime-latest`,
-whose assets are the same five bytes. The alias is what a panel may pin instead of
+whose assets are the same six files. The alias is what a panel may pin instead of
 a version, so that a new runtime needs no source change in the core — and it is
 the one release here whose assets are *meant* to change, which is why it is
 guarded differently: the alias only ever moves forward, proved by the sequence in
 the envelope it currently serves, and never by a flag.
+
+After both releases exist, `--update-component FILE` rewrites the release fields of
+the registry listing `components/host.tend.mcp.json` from the uploaded bytes (envelope
+digests, version, window, inputs digest) and touches no network; the workflow then
+commits the file to main, which builds registry v1.2 (see docs/mcp-runtime.md).
 
 It touches two releases and nothing else: the version tag it was given, the alias
 tag, those releases' own assets, and no other endpoint. It never prints a token,
@@ -69,18 +78,27 @@ from tools.mcp_window import (
     check_sequence_increases,
     sequence_of,
 )
+from tools.component_listing import (
+    COMPONENT_ID,
+    PLATFORMS,
+    RELEASE_TAG_PREFIX,
+    ComponentError,
+    validate_component,
+    window_note,
+)
 from tools.release import ReleaseError, api, classify_failure, fetch_public_asset
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# The five published assets, in upload order. Envelopes last is deliberate: the
+# The six published assets, in upload order. Envelopes last is deliberate: the
 # envelope is what a panel reads first, so an interrupted publish leaves a
 # release whose metadata is absent rather than one whose metadata names artifacts
 # that are not there yet.
 SERVICE_ASSETS = ("service-linux-amd64.zip", "service-linux-arm64.zip")
 UI_ASSET = "tend-mcp-ui.zip"
+INPUTS_ASSET = "runtime-inputs.json"
 ENVELOPE_ASSETS = ("runtime-linux-amd64.json", "runtime-linux-arm64.json")
-ASSET_NAMES = SERVICE_ASSETS + (UI_ASSET,) + ENVELOPE_ASSETS
+ASSET_NAMES = SERVICE_ASSETS + (UI_ASSET, INPUTS_ASSET) + ENVELOPE_ASSETS
 
 _VERSION_RE = re.compile(r"^(?:0|[1-9][0-9]{0,5})\.(?:0|[1-9][0-9]{0,5})\.(?:0|[1-9][0-9]{0,5})$")
 _HEX40_RE = re.compile(r"[0-9a-f]{40}")
@@ -119,7 +137,7 @@ def digest_of(data: bytes) -> str:
 
 
 def collect_assets(dist_dir: Path) -> dict[str, bytes]:
-    """Read the five assets, refusing a partial build rather than publishing one.
+    """Read the six assets, refusing a partial build rather than publishing one.
 
     A release with four of five assets is worse than no release: a panel that
     finds the envelope and not the image fails at install time, after it has
@@ -139,7 +157,7 @@ def collect_assets(dist_dir: Path) -> dict[str, bytes]:
     if missing:
         raise ReleaseError(
             f"missing expected asset(s) in {dist_dir}: {missing} "
-            "— run core/scripts/mcp-runtime-release.sh first"
+            "— run core/scripts/mcp-runtime-release.sh and tools.mcp_window first"
         )
     return assets
 
@@ -198,6 +216,41 @@ def check_envelopes(assets: dict[str, bytes], version: str) -> None:
                     f"{envelope_name} signs a {field} that is not the digest of {described} "
                     "— the envelopes were signed against a different build"
                 )
+    check_inputs(assets)
+
+
+def inputs_record(body: bytes) -> dict[str, Any]:
+    """The parsed `runtime-inputs.json`, refused unless it is the shape the core reads."""
+    try:
+        record = json.loads(body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise ReleaseError(f"{INPUTS_ASSET} is not JSON") from exc
+    if not isinstance(record, dict) or record.get("schema") != 1:
+        raise ReleaseError(f"{INPUTS_ASSET} is not a schema 1 object")
+    if not isinstance(record.get("inputs_digest"), str) or not _DIGEST_RE.match(record["inputs_digest"]):
+        raise ReleaseError(f"{INPUTS_ASSET} has no valid inputs_digest")
+    if not isinstance(record.get("core_commit"), str) or not _HEX40_RE.fullmatch(record["core_commit"]):
+        raise ReleaseError(f"{INPUTS_ASSET} has no valid core_commit")
+    capabilities = record.get("capabilities")
+    if not isinstance(capabilities, list) or not all(isinstance(item, str) for item in capabilities):
+        raise ReleaseError(f"{INPUTS_ASSET} has no capabilities list")
+    return record
+
+
+def check_inputs(assets: dict[str, bytes]) -> dict[str, Any]:
+    """Refuse an inputs record that describes a different runtime than the envelopes sign.
+
+    The record is what the next core push is compared against, so one recorded for other
+    capabilities would make the dispatcher skip (or force) a publish for the wrong reason."""
+    record = inputs_record(assets[INPUTS_ASSET])
+    for name in ENVELOPE_ASSETS:
+        signed = envelope_payload(assets[name], name).get("capabilities")
+        if not isinstance(signed, list) or sorted(signed) != sorted(record["capabilities"]):
+            raise ReleaseError(
+                f"{INPUTS_ASSET} records different capabilities than {name} signs "
+                "— the inputs were fingerprinted from a different build"
+            )
+    return record
 
 
 def _plain_fetch(url: str) -> bytes:
@@ -497,6 +550,71 @@ def sync_alias_release(
     }
 
 
+def component_listing(assets: dict[str, bytes], version: str, base: dict[str, Any]) -> dict[str, Any]:
+    """The registry listing for this publish: `base` (id, name, description) with every release
+    field taken from the bytes that were signed and uploaded.
+
+    The envelope digests are those of the files in `assets`, which `sync_*` verified are what is
+    published, so the badge and the install name the same bytes. Both platforms must sign the
+    same version, sequence and window: a listing has one of each."""
+    payloads = [envelope_payload(assets[name], name) for name in ENVELOPE_ASSETS]
+    first = payloads[0]
+    for payload in payloads[1:]:
+        for field in ("version", "sequence", "min_core_version", "max_core_version"):
+            if payload.get(field) != first.get(field):
+                raise ReleaseError(f"the two envelopes disagree on {field}")
+    if first.get("version") != version:
+        raise ReleaseError(f"the envelopes sign version {first.get('version')!r}, not {version!r}")
+    record = inputs_record(assets[INPUTS_ASSET])
+    listing = {
+        "id": COMPONENT_ID,
+        "name": base.get("name"),
+        "description": base.get("description"),
+        "version": version,
+        "release_tag": RELEASE_TAG_PREFIX + version,
+        "sequence": first.get("sequence"),
+        "min_core_version": first.get("min_core_version"),
+        "max_core_version": first.get("max_core_version"),
+        "envelopes": {
+            platform: digest_of(assets[name]) for platform, name in zip(PLATFORMS, ENVELOPE_ASSETS)
+        },
+        "inputs_digest": record["inputs_digest"],
+        "core_commit": record["core_commit"],
+        "release_notes": [
+            f"Runtime {version}.",
+            window_note(str(first.get("min_core_version")), str(first.get("max_core_version"))),
+        ],
+    }
+    try:
+        return validate_component(listing)
+    except ComponentError as exc:
+        raise ReleaseError(f"the component listing would be invalid: {exc}") from exc
+
+
+def update_component_file(dist_dir: Path, version: str, path: Path) -> bool:
+    """Rewrite `path` (components/host.tend.mcp.json) for `version`; True when its bytes changed.
+
+    Reads the dist directory only, no network. The existing file supplies the display fields, so a
+    reviewed edit to the name or description survives every publish."""
+    if not _VERSION_RE.match(version):
+        raise ReleaseError(f"version must be x.y.z, got {version!r}")
+    assets = collect_assets(dist_dir)
+    check_envelopes(assets, version)
+    try:
+        base = json.loads(path.read_text(encoding="utf-8"))
+        validate_component(base)
+    except OSError as exc:
+        raise ReleaseError(f"cannot read {path}: {type(exc).__name__}") from None
+    except (ValueError, ComponentError) as exc:
+        raise ReleaseError(f"{path} is not a valid component listing: {exc}") from None
+    listing = component_listing(assets, version, base)
+    text = json.dumps(listing, indent=2, ensure_ascii=False) + "\n"
+    if path.read_text(encoding="utf-8") == text:
+        return False
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
 def dry_run(
     dist_dir: Path,
     version: str,
@@ -625,8 +743,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--version", required=True)
-    parser.add_argument("--revision", required=True, help="the published main sha to tag")
+    parser.add_argument("--revision", default=None, help="the published main sha to tag")
     parser.add_argument("--dist", type=Path, default=None, help="default <repo-root>/dist/mcp-runtime")
+    parser.add_argument(
+        "--update-component",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="only rewrite the registry listing FILE (components/host.tend.mcp.json) from --dist; no network",
+    )
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--retries", type=int, default=3)
     parser.add_argument(
@@ -656,6 +781,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     dist_dir = args.dist if args.dist is not None else args.repo_root / "dist" / "mcp-runtime"
+
+    if args.update_component is not None:
+        try:
+            changed = update_component_file(dist_dir, args.version, args.update_component)
+        except ReleaseError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print(f"{'updated' if changed else 'already current:'} {args.update_component} for {args.version}")
+        return 0
+    if args.revision is None:
+        parser.error("--revision is required")
 
     note_lines: list[str] = []
     if args.plan is not None:

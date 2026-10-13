@@ -84,7 +84,7 @@ def test_alias_tag_is_the_one_a_consumer_pins() -> None:
     assert ALIAS_TAG == "mcp-runtime-latest"
 
 
-def test_alias_is_created_and_carries_all_five_assets(tmp_path: Path) -> None:
+def test_alias_is_created_and_carries_all_six_assets(tmp_path: Path) -> None:
     bodies = write_release_dir(tmp_path)
     fake = FakeAliasAPI(None)
 
@@ -92,7 +92,7 @@ def test_alias_is_created_and_carries_all_five_assets(tmp_path: Path) -> None:
 
     assert result["tag"] == ALIAS_TAG
     assert result["created"] is True
-    assert (result["uploaded"], result["replaced"], result["kept"]) == (5, 0, 0)
+    assert (result["uploaded"], result["replaced"], result["kept"]) == (6, 0, 0)
     assert result["previous_sequence"] == 0
     assert result["sequence"] == mcp_window.sequence_of(VERSION)
     # Envelopes last, as in a version release: a half-moved alias must look like
@@ -109,7 +109,7 @@ def test_alias_replaces_the_assets_of_the_runtime_it_leaves_behind(tmp_path: Pat
     previous = write_release_dir(tmp_path / "previous", version="0.1.0")
     newer_dir = tmp_path / "newer"
     newer = write_release_dir(newer_dir, version="0.1.1", salt=b" rebuilt")
-    # The browser package did not change between the two builds.
+    # The browser package (and, with it, the recorded inputs) did not change between the two builds.
     (newer_dir / "tend-mcp-ui.zip").write_bytes(previous["tend-mcp-ui.zip"])
     newer = mcp_release.collect_assets(newer_dir)
     # ... and the envelopes still describe this build, digest for digest.
@@ -121,10 +121,12 @@ def test_alias_replaces_the_assets_of_the_runtime_it_leaves_behind(tmp_path: Pat
     )
 
     assert result["created"] is False
-    assert (result["kept"], result["replaced"], result["uploaded"]) == (1, 4, 0)
+    assert (result["kept"], result["replaced"], result["uploaded"]) == (2, 4, 0)
     assert result["previous_sequence"] == mcp_window.sequence_of("0.1.0")
     assert len(fake.deletes()) == 4
-    assert fake.uploads() == [n for n in mcp_release.ASSET_NAMES if n != "tend-mcp-ui.zip"]
+    assert fake.uploads() == [
+        n for n in mcp_release.ASSET_NAMES if n not in ("tend-mcp-ui.zip", "runtime-inputs.json")
+    ]
     assert fake.uploads()[-2:] == list(mcp_release.ENVELOPE_ASSETS)
     # The body is re-described for the runtime the alias now serves.
     assert ("PATCH", "/releases/9") in fake.calls
@@ -235,7 +237,7 @@ def test_alias_retry_rereads_after_ambiguous_delete_without_resigning_or_overwri
     )
     assert result is not None and sleeps == [2]
     assert fake.calls.count(("GET", f"/releases/tags/{ALIAS_TAG}")) == 2
-    assert public_bytes == newer and len(fake.release["assets"]) == 5
+    assert public_bytes == newer and len(fake.release["assets"]) == 6
     assert not any(TAG in path for _, path in fake.calls)
 
 

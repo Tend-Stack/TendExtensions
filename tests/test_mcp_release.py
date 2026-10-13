@@ -15,6 +15,7 @@ VERSION = "0.1.0"
 TAG = "mcp-runtime-0.1.0"
 UPLOAD_URL = "https://uploads.github.com/repos/Tend-Stack/TendExtensions/releases/7/assets{?name,label}"
 ROOT = Path(__file__).resolve().parents[1]
+CAPABILITIES = ["mcp.apps.summary.read", "mcp.deployments.status.read"]
 
 
 def _digest(data: bytes) -> str:
@@ -29,8 +30,9 @@ def write_release_dir(
     min_core: str = "0.6.0",
     max_core: str = "0.9.0",
     salt: bytes = b"",
+    inputs_capabilities: list[str] | None = None,
 ) -> dict[str, bytes]:
-    """Write the five assets a runtime release publishes.
+    """Write the six assets a runtime release publishes.
 
     The envelopes are shaped like the real ones (schema, key_id, payload,
     signature) but are not signed: nothing under test verifies a signature —
@@ -44,6 +46,15 @@ def write_release_dir(
         "service-linux-amd64.zip": b"amd64 worker image bytes" + salt,
         "service-linux-arm64.zip": b"arm64 worker image bytes" + salt,
         "tend-mcp-ui.zip": b"browser package bytes",
+        "runtime-inputs.json": json.dumps(
+            {
+                "schema": 1,
+                "inputs_digest": "d" * 64,
+                "core_commit": "c" * 40,
+                "core_version": "0.9.0",
+                "capabilities": inputs_capabilities or CAPABILITIES,
+            }
+        ).encode("utf-8"),
     }
     ui_digest = _digest(bodies["tend-mcp-ui.zip"])
     for architecture in ("amd64", "arm64"):
@@ -54,7 +65,7 @@ def write_release_dir(
             "platform": f"linux/{architecture}",
             "ui_sha256": ui_digest,
             "service_sha256": _digest(service),
-            "capabilities": ["mcp.apps.summary.read", "mcp.deployments.status.read"],
+            "capabilities": list(CAPABILITIES),
             # The window and the sequence the publisher derives rather than types:
             # the sequence is the one the panel derives from the version, because
             # the panel refuses any other value.
@@ -159,7 +170,7 @@ def test_key_id_refuses_anything_that_is_not_a_32_byte_key(bad: str) -> None:
 # ---------- the asset set ----------
 
 
-def test_collect_assets_requires_all_five(tmp_path: Path) -> None:
+def test_collect_assets_requires_all_six(tmp_path: Path) -> None:
     bodies = write_release_dir(tmp_path)
     (tmp_path / "tend-mcp-ui.zip").unlink()
     with pytest.raises(ReleaseError, match="missing expected asset"):
@@ -256,7 +267,7 @@ def _boom(url: str) -> bytes:
 # ---------- the whole publish ----------
 
 
-def test_sync_creates_the_release_and_uploads_five_assets(tmp_path: Path) -> None:
+def test_sync_creates_the_release_and_uploads_six_assets(tmp_path: Path) -> None:
     bodies = write_release_dir(tmp_path)
     fake = FakeAPI(None)
 
@@ -266,7 +277,7 @@ def test_sync_creates_the_release_and_uploads_five_assets(tmp_path: Path) -> Non
 
     assert result == {
         "tag": TAG, "version": VERSION, "revision": REVISION_A,
-        "created": True, "uploaded": 5, "replaced": 0, "kept": 0,
+        "created": True, "uploaded": 6, "replaced": 0, "kept": 0,
     }
     # Upload order is the contract: the envelope a panel reads first is written
     # last, so an interrupted publish has no metadata rather than metadata whose
@@ -285,7 +296,7 @@ def test_sync_is_a_no_op_when_everything_is_already_published(tmp_path: Path) ->
         tmp_path, VERSION, REVISION_A, api_fn=fake, fetch_fn=_fetch_from(bodies)
     )
 
-    assert result["kept"] == 5
+    assert result["kept"] == 6
     assert result["created"] is False
     assert fake.uploads() == []
     assert fake.deletes() == []
@@ -303,7 +314,7 @@ def test_sync_uploads_only_what_is_missing(tmp_path: Path) -> None:
     )
 
     assert result["kept"] == 2
-    assert result["uploaded"] == 3
+    assert result["uploaded"] == 4
     assert sorted(fake.uploads()) == sorted(set(mcp_release.ASSET_NAMES) - set(already))
     assert fake.deletes() == []
 
@@ -333,9 +344,9 @@ def test_sync_replaces_everything_under_overwrite(tmp_path: Path) -> None:
         tmp_path, VERSION, REVISION_A, overwrite=True, api_fn=fake, fetch_fn=_boom
     )
 
-    assert result["replaced"] == 5
+    assert result["replaced"] == 6
     assert result["kept"] == 0
-    assert len(fake.deletes()) == 5
+    assert len(fake.deletes()) == 6
     assert sorted(fake.uploads()) == sorted(mcp_release.ASSET_NAMES)
 
 
@@ -407,3 +418,94 @@ def test_publish_attempt_exhausts_socket_failures_and_never_reports_success(monk
     assert len(calls) == 3
     text = capsys.readouterr().err
     assert "exhausted 3" in text and "private-token" not in text
+
+
+# ---------- the inputs record and the component listing ----------
+
+
+def test_the_inputs_record_is_the_sixth_asset_and_uploads_before_the_envelopes() -> None:
+    assert mcp_release.INPUTS_ASSET == "runtime-inputs.json"
+    assert len(mcp_release.ASSET_NAMES) == 6
+    names = list(mcp_release.ASSET_NAMES)
+    assert names.index("runtime-inputs.json") < min(names.index(n) for n in mcp_release.ENVELOPE_ASSETS)
+
+
+def test_an_inputs_record_for_other_capabilities_is_refused(tmp_path: Path) -> None:
+    write_release_dir(tmp_path, inputs_capabilities=["mcp.apps.summary.read"])
+    with pytest.raises(ReleaseError, match="different capabilities"):
+        mcp_release.check_envelopes(mcp_release.collect_assets(tmp_path), VERSION)
+
+
+@pytest.mark.parametrize(
+    "record",
+    [b"not json", b'{"schema":2}', b'{"schema":1,"inputs_digest":"x"}'],
+)
+def test_a_malformed_inputs_record_is_refused(tmp_path: Path, record: bytes) -> None:
+    write_release_dir(tmp_path)
+    (tmp_path / "runtime-inputs.json").write_bytes(record)
+    with pytest.raises(ReleaseError, match="runtime-inputs.json"):
+        mcp_release.check_envelopes(mcp_release.collect_assets(tmp_path), VERSION)
+
+
+def _component_base(**overrides: object) -> dict:
+    base = json.loads((ROOT / "components" / "host.tend.mcp.json").read_text(encoding="utf-8"))
+    base.update(overrides)
+    return base
+
+
+def test_component_listing_names_the_uploaded_bytes(tmp_path: Path) -> None:
+    """After a publish the listing names exactly the uploaded envelope bytes and the recorded
+    inputs, keeps its reviewed display fields, and rewrites nothing on a retry."""
+    dist = tmp_path / "dist"
+    bodies = write_release_dir(dist, version="0.1.41", min_core="0.11.9", max_core="0.999999.999999")
+    target = tmp_path / "components" / "host.tend.mcp.json"
+    target.parent.mkdir()
+    base = _component_base(description="A reviewed description. Set it up in Settings → MCP.")
+    target.write_text(json.dumps(base), encoding="utf-8")
+
+    assert mcp_release.update_component_file(dist, "0.1.41", target) is True
+    listing = json.loads(target.read_text(encoding="utf-8"))
+    assert listing["version"] == "0.1.41" and listing["release_tag"] == "mcp-runtime-0.1.41"
+    assert listing["sequence"] == mcp_window.sequence_of("0.1.41")
+    assert (listing["min_core_version"], listing["max_core_version"]) == ("0.11.9", "0.999999.999999")
+    assert listing["envelopes"] == {
+        "linux/amd64": _digest(bodies["runtime-linux-amd64.json"]),
+        "linux/arm64": _digest(bodies["runtime-linux-arm64.json"]),
+    }
+    assert listing["inputs_digest"] == "d" * 64 and listing["core_commit"] == "c" * 40
+    assert listing["release_notes"] == ["Runtime 0.1.41.", "Needs Tend 0.11.9 or newer."]
+    assert (listing["id"], listing["name"], listing["description"]) == (
+        "host.tend.mcp",
+        base["name"],
+        "A reviewed description. Set it up in Settings → MCP.",
+    )
+    # The file is what the registry build accepts.
+    from tools import build
+
+    (tmp_path / "extensions").mkdir()
+    assert build.load_components(tmp_path) == [listing]
+    # Retried: converges without touching the file.
+    assert mcp_release.update_component_file(dist, "0.1.41", target) is False
+
+
+def test_the_component_cli_touches_no_network_and_needs_no_revision(tmp_path: Path, capsys) -> None:
+    dist = tmp_path / "dist"
+    write_release_dir(dist, version="0.1.41")
+    target = tmp_path / "host.tend.mcp.json"
+    target.write_text(json.dumps(_component_base()), encoding="utf-8")
+    code = mcp_release.main(["--version", "0.1.41", "--dist", str(dist), "--update-component", str(target)])
+    assert code == 0
+    assert "updated" in capsys.readouterr().out
+    assert json.loads(target.read_text(encoding="utf-8"))["version"] == "0.1.41"
+
+
+def test_the_component_is_refused_for_a_mismatched_or_invalid_release(tmp_path: Path) -> None:
+    dist = tmp_path / "dist"
+    write_release_dir(dist, version="0.1.41")
+    target = tmp_path / "host.tend.mcp.json"
+    target.write_text(json.dumps(_component_base()), encoding="utf-8")
+    with pytest.raises(ReleaseError, match="signs version"):
+        mcp_release.update_component_file(dist, "0.1.42", target)
+    target.write_text(json.dumps({"id": "host.tend.mcp"}), encoding="utf-8")
+    with pytest.raises(ReleaseError, match="not a valid component listing"):
+        mcp_release.update_component_file(dist, "0.1.41", target)

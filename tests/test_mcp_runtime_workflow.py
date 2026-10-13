@@ -125,3 +125,61 @@ def test_the_documented_dispatch_body_matches_the_workflow_file_name() -> None:
     assert "actions/workflows/mcp-runtime.yml/dispatches" in doc
     assert mcp_window.ALIAS_TAG in doc
     assert WORKFLOW.name == "mcp-runtime.yml"
+
+
+def _index(name: str) -> int:
+    names = [step.get("name", "") for step in _steps()]
+    return names.index(name)
+
+
+def test_inputs_asset_and_component_commit() -> None:
+    """The inputs record is derived beside the window and published as the sixth asset; the
+    registry listing is committed back to main only after the releases exist, with the one
+    token that can push there, and a missing token fails the run before anything is built."""
+    # The fingerprint runs the core's own tool, on a Go toolchain set up before it is used.
+    fingerprint = _script("go run ./cmd/tend-mcp-inputs")
+    assert "mcp-inputs.json" in fingerprint
+    uses_go = [i for i, step in enumerate(_steps()) if "setup-go" in str(step.get("uses", ""))]
+    assert uses_go and uses_go[0] < _index("Fingerprint the runtime inputs") < _index(
+        "Resolve the window, the version and the sequence"
+    )
+
+    resolve = _script("tools.mcp_window")
+    assert '--inputs "$RUNNER_TEMP/mcp-inputs.json"' in resolve
+    assert '--core-commit "$CORE_COMMIT"' in resolve
+    assert '--inputs-out "$RELEASE_DIR/runtime-inputs.json"' in resolve
+    assert "runtime-inputs.json" in _script("sha256sum")
+
+    # The token is required up front (not in a dry run) and says so plainly.
+    token_step = _steps()[_index("Require the commit-back token")]
+    assert token_step["if"].strip() == "${{ gitea.event.inputs.dry_run != 'true' }}"
+    assert "IMPORT_PUSH_TOKEN is not set" in token_step["run"]
+    assert _index("Require the commit-back token") < _index("Check out the panel core at the named commit")
+
+    # The commit-back comes after the publish, skips a dry run, and stages only the listing.
+    publish = _index("Create or update the release and move the alias")
+    checkout = _index("Check out main to record the release in the registry listing")
+    record = _index("Record the published release in components/host.tend.mcp.json and push it")
+    assert publish < checkout < record
+    for index in (checkout, record):
+        assert _steps()[index]["if"].strip() == "${{ gitea.event.inputs.dry_run != 'true' }}"
+    assert _steps()[checkout]["with"]["token"] == "${{ secrets.IMPORT_PUSH_TOKEN }}"
+    assert _steps()[checkout]["with"]["ref"] == "main"
+    script = _steps()[record]["run"]
+    assert '--update-component "$WORKSPACE/registry-main/$LISTING"' in script
+    assert 'git add -- "$LISTING"' in script
+    assert "git push origin HEAD:main" in script
+    assert "git add ." not in script and "git add -A" not in script
+
+    # The push token reaches exactly the two steps that need it.
+    with_token = [
+        step.get("name")
+        for step in _steps()
+        if "IMPORT_PUSH_TOKEN" in str(step.get("env", {})) + str(step.get("with", {}))
+    ]
+    assert with_token == [
+        "Require the commit-back token",
+        "Check out main to record the release in the registry listing",
+    ]
+    # ... and the job's own permissions stay read-only.
+    assert _workflow()["permissions"] == {"contents": "read"}

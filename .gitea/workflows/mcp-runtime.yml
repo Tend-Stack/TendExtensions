@@ -1,8 +1,11 @@
 name: Publish the Tend MCP runtime
 
 # Build, sign and publish one version of the optional `host.tend.mcp` component
-# runtime: the confined worker image for both platforms, the browser package, and
-# the two signed envelopes a panel verifies. See docs/mcp-runtime.md.
+# runtime: the confined worker image for both platforms, the browser package, the
+# two signed envelopes a panel verifies, and `runtime-inputs.json` (the inputs
+# digest this runtime was built from). Afterwards it records the release in the
+# registry listing `components/host.tend.mcp.json` on main, which builds registry
+# v1.2. See docs/mcp-runtime.md.
 #
 # Dispatch-triggered, and now dispatchable by a machine: the core's release
 # workflow calls
@@ -10,10 +13,12 @@ name: Publish the Tend MCP runtime
 #   POST /api/v1/repos/Rubirosa/TendExtensions/actions/workflows/mcp-runtime.yml/dispatches
 #   {"ref": "main", "inputs": {"core_commit": "<40-hex>"}}
 #
-# so a core release re-signs the runtime for its own version without a human
-# typing a compatibility window. What that removes is the failure this workflow
-# used to have: the window was typed by hand, so every core release above it
-# needed a re-sign somebody had to remember.
+# whenever the runtime inputs digest of a core push differs from the one recorded
+# beside the published release (cmd/tend-mcp-inputs; the dispatcher decides). The
+# window is derived, never typed: min from the core's compatibility file (or the
+# core VERSION when the capability list grew), max the open ceiling
+# `<major>.999999.999999`, because the worker's compatibility is decided by its
+# inputs, not by the core version.
 #
 # What it does not remove is the decision. A component runtime is the one thing
 # this registry publishes that a panel *executes*, so the run still refuses more
@@ -55,10 +60,10 @@ on:
         type: boolean
         default: false
 
-# One publish at a time. A core push now dispatches whenever the published window
-# does not cover its VERSION, so two pushes inside one build can dispatch twice;
-# queued, the second run sees the alias already covering that version and refuses
-# instead of racing the first to the next sequence.
+# One publish at a time. A core push dispatches whenever its runtime inputs digest
+# differs from the published one, so two pushes inside one build can dispatch twice;
+# queued, the second run sees the recorded digest already equal and refuses instead
+# of racing the first to the next sequence.
 concurrency:
   group: mcp-runtime
   cancel-in-progress: false
@@ -103,6 +108,18 @@ jobs:
               || { echo "max_core_version must be x.y.z, got '$MAX_CORE_OVERRIDE'" >&2; exit 1; }
           fi
 
+      # The listing commit-back below pushes to main with this token (a push made with
+      # the job's own token would not start ci.yml, the same reason import-approved.yml
+      # has it). Checked before anything is built or published so a missing secret
+      # fails the run here, not after a release exists with no listing to match it.
+      - name: Require the commit-back token
+        if: ${{ gitea.event.inputs.dry_run != 'true' }}
+        env:
+          IMPORT_PUSH_TOKEN: ${{ secrets.IMPORT_PUSH_TOKEN }}
+        run: |
+          test -n "${IMPORT_PUSH_TOKEN:-}" \
+            || { echo "IMPORT_PUSH_TOKEN is not set on this repository: the published release could not be recorded in components/host.tend.mcp.json" >&2; exit 1; }
+
       # The release is tagged on the registry commit this run checks out, and the
       # tag has to exist on GitHub. Only main is mirrored there
       # (scripts/publish-verified-main.py), so a dispatch from any other ref would
@@ -142,13 +159,29 @@ jobs:
       # itself needs nothing but the standard library.
       - run: python -m venv "$RUNNER_TEMP/venv"
 
+      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.sum
+
+      # What decides whether this publish changes anything: the digest of every file the
+      # runtime is built from, and its capability list. The core at core_commit must carry
+      # cmd/tend-mcp-inputs; an older commit fails here, before anything is built.
+      - name: Fingerprint the runtime inputs
+        run: |
+          set -euo pipefail
+          test -d core/cmd/tend-mcp-inputs \
+            || { echo "core_commit has no cmd/tend-mcp-inputs: dispatch a commit that carries the inputs digest" >&2; exit 1; }
+          ( cd core && go run ./cmd/tend-mcp-inputs --root . ) > "$RUNNER_TEMP/mcp-inputs.json"
+          cat "$RUNNER_TEMP/mcp-inputs.json"
+
       # Everything that used to be typed into the dispatch form, derived instead:
       # the compatibility window from the core checkout's VERSION and
       # RELEASE_COMPATIBILITY.json, the runtime version from the version the alias
       # serves, the sequence from that version. It refuses here — before the build
       # and long before the key is decoded — if the window is empty, if the
-      # sequence would not climb, or if this core commit is not a release above
-      # the one the alias already covers.
+      # sequence would not climb, or if the runtime inputs are the ones the alias
+      # was already built from. It also writes runtime-inputs.json, the sixth asset.
       - name: Resolve the window, the version and the sequence
         run: |
           set -euo pipefail
@@ -157,17 +190,14 @@ jobs:
           if [ -n "$REQUESTED_VERSION" ]; then ARGS+=(--runtime-version "$REQUESTED_VERSION"); fi
           if [ -n "$MAX_CORE_OVERRIDE" ]; then ARGS+=(--max-core-version "$MAX_CORE_OVERRIDE"); fi
           if [ "$FORCE" = "true" ]; then ARGS+=(--force); fi
+          ARGS+=(--inputs "$RUNNER_TEMP/mcp-inputs.json" --core-commit "$CORE_COMMIT"
+                 --inputs-out "$RELEASE_DIR/runtime-inputs.json")
           $RUNNER_TEMP/venv/bin/python -m tools.mcp_window "${ARGS[@]}"
 
       - name: Report what this run will publish
         run: |
           echo "runtime version: $RUNTIME_VERSION (sequence $RUNTIME_SEQUENCE)"
           echo "core window: $MIN_CORE_VERSION to $MAX_CORE_VERSION"
-
-      - uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@v5
-        with:
-          go-version-file: core/go.mod
-          cache-dependency-path: core/go.sum
 
       # No key in this step. Build and pack are reproducible and carry no
       # authority, so the signing secret is exposed to exactly one step below.
@@ -245,10 +275,10 @@ jobs:
           rm -f "$RUNNER_TEMP/tend-mcp.key"
           test ! -e "$RUNNER_TEMP/tend-mcp.key"
 
-      - name: Report the five assets and their digests
+      - name: Report the six assets and their digests
         run: |
           cd "$RELEASE_DIR"
-          sha256sum runtime-linux-amd64.json runtime-linux-arm64.json \
+          sha256sum runtime-linux-amd64.json runtime-linux-arm64.json runtime-inputs.json \
                     tend-mcp-ui.zip service-linux-amd64.zip service-linux-arm64.zip
 
       # The same decisions the publish makes, written to a directory and sent
@@ -277,6 +307,48 @@ jobs:
             ARGS+=(--overwrite)
           fi
           $RUNNER_TEMP/venv/bin/python -m tools.mcp_release "${ARGS[@]}"
+
+      # The registry listing follows the release, never the other way round: the
+      # version release and the alias exist (and carry the bytes the listing pins)
+      # before main names them. The push starts ci.yml, which builds and signs
+      # registry v1.2 with the new listing. Only components/host.tend.mcp.json is
+      # staged; a concurrent push to main is rebased over, not overwritten.
+      - name: Check out main to record the release in the registry listing
+        if: ${{ gitea.event.inputs.dry_run != 'true' }}
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@v7
+        with:
+          ref: main
+          path: registry-main
+          fetch-depth: 0
+          token: ${{ secrets.IMPORT_PUSH_TOKEN }}
+
+      - name: Record the published release in components/host.tend.mcp.json and push it
+        if: ${{ gitea.event.inputs.dry_run != 'true' }}
+        run: |
+          set -euo pipefail
+          LISTING=components/host.tend.mcp.json
+          $RUNNER_TEMP/venv/bin/python -m tools.mcp_release \
+            --version "$RUNTIME_VERSION" --dist "$RELEASE_DIR" \
+            --update-component "$WORKSPACE/registry-main/$LISTING"
+          cd registry-main
+          if git diff --quiet -- "$LISTING"; then
+            echo "$LISTING already lists $RUNTIME_VERSION"
+            exit 0
+          fi
+          git config user.name "Tend registry"
+          git config user.email "registry@tend.host"
+          git add -- "$LISTING"
+          git commit -m "chore(registry): list Tend MCP $RUNTIME_VERSION" \
+                     -m "Published by the mcp-runtime workflow from core $CORE_COMMIT."
+          for ATTEMPT in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "push attempt $ATTEMPT failed; rebasing over main" >&2
+            git pull --rebase origin main
+          done
+          echo "could not push the listing for $RUNTIME_VERSION; the release is published, re-run the listing step by hand" >&2
+          exit 1
 
       - uses: https://j.santanafam.com/Rubirosa/gh-actions-upload-artifact@v4
         with:

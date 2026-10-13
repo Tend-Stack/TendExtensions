@@ -16,22 +16,34 @@ The window rule (why it is derived and not typed)
 ------------------------------------------------
 A signed envelope carries `min_core_version` and `max_core_version`, and a panel
 refuses a runtime outside that window (`internal/mcp/release.checkCoreRange`).
-Typed by hand, the window goes stale the moment the core releases past it, and
-every core release above it needs a human re-sign. So both ends come from the
-core checkout at `core_commit`:
+Typed by hand, the window goes stale the moment the core releases past it. So both
+ends are derived from the core checkout at `core_commit`:
 
-  * **max** = the contents of `VERSION`, the core version at that commit. A
-    runtime is built from that core's own source, so that core is the newest one
-    it can claim to fit. `--max-core-version` overrides it for an emergency (a
-    core release that ships nothing this runtime touches), and the override is
+  * **max** = `<major>.999999.999999`, an open ceiling inside the core's major.
+    The worker imports only `internal/mcp/runtime`; the protocol it speaks is
+    pinned by `WorkerProtocol` at readiness and a capability the panel does not
+    know fails `Verify`, so a version ceiling protected nothing and only produced
+    the 0.11.9 outage (every core release past the window lost the component).
+    `--max-core-version` overrides it for an emergency and the override is
     recorded in the release notes.
   * **min** = the oldest core `RELEASE_COMPATIBILITY.json` says this runtime
     supports: `mcp_min_core_version` when the core states it explicitly,
     otherwise the higher of `minimum_direct_upgrade_from` (below which the core
     itself refuses a direct upgrade, so no panel should be running it) and
-    MCP_CORE_FLOOR — the first core release that contains an MCP verifier at
-    all. A window that reached below the floor would promise compatibility with
-    a panel that cannot read an envelope.
+    MCP_CORE_FLOOR, the first core release that contains an MCP verifier at all.
+    When the new runtime declares a capability the currently published envelope
+    does not, an older core would refuse it, so min is the core `VERSION` instead.
+
+The publish rule (why it is the inputs digest and not the core version)
+------------------------------------------------------------------------
+`cmd/tend-mcp-inputs` fingerprints every file the runtime release is built from
+(`internal/mcp/inputs.Roots`). A publish is worth doing exactly when that digest
+differs from the one recorded beside the published release
+(`runtime-inputs.json`); an equal digest would only reset every panel's expiry
+clock and burn a sequence, so it is refused unless `--force`. The core version
+plays no part, which retires the old "no core release since the last runtime"
+guard. A release still has to be cut from a release commit (VERSION equals
+RELEASE_COMPATIBILITY.json), or `--force` records why not.
 
 The sequence rule (why it is not a timestamp)
 ---------------------------------------------
@@ -71,6 +83,18 @@ ALIAS_TAG = "mcp-runtime-latest"
 # core able to verify one of these envelopes at all. A derived window never
 # reaches below it.
 MCP_CORE_FLOOR = "0.6.0"
+
+# `runtime-inputs.json` beside the alias: the inputs digest the published runtime was built from.
+PUBLISHED_INPUTS_URL = (
+    "https://github.com/Tend-Stack/TendExtensions/releases/download/"
+    f"{ALIAS_TAG}/runtime-inputs.json"
+)
+
+# The ceiling suffix of a derived window: `<major>.999999.999999`.
+OPEN_CEILING_SUFFIX = ".999999.999999"
+
+_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+_COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 
 # The public URL the alias's amd64 envelope sits at. Read with no credential:
 # these bytes are what every panel reads too.
@@ -143,9 +167,87 @@ class AliasState:
     sequence: int
     max_core_version: str
     min_core_version: str
+    # None: the envelope did not say (never the case for a real one).
+    capabilities: tuple[str, ...] | None = None
 
 
-def read_core_window(core_root: Path, *, max_core_override: str | None = None) -> Window:
+@dataclass(frozen=True)
+class Inputs:
+    """What `cmd/tend-mcp-inputs` printed for the core checkout being published."""
+
+    digest: str
+    capabilities: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class PublishedInputs:
+    """What `runtime-inputs.json` beside the published release records."""
+
+    digest: str
+    core_commit: str
+
+
+def _capabilities(raw: object, where: str) -> tuple[str, ...]:
+    if not isinstance(raw, list) or not all(isinstance(item, str) and item for item in raw):
+        raise ReleaseError(f"{where} carries no capabilities list")
+    return tuple(raw)
+
+
+def parse_inputs(body: bytes) -> Inputs:
+    """Read the JSON line `go run ./cmd/tend-mcp-inputs` prints."""
+    try:
+        raw = json.loads(body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        raise ReleaseError("the runtime inputs are not JSON") from None
+    if not isinstance(raw, dict) or raw.get("schema") != 1:
+        raise ReleaseError("the runtime inputs are not schema 1")
+    digest = raw.get("inputs_digest")
+    if not isinstance(digest, str) or not _DIGEST_RE.match(digest):
+        raise ReleaseError("the runtime inputs carry no inputs_digest")
+    return Inputs(digest=digest, capabilities=_capabilities(raw.get("capabilities"), "the runtime inputs"))
+
+
+def published_inputs_state(body: bytes) -> PublishedInputs:
+    """Read a published `runtime-inputs.json` (the core's `inputs.Published` shape)."""
+    if not body or len(body) > MAX_ENVELOPE_BYTES:
+        raise ReleaseError("the published runtime inputs are empty or implausibly large")
+    try:
+        raw = json.loads(body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        raise ReleaseError("the published runtime inputs are not JSON") from None
+    if not isinstance(raw, dict) or raw.get("schema") != 1:
+        raise ReleaseError("the published runtime inputs are not schema 1")
+    digest = raw.get("inputs_digest")
+    commit = raw.get("core_commit")
+    if not isinstance(digest, str) or not _DIGEST_RE.match(digest):
+        raise ReleaseError("the published runtime inputs carry no inputs_digest")
+    if not isinstance(commit, str) or not _COMMIT_RE.match(commit):
+        raise ReleaseError("the published runtime inputs carry no core_commit")
+    return PublishedInputs(digest=digest, core_commit=commit)
+
+
+def published_inputs_document(inputs: Inputs, *, core_commit: str, core_version: str) -> bytes:
+    """The `runtime-inputs.json` asset: the core's `inputs.Published` shape, byte-stable."""
+    if not _COMMIT_RE.match(core_commit or ""):
+        raise ReleaseError(f"core_commit must be a 40-hex commit sha, got {core_commit!r}")
+    parse_version(core_version)
+    document = {
+        "schema": 1,
+        "inputs_digest": inputs.digest,
+        "core_commit": core_commit,
+        "core_version": core_version,
+        "capabilities": sorted(inputs.capabilities),
+    }
+    return (json.dumps(document, indent=2) + "\n").encode("utf-8")
+
+
+def read_core_window(
+    core_root: Path,
+    *,
+    max_core_override: str | None = None,
+    capabilities: tuple[str, ...] | None = None,
+    alias: AliasState | None = None,
+) -> Window:
     """Derive the window from the core checkout at `core_commit`.
 
     Both files are read, and a disagreement between them is not smoothed over:
@@ -196,11 +298,21 @@ def read_core_window(core_root: Path, *, max_core_override: str | None = None) -
         else:
             min_core_version, min_source = MCP_CORE_FLOOR, "mcp_core_floor"
 
+    # An older core cannot verify a capability it does not know, so a runtime that grew its capability
+    # list starts at the core that declares it; otherwise the derived minimum stands.
+    if (
+        capabilities is not None
+        and alias is not None
+        and alias.capabilities is not None
+        and not set(capabilities) <= set(alias.capabilities)
+    ):
+        min_core_version, min_source = core_version, "core_version_capabilities_grew"
+
     if max_core_override is not None:
         parse_version(max_core_override)
         max_core_version = max_core_override
     else:
-        max_core_version = core_version
+        max_core_version = f"{parse_version(core_version)[0]}{OPEN_CEILING_SUFFIX}"
 
     if sequence_of(min_core_version) > sequence_of(max_core_version):
         raise ReleaseError(
@@ -254,11 +366,18 @@ def alias_state(envelope_body: bytes) -> AliasState:
             f"the alias envelope's sequence {sequence} is not the one version {version} derives; "
             "the panel would refuse it, so this run will not build on top of it"
         )
+    raw_capabilities = payload.get("capabilities")
+    capabilities = (
+        tuple(raw_capabilities)
+        if isinstance(raw_capabilities, list) and all(isinstance(c, str) for c in raw_capabilities)
+        else None
+    )
     return AliasState(
         version=version,
         sequence=sequence,
         max_core_version=max_core,
         min_core_version=min_core,
+        capabilities=capabilities,
     )
 
 
@@ -291,6 +410,29 @@ def read_alias(url: str, *, fetch: FetchFn = fetch_public) -> AliasState | None:
             "without knowing which sequence the alias serves"
         ) from None
     return alias_state(body)
+
+
+def read_published_inputs(url: str, *, fetch: FetchFn = fetch_public) -> PublishedInputs | None:
+    """The published inputs record, or None when the alias has none yet (404).
+
+    Absent is not a refusal: a release published before this record existed has no digest to compare, and
+    refusing would make the first publish after this change impossible. Any other failure is a refusal,
+    for the same reason as `read_alias`: an unreadable record is not evidence that the inputs changed."""
+    try:
+        body = fetch(url)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise ReleaseError(
+            f"the published runtime inputs could not be read (HTTP {exc.code}); refusing to publish "
+            "without knowing which inputs the alias was built from"
+        ) from None
+    except (urllib.error.URLError, OSError) as exc:
+        raise ReleaseError(
+            f"the published runtime inputs could not be read ({type(exc).__name__}); refusing to publish "
+            "without knowing which inputs the alias was built from"
+        ) from None
+    return published_inputs_state(body)
 
 
 def resolve_runtime_version(requested: str | None, alias: AliasState | None) -> tuple[str, str]:
@@ -335,6 +477,7 @@ class Plan:
     alias: AliasState | None
     force: bool
     notes: list[str] = field(default_factory=list)
+    inputs: Inputs | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -347,6 +490,7 @@ class Plan:
             "force": self.force,
             "notes": list(self.notes),
             "release_notes": self.release_note_lines(),
+            "inputs_digest": None if self.inputs is None else self.inputs.digest,
             **self.window.as_dict(),
         }
 
@@ -363,8 +507,10 @@ class Plan:
             f"Core compatibility window: {self.window.min_core_version} to "
             f"{self.window.max_core_version} "
             f"(min from {self.window.min_source}, max from "
-            f"{'--max-core-version override' if self.window.max_overridden else 'the core VERSION at the built commit'})",
+            f"{'--max-core-version override' if self.window.max_overridden else 'the open ceiling of the core major'})",
         ]
+        if self.inputs is not None:
+            lines.append(f"Runtime inputs digest: {self.inputs.digest}")
         if self.window.max_overridden:
             lines.append(
                 "MANUAL OVERRIDE: max_core_version was set by hand rather than derived from "
@@ -385,17 +531,24 @@ def build_plan(
     max_core_override: str | None = None,
     alias: AliasState | None,
     force: bool = False,
+    inputs: Inputs | None = None,
+    published: PublishedInputs | None = None,
 ) -> Plan:
     """Resolve and check one publish, or refuse it.
 
-    The guard: a publish is meant to follow a core *release*. If the core at
-    `core_commit` still says the same version the alias's window already reaches
-    (or an older one), then nothing has been released since the last runtime and
-    this run would replace a working alias with an envelope that adds nothing —
-    while resetting every panel's expiry clock and burning a sequence. `force`
-    is the escape, and it is recorded.
+    The guards: a publish must follow a core *release* commit (VERSION equals
+    RELEASE_COMPATIBILITY.json), and it must change what is published: when the
+    runtime inputs digest at `core_commit` equals the one recorded beside the
+    published release, the run would replace a working alias with an envelope
+    that adds nothing, reset every panel's expiry clock and burn a sequence.
+    `force` is the escape, and it is recorded.
     """
-    window = read_core_window(core_root, max_core_override=max_core_override)
+    window = read_core_window(
+        core_root,
+        max_core_override=max_core_override,
+        capabilities=None if inputs is None else inputs.capabilities,
+        alias=alias,
+    )
     runtime_version, version_source = resolve_runtime_version(requested_version, alias)
     sequence = check_sequence_increases(runtime_version, alias)
     notes: list[str] = []
@@ -406,20 +559,16 @@ def build_plan(
             f"the core checkout is mid-release: VERSION is {window.core_version} but "
             f"RELEASE_COMPATIBILITY.json says {window.compatibility_version}"
         )
-    if alias is not None:
-        alias_max = sequence_of(alias.max_core_version)
-        derived_max = sequence_of(window.max_core_version)
-        if derived_max == alias_max:
-            problems.append(
-                f"the core is still {window.core_version}, the version the alias's window "
-                "already reaches: no core release has happened since the last runtime"
-            )
-        elif derived_max < alias_max:
-            problems.append(
-                f"the derived max core {window.max_core_version} is below the "
-                f"{alias.max_core_version} the alias already serves: this would narrow the "
-                "window for panels that already trust the alias"
-            )
+    if inputs is not None and published is not None and inputs.digest == published.digest:
+        problems.append(
+            f"the runtime inputs are unchanged since {published.core_commit[:12]}: the published "
+            "runtime already contains everything this core commit would build"
+        )
+    if alias is not None and sequence_of(window.max_core_version) < sequence_of(alias.max_core_version):
+        problems.append(
+            f"the max core {window.max_core_version} is below the {alias.max_core_version} the "
+            "alias already serves: this would narrow the window for panels that already trust the alias"
+        )
     if problems and not force:
         raise ReleaseError(
             "refusing to publish: "
@@ -437,6 +586,7 @@ def build_plan(
         alias=alias,
         force=force,
         notes=notes,
+        inputs=inputs,
     )
 
 
@@ -447,7 +597,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--core", type=Path, required=True, help="the core checkout at core_commit")
     parser.add_argument("--runtime-version", default=None, help="x.y.z; default: bump the alias patch")
     parser.add_argument("--max-core-version", default=None, help="emergency override, logged in the notes")
-    parser.add_argument("--force", action="store_true", help="bypass the release-commit guard")
+    parser.add_argument("--force", action="store_true", help="bypass the release-commit and unchanged-inputs guards")
+    parser.add_argument("--inputs", type=Path, default=None, help="what `go run ./cmd/tend-mcp-inputs` printed for --core")
+    parser.add_argument("--core-commit", default=None, help="the 40-hex core commit (for --inputs-out)")
+    parser.add_argument(
+        "--inputs-out", type=Path, default=None, help="write runtime-inputs.json (the published-inputs record) here"
+    )
+    published_source = parser.add_mutually_exclusive_group()
+    published_source.add_argument("--published-inputs-url", default=PUBLISHED_INPUTS_URL)
+    published_source.add_argument(
+        "--published-inputs", type=Path, default=None, help="read the published inputs record from a file"
+    )
     alias_source = parser.add_mutually_exclusive_group()
     alias_source.add_argument("--alias-url", default=ALIAS_ENVELOPE_URL)
     alias_source.add_argument("--alias-envelope", type=Path, default=None, help="read the alias state from a file")
@@ -463,18 +623,35 @@ def main(argv: list[str] | None = None) -> int:
             alias = alias_state(args.alias_envelope.read_bytes())
         else:
             alias = read_alias(args.alias_url)
+        inputs = parse_inputs(args.inputs.read_bytes()) if args.inputs is not None else None
+        published = None
+        if inputs is not None and alias is not None and not args.no_alias:
+            if args.published_inputs is not None:
+                published = published_inputs_state(args.published_inputs.read_bytes())
+            else:
+                published = read_published_inputs(args.published_inputs_url)
         plan = build_plan(
             args.core,
             requested_version=args.runtime_version,
             max_core_override=args.max_core_version,
             alias=alias,
             force=args.force,
+            inputs=inputs,
+            published=published,
         )
+        if args.inputs_out is not None:
+            if inputs is None:
+                raise ReleaseError("--inputs-out needs --inputs")
+            document = published_inputs_document(
+                inputs, core_commit=args.core_commit or "", core_version=plan.window.core_version
+            )
+            args.inputs_out.parent.mkdir(parents=True, exist_ok=True)
+            args.inputs_out.write_bytes(document)
     except ReleaseError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     except OSError as exc:
-        print(f"error: {type(exc).__name__} reading the alias envelope file", file=sys.stderr)
+        print(f"error: {type(exc).__name__} reading or writing a file", file=sys.stderr)
         return 1
 
     resolved = plan.as_dict()

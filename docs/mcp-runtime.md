@@ -1,20 +1,22 @@
 # Publishing the Tend MCP runtime
 
-This registry publishes two unrelated things. Its own extension packages, on
-every green push to `main` (`.gitea/workflows/ci.yml`), and — manually, one
-version at a time — the runtime of the optional `host.tend.mcp` panel component
-(`.gitea/workflows/mcp-runtime.yml`).
+This registry publishes two related things. Its own extension packages, on
+every green push to `main` (`.gitea/workflows/ci.yml`), and the runtime of the
+optional `host.tend.mcp` panel component (`.gitea/workflows/mcp-runtime.yml`),
+one version at a time, dispatched by the core when the runtime's inputs change.
+The registry also *lists* the newest runtime (`components/host.tend.mcp.json`,
+registry v1.2) so a panel can tell its operator that an update exists.
 
-The second one is the only thing here that a panel *executes*, on a server the
+The runtime is the only thing here that a panel *executes*, on a server the
 panel's operator owns. That is why it is a dispatch with an explicit core commit,
 and why the workflow refuses more than it does. What it no longer asks for is a
-version or a compatibility window: both are derived from the core checkout, so a
-core release can re-sign the runtime for itself without a human remembering to
-(see "The automation" below).
+version or a compatibility window: both are derived from the core checkout (see
+"The automation" below). The listing never authorizes anything: a panel still
+verifies the runtime envelope and its artifacts before it runs a byte.
 
 ## What a release contains
 
-Five assets, under the GitHub release and tag `mcp-runtime-<version>` on
+Six assets, under the GitHub release and tag `mcp-runtime-<version>` on
 `Tend-Stack/TendExtensions`:
 
 | Asset | What it is |
@@ -24,8 +26,9 @@ Five assets, under the GitHub release and tag `mcp-runtime-<version>` on
 | `service-linux-amd64.zip` | the confined worker image, as an OCI layout in a stored zip |
 | `service-linux-arm64.zip` | the same for arm64 |
 | `tend-mcp-ui.zip` | the browser package, installed through the panel's ordinary extension pipeline |
+| `runtime-inputs.json` | not read by panels: the runtime inputs digest, core commit, core version and capabilities this runtime was built from (the core's `inputs.Published` shape); the core's CI compares each push against the alias's copy to decide whether to dispatch |
 
-Those names are not a convention this repository chose. A panel builds each
+The first five names are not a convention this repository chose. A panel builds each
 download URL by appending one of them to the release URL its own source pins
 (`internal/mcp/distribution.assetName` in the panel core), so an asset under any
 other name is one no panel can fetch.
@@ -39,7 +42,8 @@ other name is one no panel can fetch.
   `Rubirosa/tend.host` to build from. The runtime is built from the panel core's
   own source (`cmd/tend-mcp-worker`, `cmd/tend-mcp-pack`, `extensions/mcp-ui`), so
   naming the commit is what makes the build auditable: anybody with that commit
-  can rebuild it and get the same three artifact digests.
+  can rebuild it and get the same three artifact digests. It must carry
+  `cmd/tend-mcp-inputs`, which fingerprints the runtime's inputs.
 - **runtime_version** — `x.y.z`, or empty for the patch bump of the version the
   alias currently serves. It becomes the tag, and is written into the browser
   package's manifest and both envelopes; the panel refuses an installation whose
@@ -54,7 +58,7 @@ The run resolves the window and the version with `tools/mcp_window.py`, builds a
 packs both platforms with `core/scripts/mcp-runtime-release.sh`, signs the two
 envelopes with `secrets.TEND_MCP_SIGNING_KEY_B64`, verifies each one with the
 panel's own verifier against the public key committed at
-`keys/tend-mcp-runtime.pub` at **both ends** of the derived window, prints the five
+`keys/tend-mcp-runtime.pub` at **both ends** of the derived window, prints the six
 digests and the plan, publishes `mcp-runtime-<version>`, and then moves the alias.
 
 The workflow does not carry its own capability list. The core signer defaults
@@ -88,8 +92,11 @@ release that can never become ready.
   back at all. The alias is the one release here whose assets are *meant* to
   change, so `overwrite` has nothing to do with it: the sequence is what makes
   replacing them safe. See "The sequence rule".
-- A core commit that is not a release above the window the alias already covers,
-  unless `force` is set. See "The guard".
+- A core commit whose runtime inputs digest equals the one published beside the
+  alias, a mid-release commit, or a window narrower than the alias's, unless
+  `force` is set. See "The guard".
+- A missing `IMPORT_PUSH_TOKEN` (the listing could not be recorded), before
+  anything is built or published.
 - A window that would be empty (`min` above `max`) or would reach below core
   `0.6.0`, the oldest core that can verify an envelope.
 
@@ -127,30 +134,56 @@ below is for.
 ### Why it exists
 
 The compatibility window inside a signed envelope used to be typed into the
-dispatch form: `min_core_version 0.6.0`, `max_core_version 0.9.0`. A core release
-above `0.9.0` therefore needed a human to re-sign the runtime *and* a core source
-change to re-pin the new release URL, or MCP would simply stop being available on
-new panels — a failure whose only warning was somebody remembering. Now the window
-comes from the core, the alias absorbs the URL change, and a core release can
-trigger the publish itself.
+dispatch form, and later derived as "from the oldest supported core up to the
+core's own `VERSION`". That ceiling protected nothing: the worker imports only
+`internal/mcp/runtime`, the protocol it speaks is pinned by `WorkerProtocol` at
+readiness, and a capability a panel does not know fails `Verify`. What it did
+cause was the 0.11.9 outage: the first core release past the window lost the
+component for every panel until somebody re-signed. Now the window is open at the
+top, the dispatch rule looks at what the runtime is actually built from, and the
+registry lists the result.
+
+### The inputs rule
+
+`cmd/tend-mcp-inputs` (core, `internal/mcp/inputs`) prints one JSON line for a core
+checkout: a SHA-256 over every file the runtime release is built from
+(`cmd/tend-mcp-worker`, `cmd/tend-mcp-pack`, `internal/mcp/runtime`,
+`extensions/mcp-ui`, `scripts/mcp-runtime-release.sh`, `go.mod`, `go.sum`, tests
+excluded), and the runtime's capability list. A core test keeps that list of roots
+honest against `go list -deps`.
+
+The runtime workflow runs it at `core_commit` and records the answer beside the
+release as `runtime-inputs.json`, on the version release and on the alias. The
+core's CI dispatches this workflow only when its digest differs from the alias's
+`runtime-inputs.json`, and `tools/mcp_window.py` refuses a dispatch whose digest
+equals it (`force=true` overrides, and is recorded). The core version plays no
+part: a core release that does not touch the runtime publishes nothing, and a
+runtime change publishes without waiting for a release. When the alias has no
+`runtime-inputs.json` yet (a release from before the record existed) there is
+nothing to compare, and the publish proceeds.
 
 ### The window rule
 
 `tools/mcp_window.py` reads two files from the core checkout at `core_commit`:
 
-- **`VERSION`** → `max_core_version`. That commit's core is the newest core this
-  runtime was built from, so it is the newest one the envelope may claim.
+- **`VERSION`** → `max_core_version = <major>.999999.999999`, an open ceiling
+  inside the core's major. The runtime was built from that core, and nothing about
+  a later core in the same major can make it unsafe: the panel's checks on the
+  envelope (signature, platform, capabilities, expiry, the artifact digests) still
+  run on every install. A new major needs a new publish (`force=true` if the
+  inputs did not change).
 - **`RELEASE_COMPATIBILITY.json`** → `min_core_version`: its
   `mcp_min_core_version` when the core states one explicitly, otherwise the higher
   of its `minimum_direct_upgrade_from` (below which the core refuses a direct
   upgrade, so no panel should still be there) and `0.6.0`, the first core release
-  that contains an MCP verifier at all. A window reaching below that floor would
-  promise compatibility with a panel that cannot read an envelope.
+  that contains an MCP verifier at all. When the runtime's capability list is not a
+  subset of the one the alias's envelope signs, an older core would refuse it, so
+  `min_core_version` is the core `VERSION` instead.
 
-Today, with `VERSION` 0.9.0 and `minimum_direct_upgrade_from` 0.1.0, that derives
-exactly the window that used to be typed: **0.6.0 to 0.9.0**. The resolved window
-is printed, written into both release bodies, and verified against the panel's own
-verifier at both ends before anything is published.
+`max_core_version` as an input is still an emergency override (recorded in both
+release bodies). The resolved window is printed, written into both release bodies,
+and verified against the panel's own verifier at both ends before anything is
+published.
 
 ### The sequence rule
 
@@ -197,8 +230,16 @@ do not bypass the floor or overwrite immutable assets to repair the alias.
 
 ### The alias release
 
+The alias is kept as a compatibility path: panels that predate registry v1.2 pin
+it, and it moves on every publish. Panels with the update flow fetch the immutable
+`mcp-runtime-<version>` release the listing names instead, so the badge and the
+install name the same bytes with no alias race. Retire the alias no earlier than
+when `RELEASE_COMPATIBILITY.json` `minimum_direct_upgrade_from` passes the core
+release that ships the update flow; that is the operator's decision, not a step
+this workflow takes.
+
 After `mcp-runtime-<version>` is published, the workflow publishes or updates
-`mcp-runtime-latest` with the same five assets. Its assets are replaced on every
+`mcp-runtime-latest` with the same six files. Its assets are replaced on every
 publish (an asset that is byte-identical is left alone, so a retried run
 converges), and its body is rewritten to name the runtime, the revision, the
 window, the sequence and the expiry it now carries. The tag itself is not moved:
@@ -209,11 +250,13 @@ points a panel at a runtime whose own immutable release does not exist; and insi
 each release the envelopes are uploaded last, so an interrupted publish leaves the
 old runtime rather than a new one whose artifacts are missing.
 
-### Triggered by a core release
+### Triggered by a core push
 
-Gitea exposes `workflow_dispatch` over its API, so the core's release workflow
-publishes a runtime by calling it — no `repository_dispatch` handler and no second
-trigger to keep in step:
+Gitea exposes `workflow_dispatch` over its API, so the core's CI dispatches a
+publish by calling it — no `repository_dispatch` handler and no second trigger to
+keep in step. The core's `cmd/tend-dispatch-mcp-runtime` does it, after its own CI
+is green, when the inputs digest at the pushed commit differs from the published
+one:
 
 ```
 POST https://j.santanafam.com/api/v1/repos/Rubirosa/TendExtensions/actions/workflows/mcp-runtime.yml/dispatches
@@ -223,33 +266,64 @@ Content-Type: application/json
 {
   "ref": "main",
   "inputs": {
-    "core_commit": "<the 40-hex commit of the core release>"
+    "core_commit": "<the 40-hex commit whose runtime inputs changed>"
   }
 }
 ```
 
 Everything else is optional and defaults to the derived value:
-`runtime_version` (patch bump of the alias), `max_core_version` (the core's own
-`VERSION`), `force` and `dry_run` and `overwrite` (`"false"`). Inputs are strings
-over the API, including the booleans.
+`runtime_version` (patch bump of the alias), `max_core_version` (the open
+ceiling), `force` and `dry_run` and `overwrite` (`"false"`). Inputs are strings
+over the API, including the booleans. The commit must carry `cmd/tend-mcp-inputs`;
+an older one fails in the first step, before anything is built.
+
+A runtime whose capability list grew is dispatched only on the push that changes
+the core `VERSION` (its window then starts at that version). If that run fails, the
+publish waits for the next release or a manual `force` dispatch.
+
+### The component listing
+
+`components/host.tend.mcp.json` is the registry's announcement of the newest
+published runtime: `version`, `release_tag` (`mcp-runtime-<version>`), `sequence`,
+the core window, `envelopes` (the SHA-256 of `runtime-linux-<arch>.json` in that
+immutable release, per platform), `inputs_digest`, `core_commit`, the display
+`name` and `description`, and up to ten `release_notes` lines. `tools/build.py`
+validates it on every build (`tools/component_listing.py`) and copies it into
+`dist/registry-v1.2.json` under `components`; v1 and v1.1 are byte-identical to
+before, because panels older than the update flow reject unknown payload keys.
+`tools/sign.py` signs v1.2 under its own domain (`tend-extension-registry-v1.2\n`)
+and `tools/release.py` uploads it beside v1 and v1.1 in the same
+`registry-<sequence>` release.
+
+The publish workflow rewrites the release fields after both releases exist:
+`python -m tools.mcp_release --version <v> --dist <dir> --update-component <file>`
+reads the envelope bytes and `runtime-inputs.json` it just uploaded (name and
+description stay as reviewed) and the workflow commits the file to `main` with the
+`IMPORT_PUSH_TOKEN` secret (a push with the job's own token would not start
+`ci.yml`). That push builds and signs the registry that carries the listing. The
+token is checked first: a missing one fails the run with `IMPORT_PUSH_TOKEN is not
+set` before anything is published. If the push still fails after three rebases, the
+release exists and the listing step is re-run by hand with the same call.
 
 ### The guard
 
-A publish is meant to follow a core *release*. If the core at `core_commit` still
-reports the version the alias's window already reaches — or an older one, or a
-`VERSION` its own `RELEASE_COMPATIBILITY.json` disagrees with, i.e. a mid-release
-commit — the run refuses. Without that, a second dispatch for the same core would
-replace a working alias with an envelope that adds nothing, reset every panel's
-expiry clock and burn a sequence.
+A publish must change what is published and must come from a settled commit. The
+run refuses when the inputs digest at `core_commit` equals the one recorded beside
+the alias (the core push dispatcher applies the same rule first), or when the core's
+`VERSION` disagrees with its own `RELEASE_COMPATIBILITY.json`, i.e. a mid-release
+commit, or when the window would be narrower than the alias's. Without that, a
+second dispatch would replace a working alias with an envelope that adds nothing,
+reset every panel's expiry clock and burn a sequence.
 
 ### The two manual escapes
 
-- **`max_core_version`** — sign a window wider than the built core, for a core
-  release that changes nothing this runtime touches. The override is recorded in
+- **`max_core_version`** — sign a ceiling other than the open one, for an
+  emergency. The override is recorded in
   both release bodies (`MANUAL OVERRIDE: max_core_version was set by hand ...`),
   so it is visible to whoever reads the release rather than only to whoever read
   the run.
-- **`force=true`** — publish past the guard above. Also recorded in both release
+- **`force=true`** — publish past the guards above (equal inputs digest,
+  mid-release commit, narrower window). Also recorded in both release
   bodies, naming the guard it bypassed.
 
 Neither escape can weaken the trust chain: they move the window and the guard, and
@@ -278,7 +352,8 @@ an envelope still expires (365 days).
 ### Inspecting it without publishing
 
 ```
-python -m tools.mcp_window --core <core checkout> --alias-envelope current.json
+python -m tools.mcp_window --core <core checkout> --alias-envelope current.json \
+    --inputs inputs.json --published-inputs published.json
 python -m tools.mcp_release --version 0.1.1 --revision <sha> --dist dist/mcp-runtime \
     --dry-run-out /tmp/plan --alias-envelope current.json
 ```
@@ -299,3 +374,8 @@ different trust decision), and the two must never be interchanged.
 `CORE_REPOSITORY_TOKEN` (read access to `Rubirosa/tend.host`) and
 `GH_PUBLISH_TOKEN` (release write on `Tend-Stack/TendExtensions`) are the same
 secrets `ci.yml` already uses.
+
+`IMPORT_PUSH_TOKEN` (a Gitea token that may push to `main`) is the secret
+`import-approved.yml` uses. This workflow uses it only to commit
+`components/host.tend.mcp.json` back to `main` and checks that it is set before it
+builds anything.
