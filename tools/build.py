@@ -105,6 +105,27 @@ WIDGET_MODULE_SUFFIXES = (".js", ".mjs")
 WIDGET_PREVIEW_SUFFIXES = (".svg", ".png", ".webp")
 _WIDGET_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 
+# ---------- Sprout tools (schema-2 only) ----------
+# Mirrors tools.ParseSproutTools in the panel core (internal/assistant/tools/
+# extension_tools.go): same limits, same sentences' intent. The text of a
+# tool description reaches the model, so the rules are strict. A package that
+# fails this never reaches validate_with_panel.py's ground-truth check.
+SPROUT_KINDS = ("read", "ui", "act")
+MAX_SPROUT_TOOLS = 8
+SPROUT_DESCRIPTION_CHARS = (20, 240)
+MAX_SPROUT_DOING_CHARS = 40
+MAX_SPROUT_PROPERTIES = 6
+MAX_SPROUT_STRING_LENGTH = 120
+MAX_SPROUT_ENUM = 12
+MAX_SPROUT_ENUM_CHARS = 32
+MAX_SPROUT_PROP_DESCRIPTION_CHARS = 120
+MAX_SPROUT_INPUT_BYTES = 1024
+SPROUT_DENIED_PHRASES = (
+    "ignore previous", "system prompt", "you are", "assistant:", "developer:", "instructions",
+)
+_SPROUT_TOOL_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,23}$")
+_SPROUT_PROP_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,23}$")
+
 # ---------- theme packs (schema-2, category "themes") ----------
 # Mirrors the panel core's theme-pack rules (THEME_CONTRACT v1): a pack is a
 # declarative `theme` object plus images, never code. Every value that ends up
@@ -634,6 +655,12 @@ def validate_manifest(manifest: dict[str, Any], *, ext_id_hint: str) -> None:
             )
         manifest["widgets"] = validate_widgets(widgets, manifest["integrity"], ext_id_hint)
 
+    sprout = manifest.get("sprout")
+    if sprout is not None:
+        if schema != 2:
+            raise BuildError(f"{ext_id_hint}: 'sprout' requires schema 2")
+        validate_sprout(sprout, ext_id_hint)
+
 
 def _widget_package_path(
     raw: object,
@@ -761,6 +788,157 @@ def validate_widgets(
             "preview": preview,
         })
     return normalized
+
+
+def _sprout_text_problem(text: str) -> str:
+    """Why `text` may not reach the model, or "" (mirrors checkModelText)."""
+    for ch in text:
+        if ch in "\n\r\t":
+            return "must be a single line"
+        if not ch.isprintable():
+            return "must be printable text"
+        if ch in "<>{}`":
+            return "must not contain < > { } or a backtick"
+    if "://" in text:
+        return "must not contain a link"
+    folded = " ".join(text.lower().split())
+    for phrase in SPROUT_DENIED_PHRASES:
+        if phrase in folded:
+            return f"must not contain {phrase!r}"
+    return ""
+
+
+def _is_whole(value: object) -> bool:
+    return not isinstance(value, bool) and isinstance(value, (int, float)) and float(value) == int(value)
+
+
+def _validate_sprout_property(tool: str, key: str, prop: object, ext_id_hint: str) -> None:
+    where = f"{ext_id_hint}: sprout tool {tool!r} input {key!r}"
+    if not isinstance(prop, dict):
+        raise BuildError(f"{where} must be an object")
+    kind = prop.get("type")
+    allowed = {"type", "description"}
+    if kind == "string":
+        allowed |= {"maxLength", "enum"}
+    elif kind == "integer":
+        allowed |= {"minimum", "maximum"}
+    elif kind != "boolean":
+        raise BuildError(f"{where} 'type' must be string, integer or boolean")
+    for name in prop:
+        if name not in allowed:
+            raise BuildError(f"{where} '{name}' is not supported for a {kind}")
+    description = prop.get("description")
+    if description is not None:
+        text = description.strip() if isinstance(description, str) else None
+        if text is None or len(text) > MAX_SPROUT_PROP_DESCRIPTION_CHARS:
+            raise BuildError(
+                f"{where} 'description' must be up to {MAX_SPROUT_PROP_DESCRIPTION_CHARS} characters"
+            )
+        problem = _sprout_text_problem(text)
+        if problem:
+            raise BuildError(f"{where} 'description' {problem}")
+    if kind == "string":
+        max_length = prop.get("maxLength")
+        if max_length is not None and (
+            not _is_whole(max_length) or not 1 <= max_length <= MAX_SPROUT_STRING_LENGTH
+        ):
+            raise BuildError(f"{where} 'maxLength' must be a whole number up to {MAX_SPROUT_STRING_LENGTH}")
+        values = prop.get("enum")
+        if values is not None:
+            if not isinstance(values, list) or not 1 <= len(values) <= MAX_SPROUT_ENUM:
+                raise BuildError(f"{where} 'enum' must list 1-{MAX_SPROUT_ENUM} values")
+            for value in values:
+                if not isinstance(value, str) or not value or len(value) > MAX_SPROUT_ENUM_CHARS:
+                    raise BuildError(
+                        f"{where} 'enum' values must be strings of up to {MAX_SPROUT_ENUM_CHARS} characters"
+                    )
+                problem = _sprout_text_problem(value)
+                if problem:
+                    raise BuildError(f"{where} 'enum' value {problem}")
+    elif kind == "integer":
+        low, high = prop.get("minimum"), prop.get("maximum")
+        if not (_is_whole(low) and _is_whole(high)) or low > high or abs(low) > 1e9 or abs(high) > 1e9:
+            raise BuildError(f"{where} needs whole-number 'minimum' and 'maximum'")
+
+
+def _validate_sprout_input(tool: str, raw: object, ext_id_hint: str) -> None:
+    if raw is None:
+        return
+    where = f"{ext_id_hint}: sprout tool {tool!r}"
+    if not isinstance(raw, dict):
+        raise BuildError(f"{where} 'input' must be an object")
+    for key, value in raw.items():
+        if key == "type":
+            if value != "object":
+                raise BuildError(f"{where} 'input.type' must be \"object\"")
+        elif key == "additionalProperties":
+            if value is not False:
+                raise BuildError(f"{where} 'input.additionalProperties' must be false; the panel always sets it")
+        elif key not in ("properties", "required"):
+            raise BuildError(f"{where} 'input.{key}' is not supported")
+    properties = raw.get("properties")
+    if properties is None:
+        properties = {}
+    if not isinstance(properties, dict):
+        raise BuildError(f"{where} 'input.properties' must be an object")
+    if len(properties) > MAX_SPROUT_PROPERTIES:
+        raise BuildError(f"{where} may declare at most {MAX_SPROUT_PROPERTIES} input properties")
+    for key, prop in properties.items():
+        if not _SPROUT_PROP_NAME_RE.match(key):
+            raise BuildError(f"{where} has an input property name that is not a lowercase word ({key!r})")
+        _validate_sprout_property(tool, key, prop, ext_id_hint)
+    required = raw.get("required")
+    if required is not None:
+        if not isinstance(required, list) or any(not isinstance(k, str) or k not in properties for k in required):
+            raise BuildError(f"{where} 'input.required' may only name declared properties")
+    if len(json.dumps(raw, separators=(",", ":"), ensure_ascii=False).encode("utf-8")) > MAX_SPROUT_INPUT_BYTES:
+        raise BuildError(f"{where} 'input' is larger than {MAX_SPROUT_INPUT_BYTES} bytes")
+
+
+def validate_sprout(raw: object, ext_id_hint: str) -> None:
+    """Validate extension.json's schema-2 `sprout` block exactly as the panel's
+    `ParseSproutTools` does. Raises BuildError; the manifest is left as written."""
+    if not isinstance(raw, dict):
+        raise BuildError(f"{ext_id_hint}: 'sprout' must be an object")
+    tools = raw.get("tools")
+    if tools is None:
+        return
+    if not isinstance(tools, list):
+        raise BuildError(f"{ext_id_hint}: 'sprout.tools' must be a list")
+    if len(tools) > MAX_SPROUT_TOOLS:
+        raise BuildError(f"{ext_id_hint}: 'sprout.tools' may declare at most {MAX_SPROUT_TOOLS} tools")
+    seen: set[str] = set()
+    for index, entry in enumerate(tools, start=1):
+        if not isinstance(entry, dict):
+            raise BuildError(f"{ext_id_hint}: 'sprout.tools' entry {index} must be an object")
+        name = entry.get("name")
+        if not isinstance(name, str) or not _SPROUT_TOOL_NAME_RE.match(name):
+            raise BuildError(
+                f"{ext_id_hint}: a sprout tool 'name' must be 2-24 characters: a lowercase letter, "
+                "then lowercase letters, digits or underscores"
+            )
+        where = f"{ext_id_hint}: sprout tool {name!r}"
+        if entry.get("kind") not in SPROUT_KINDS:
+            raise BuildError(f"{where} 'kind' must be read, ui or act")
+        description = entry.get("description")
+        text = description.strip() if isinstance(description, str) else ""
+        low, high = SPROUT_DESCRIPTION_CHARS
+        if not low <= len(text) <= high:
+            raise BuildError(f"{where} 'description' must be {low}-{high} characters")
+        problem = _sprout_text_problem(text)
+        if problem:
+            raise BuildError(f"{where} 'description' {problem}")
+        if entry.get("doing") is not None:
+            doing = entry["doing"].strip() if isinstance(entry["doing"], str) else ""
+            if not doing or len(doing) > MAX_SPROUT_DOING_CHARS:
+                raise BuildError(f"{where} 'doing' must be up to {MAX_SPROUT_DOING_CHARS} characters")
+            problem = _sprout_text_problem(doing)
+            if problem:
+                raise BuildError(f"{where} 'doing' {problem}")
+        _validate_sprout_input(name, entry.get("input"), ext_id_hint)
+        if name in seen:
+            raise BuildError(f"{ext_id_hint}: 'sprout.tools' declares {name!r} twice")
+        seen.add(name)
 
 
 LISTING_REQUIRED_STR_FIELDS = ("publisher", "category", "release_notes")
