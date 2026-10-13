@@ -2,19 +2,19 @@
   "id": "host.tend.mcp",
   "name": "Tend MCP",
   "description": "Lets AI assistants you approve read your panel and propose changes you confirm. Set it up and update it in Settings → MCP.",
-  "version": "0.1.40",
-  "release_tag": "mcp-runtime-0.1.40",
-  "sequence": 1000040,
+  "version": "0.1.41",
+  "release_tag": "mcp-runtime-0.1.41",
+  "sequence": 1000041,
   "min_core_version": "0.11.9",
-  "max_core_version": "0.11.9",
+  "max_core_version": "0.999999.999999",
   "envelopes": {
-    "linux/amd64": "580fb011834cb9e2563fe505ba2a3eb76e6ea77e5e18b482fabca86f13c5090a",
-    "linux/arm64": "91302d14628f37fd4cfe395e84f7edad7a091dd7ec07d927b1950e5fc214c4ee"
+    "linux/amd64": "cb7826e8d95e90fec9ca7b67472bd3194a14151eee119f678a1962b550845f51",
+    "linux/arm64": "511ef446f3f06ae74757bbb91c892d3f1bc2f1195663f06c557a519245a5b73f"
   },
   "inputs_digest": "7eb5562b1d474e50b2d113010e24507a80c43e8865ae6df5a5deb2a32b8cb324",
-  "core_commit": "b9cb09b15bacbac132aa5563ae1a70f54008f607",
+  "core_commit": "d35c8fb900e1c7db6a7cb83c04ec25f81fcadb83",
   "release_notes": [
-    "Runtime 0.1.40.",
-    "Works with Tend 0.11.9."
+    "Runtime 0.1.41.",
+    "Needs Tend 0.11.9 or newer."
   ]
 }
