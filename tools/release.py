@@ -3,8 +3,9 @@
 
 Tag `registry-<sequence>` on the published commit. Assets: every
 `dist/<id>-<version>.zip`, `dist/registry.json`, and
-`dist/tend-extension-registry-v1.json` and `dist/tend-extension-registry-v1.1.json` (the same registry plus
-each listing's `glyph_svg`, for newer panels), plus the signed community catalog (`community-catalog.json`, its `.sig`
+`dist/tend-extension-registry-v1.json`, `dist/tend-extension-registry-v1.1.json` (the same registry plus
+each listing's `glyph_svg`, for newer panels) and `dist/tend-extension-registry-v1.2.json` (v1.1 plus the Tend MCP
+`components` listing, for panels that know it), plus the signed community catalog (`community-catalog.json`, its `.sig`
 and `tend-catalog-pubkey`) when all three exist. Talks to the GitHub REST API
 directly with `urllib` (no extra dependency) using `GH_PUBLISH_TOKEN`.
 Idempotent: re-running for an existing tag deletes and re-uploads any
@@ -172,7 +173,12 @@ COMMUNITY_CATALOG_ASSETS = ("community-catalog.json", "community-catalog.json.si
 
 def dist_assets(dist_dir: Path) -> list[Path]:
     assets = sorted(dist_dir.glob("*.zip"))
-    for name in ("registry.json", "tend-extension-registry-v1.json", "tend-extension-registry-v1.1.json"):
+    for name in (
+        "registry.json",
+        "tend-extension-registry-v1.json",
+        "tend-extension-registry-v1.1.json",
+        "tend-extension-registry-v1.2.json",
+    ):
         assets.append(dist_dir / name)
     missing = [p for p in assets if not p.is_file()]
     if missing:

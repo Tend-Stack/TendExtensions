@@ -155,3 +155,45 @@ def test_cli_signs_both_assets_and_v1_stays_free_of_glyph_svg(fixture_repo, monk
     assert {k: v for k, v in v11["payload"].items() if k != "extensions"} == {
         k: v for k, v in v1["payload"].items() if k != "extensions"
     }
+
+
+# ---------- the v1.2 asset (v1.1 plus the Tend MCP components listing) ----------
+
+
+def test_v12_domain(fixture_repo, monkeypatch) -> None:
+    from tools import build
+
+    seed_b64, pub_b64 = _keypair()
+    assert sign.DOMAIN_V12 == b"tend-extension-registry-v1.2\n"
+    assert sign.ENVELOPE_NAME_V12 == "tend-extension-registry-v1.2.json"
+    assert sign.REGISTRY_NAME_V12 == "registry-v1.2.json"
+    assert len({sign.DOMAIN, sign.DOMAIN_V11, sign.DOMAIN_V12}) == 3
+    for name, domain in (
+        (sign.ENVELOPE_NAME, sign.DOMAIN),
+        (sign.ENVELOPE_NAME_V11, sign.DOMAIN_V11),
+        (sign.ENVELOPE_NAME_V12, sign.DOMAIN_V12),
+    ):
+        assert sign.domain_for(name) == domain
+        assert sign.domain_for(f"/some/dist/{name}") == domain
+
+    v11 = sign.sign_registry(_fake_registry(), seed_b64, issued_at=1_758_000_000, domain=sign.DOMAIN_V11)
+    v12 = sign.sign_registry(_fake_registry(), seed_b64, issued_at=1_758_000_000, domain=sign.DOMAIN_V12)
+    assert v11["signature"] != v12["signature"]
+    sign.verify_envelope(v12, pub_b64, domain=sign.DOMAIN_V12)
+    with pytest.raises(sign.SignError):
+        sign.verify_envelope(v12, pub_b64, domain=sign.DOMAIN_V11)
+    with pytest.raises(sign.SignError):
+        sign.verify_envelope(v11, pub_b64, domain=sign.DOMAIN_V12)
+
+    # The CLI signs the third asset in the same instant and it verifies by its file name alone.
+    build.run(fixture_repo, sequence=4, revision=REVISION_A)
+    dist = fixture_repo / "dist"
+    monkeypatch.setenv("TEND_REGISTRY_SIGNING_KEY", seed_b64)
+    assert sign.main(["--repo-root", str(fixture_repo)]) == 0
+    assert sign.main(["--verify", str(dist / sign.ENVELOPE_NAME_V12), "--public-key", pub_b64]) == 0
+    v11_on_disk = json.loads((dist / sign.ENVELOPE_NAME_V11).read_text())
+    v12_on_disk = json.loads((dist / sign.ENVELOPE_NAME_V12).read_text())
+    assert v11_on_disk["payload"]["issued_at"] == v12_on_disk["payload"]["issued_at"]
+    # v1.2 payload == v1.1 payload + components, signing times included.
+    assert v12_on_disk["payload"].pop("components") == []
+    assert v12_on_disk["payload"] == v11_on_disk["payload"]

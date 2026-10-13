@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Sign the registry into the published envelopes.
 
-Two assets are signed with the same key and shipped in the same release:
+Three assets are signed with the same key and shipped in the same release:
 
     dist/registry.json      -> dist/tend-extension-registry-v1.json     (domain ...-v1\\n)
     dist/registry-v1.1.json -> dist/tend-extension-registry-v1.1.json   (domain ...-v1.1\\n)
+    dist/registry-v1.2.json -> dist/tend-extension-registry-v1.2.json   (domain ...-v1.2\\n)
 
 v1 is what every v0.10.x panel reads and carries no `glyph_svg`; v1.1 is the same payload plus each listing's
-`glyph_svg`, read by panels that know it (v0.11.1+, which fall back to v1). The domains differ, so a v1 signature
-never validates a v1.1 document and the reverse.
+`glyph_svg`, read by panels that know it (v0.11.1+, which fall back to v1). v1.2 is the v1.1 payload plus one
+top-level `components` key (the Tend MCP listing); older panels reject unknown payload keys, so they never read it.
+The domains differ, so a signature of one asset never validates another.
 
 Envelope shape and canonicalisation mirror `_verify_envelope` /
 `_canonical_payload` in the Tend panel core
@@ -49,10 +51,13 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 
 DOMAIN = b"tend-extension-registry-v1\n"
 DOMAIN_V11 = b"tend-extension-registry-v1.1\n"
+DOMAIN_V12 = b"tend-extension-registry-v1.2\n"
 EXPIRY_SECONDS = 365 * 24 * 60 * 60
 ENVELOPE_NAME = "tend-extension-registry-v1.json"
 ENVELOPE_NAME_V11 = "tend-extension-registry-v1.1.json"
+ENVELOPE_NAME_V12 = "tend-extension-registry-v1.2.json"
 REGISTRY_NAME_V11 = "registry-v1.1.json"
+REGISTRY_NAME_V12 = "registry-v1.2.json"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -175,14 +180,18 @@ def cmd_sign(args: argparse.Namespace) -> int:
         return 1
 
     jobs = [(registry, ENVELOPE_NAME, DOMAIN)]
-    glyphs_path = args.repo_root / "dist" / REGISTRY_NAME_V11
-    try:
-        jobs.append((json.loads(glyphs_path.read_text(encoding="utf-8")), ENVELOPE_NAME_V11, DOMAIN_V11))
-    except FileNotFoundError:
-        print(f"error: {glyphs_path} not found — run tools/build.py first", file=sys.stderr)
-        return 1
+    for registry_name, envelope_name, domain in (
+        (REGISTRY_NAME_V11, ENVELOPE_NAME_V11, DOMAIN_V11),
+        (REGISTRY_NAME_V12, ENVELOPE_NAME_V12, DOMAIN_V12),
+    ):
+        document_path = args.repo_root / "dist" / registry_name
+        try:
+            jobs.append((json.loads(document_path.read_text(encoding="utf-8")), envelope_name, domain))
+        except FileNotFoundError:
+            print(f"error: {document_path} not found — run tools/build.py first", file=sys.stderr)
+            return 1
 
-    issued_at = int(time.time())  # one instant for both assets
+    issued_at = int(time.time())  # one instant for all assets
     for document, name, domain in jobs:
         try:
             envelope = sign_registry(document, seed_b64, issued_at=issued_at, domain=domain)
@@ -199,7 +208,10 @@ def cmd_sign(args: argparse.Namespace) -> int:
 
 def domain_for(envelope_path: str | Path) -> bytes:
     """The signature domain an envelope is verified under, from its published file name."""
-    return DOMAIN_V11 if Path(envelope_path).name == ENVELOPE_NAME_V11 else DOMAIN
+    name = Path(envelope_path).name
+    if name == ENVELOPE_NAME_V12:
+        return DOMAIN_V12
+    return DOMAIN_V11 if name == ENVELOPE_NAME_V11 else DOMAIN
 
 
 def cmd_verify(args: argparse.Namespace) -> int:

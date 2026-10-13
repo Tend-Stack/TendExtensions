@@ -42,9 +42,11 @@ from typing import Any
 from PIL import Image
 
 try:  # imported as `tools.build` (tests) or run as `python tools/build.py`
+    from tools import component_listing
     from tools import glyph as glyph_rules
     from tools import validate_recipe as recipe_rules
 except ImportError:  # pragma: no cover - script mode puts tools/ itself on sys.path
+    import component_listing
     import glyph as glyph_rules
     import validate_recipe as recipe_rules
 
@@ -1140,6 +1142,31 @@ def build_one(
 
 
 REGISTRY_GLYPHS_NAME = "registry-v1.1.json"  # unsigned input of tend-extension-registry-v1.1.json
+REGISTRY_COMPONENTS_NAME = "registry-v1.2.json"  # unsigned input of tend-extension-registry-v1.2.json
+COMPONENTS_DIRNAME = "components"
+
+
+def load_components(repo_root: Path) -> list[dict[str, Any]]:
+    """Read and validate `components/*.json`: the registry listing of the optional Tend MCP component.
+
+    Only the one file `host.tend.mcp.json` is allowed and its content must be the exact shape of
+    `tools/component_listing.py`. The result feeds `registry-v1.2.json` only; v1 and v1.1 panels reject
+    unknown payload keys, so they never see it. A missing directory is an empty list."""
+    directory = repo_root / COMPONENTS_DIRNAME
+    if not directory.is_dir():
+        return []
+    components: list[dict[str, Any]] = []
+    for path in sorted(directory.iterdir()):
+        if path.name != component_listing.COMPONENT_FILE or not path.is_file():
+            raise BuildError(
+                f"{COMPONENTS_DIRNAME}/{path.name}: only {component_listing.COMPONENT_FILE} is allowed here"
+            )
+        raw = load_json(path, what=f"{COMPONENTS_DIRNAME}/{path.name}")
+        try:
+            components.append(component_listing.validate_component(raw))
+        except component_listing.ComponentError as exc:
+            raise BuildError(f"{COMPONENTS_DIRNAME}/{path.name}: {exc}") from exc
+    return components
 
 
 def discover_extension_ids(extensions_dir: Path) -> list[str]:
@@ -1197,12 +1224,18 @@ def run(
             "extensions": entries,
         }
 
+    components = load_components(repo_root)
     registry = document(full_entries if emit_glyph_svg else legacy_entries)
     (dist_dir / "registry.json").write_text(
         json.dumps(registry, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
     )
     (dist_dir / REGISTRY_GLYPHS_NAME).write_text(
         json.dumps(document(full_entries), indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
+    )
+    # v1.2 = the v1.1 document plus `components`; the only asset that carries the key.
+    (dist_dir / REGISTRY_COMPONENTS_NAME).write_text(
+        json.dumps({**document(full_entries), "components": components}, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
     )
     build_community_catalog(repo_root, dist_dir, sequence=sequence, revision=revision)
     return registry

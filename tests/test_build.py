@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -1117,3 +1118,82 @@ def test_sprout_block_refuses_what_the_panel_refuses(tmp_path: Path, sprout: obj
 
     with pytest.raises(build.BuildError, match=match):
         build.run(tmp_path, sequence=1, revision=REVISION_A)
+
+
+# ---------- the Tend MCP component listing (registry v1.2) ----------
+
+_REAL_COMPONENT = Path(__file__).resolve().parent.parent / "components" / "host.tend.mcp.json"
+
+
+def _write_component(repo: Path, **overrides: object) -> dict:
+    listing = json.loads(_REAL_COMPONENT.read_text(encoding="utf-8"))
+    listing.update(overrides)
+    (repo / "components").mkdir(exist_ok=True)
+    (repo / "components" / "host.tend.mcp.json").write_text(json.dumps(listing), encoding="utf-8")
+    return listing
+
+
+def test_components_emit_v12_only(fixture_repo: Path) -> None:
+    listing = _write_component(fixture_repo)
+    build.run(fixture_repo, sequence=3, revision=REVISION_A)
+    dist = fixture_repo / "dist"
+    v12 = json.loads((dist / "registry-v1.2.json").read_text())
+    assert v12["components"] == [listing]
+    for name in ("registry.json", "registry-v1.1.json"):
+        assert "components" not in json.loads((dist / name).read_text())
+    # v1.2 is exactly v1.1 plus the one key.
+    v11 = json.loads((dist / "registry-v1.1.json").read_text())
+    assert {k: v for k, v in v12.items() if k != "components"} == v11
+    # The checked-in listing is itself valid, so main always builds.
+    assert json.loads(_REAL_COMPONENT.read_text())["id"] == "host.tend.mcp"
+
+
+def test_v1_and_v11_unchanged_by_components(fixture_repo: Path) -> None:
+    build.run(fixture_repo, sequence=3, revision=REVISION_A)
+    dist = fixture_repo / "dist"
+    before = {n: (dist / n).read_text() for n in ("registry.json", "registry-v1.1.json")}
+    assert json.loads((dist / "registry-v1.2.json").read_text())["components"] == []
+    _write_component(fixture_repo)
+    build.run(fixture_repo, sequence=3, revision=REVISION_A)
+    for name, text in before.items():
+        # generated_at is the build time; everything else must be byte-identical.
+        strip = lambda t: re.sub(r'"generated_at": \d+', "", t)  # noqa: E731
+        assert strip((dist / name).read_text()) == strip(text)
+
+
+@pytest.mark.parametrize(
+    "overrides,message",
+    [
+        ({"id": "host.tend.other"}, "id must be"),
+        ({"extra": 1}, "unknown"),
+        ({"version": "1.2"}, "x.y.z"),
+        ({"version": "0.1.41"}, "release_tag must be"),
+        ({"sequence": 5}, "sequence must be"),
+        ({"min_core_version": "0.12.0", "max_core_version": "0.11.9"}, "below min_core_version"),
+        ({"envelopes": {"linux/amd64": "a" * 64}}, "envelopes must have exactly"),
+        ({"envelopes": {"linux/amd64": "A" * 64, "linux/arm64": "a" * 64}}, "64 lowercase hex"),
+        ({"inputs_digest": ""}, "inputs_digest"),
+        ({"core_commit": "abc"}, "core_commit"),
+        ({"release_notes": ["x"] * 11}, "at most 10"),
+        ({"release_notes": ["two\nlines"]}, "one non-empty line"),
+        ({"description": ""}, "description"),
+    ],
+)
+def test_component_validation(fixture_repo: Path, overrides: dict, message: str) -> None:
+    _write_component(fixture_repo, **overrides)
+    with pytest.raises(build.BuildError, match=message):
+        build.run(fixture_repo, sequence=1, revision=REVISION_A)
+
+
+def test_component_directory_holds_only_the_listing(fixture_repo: Path) -> None:
+    _write_component(fixture_repo)
+    (fixture_repo / "components" / "notes.txt").write_text("x")
+    with pytest.raises(build.BuildError, match="only host.tend.mcp.json is allowed"):
+        build.run(fixture_repo, sequence=1, revision=REVISION_A)
+
+
+def test_component_sequence_rule_is_the_one_the_publisher_uses() -> None:
+    from tools import component_listing, mcp_window
+
+    for version in ("0.0.1", "0.1.40", "1.2.3", "999999.999999.999999"):
+        assert component_listing.sequence_of(version) == mcp_window.sequence_of(version)

@@ -96,7 +96,11 @@ jobs:
 
           env = dict(os.environ, TEND_REGISTRY_SIGNING_KEY=seed_b64)
           subprocess.run([sys.executable, "tools/sign.py", "sign"], check=True, env=env)
-          for name in ("tend-extension-registry-v1.json", "tend-extension-registry-v1.1.json"):
+          for name in (
+              "tend-extension-registry-v1.json",
+              "tend-extension-registry-v1.1.json",
+              "tend-extension-registry-v1.2.json",
+          ):
               subprocess.run(
                   [sys.executable, "tools/sign.py", "--verify", f"dist/{name}", "--public-key", pub_b64],
                   check=True,
@@ -106,6 +110,14 @@ jobs:
           v11 = json.load(open("dist/tend-extension-registry-v1.1.json"))["payload"]["extensions"]
           assert not any("glyph_svg" in e for e in v1), "v1 must stay free of glyph_svg for v0.10.x panels"
           assert any("glyph_svg" in e for e in v11), "v1.1 must carry glyph_svg"
+          # v1.2 is the v1.1 payload plus `components`, nothing else; v1 and v1.1 never carry the key.
+          p11 = json.load(open("dist/tend-extension-registry-v1.1.json"))["payload"]
+          p12 = json.load(open("dist/tend-extension-registry-v1.2.json"))["payload"]
+          assert "components" not in json.load(open("dist/tend-extension-registry-v1.json"))["payload"]
+          assert "components" not in p11, "v1.1 must stay free of components for v0.11.x panels"
+          components = p12.pop("components")
+          assert [c["id"] for c in components] == ["host.tend.mcp"], "v1.2 must list host.tend.mcp"
+          assert p12 == p11, "v1.2 must be the v1.1 payload plus components"
           print("signer round-trip OK (throwaway key)")
           PY
 
