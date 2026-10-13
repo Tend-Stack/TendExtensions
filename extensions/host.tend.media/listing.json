@@ -6,7 +6,7 @@
   "features": [
     "Live radio, podcasts and LibriVox audiobooks from OndaCast in one calm player",
     "In the top bar: artwork and what is playing, with play/pause, even while the window is minimized",
-    "Ask Sprout to play a show, an episode, a book or a station; he tells you about new episodes",
+    "Sprout uses the player for you: \"I'm coding, play some lo-fi\", \"play a popular tech podcast\", \"any new episodes from my shows? play them\"",
     "Shelf widgets: Now playing, New episodes, Continue listening and Favorite stations",
     "Podcast categories, Up next that fills itself, playlists, repeat and shuffle",
     "Resume anywhere, chapter progress, bookmarks with notes, sleep timer and keyboard shortcuts"
@@ -15,5 +15,5 @@
     "A Tend panel that provides the ondacast capability",
     "Tend Notes installed with a notebook, to save clips (optional)"
   ],
-  "release_notes": "1.7.1: Now called Tend Player (formerly TEND Media); the app id and your library are unchanged. The icon now follows your theme."
+  "release_notes": "1.8.0: Sprout can now use Tend Player on its own: it finds a station, a popular show in a category or an audiobook, lists the new episodes of the shows you follow and plays them, and pauses, resumes or skips. Panels without this feature keep working as before."
 }

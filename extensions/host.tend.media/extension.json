@@ -2,7 +2,7 @@
   "schema": 2,
   "id": "host.tend.media",
   "name": "Tend Player",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "author": "Tend",
   "description": "Radio stations, podcasts and audiobooks from OndaCast in one player, in the top bar and on your shelf: subscriptions, a queue, per-show speed, a sleep timer, transcripts, audiobook bookmarks, clips saved to Tend Notes, and Sprout can put anything on for you.",
   "icon": "icon.svg",
@@ -26,7 +26,7 @@
     "documents.write"
   ],
   "integrity": {
-    "README.md": "sha256-ncsk7ha/p3sQq+JslWaC2l2JX4/RLHW1wGPwDeZFhKg=",
+    "README.md": "sha256-yxPVnIN4YJUmtW3giJ7NIMHp36bxYxHwLgNO2hAv/Po=",
     "chunks/Cover-CFUQKa8h.js": "sha256-ftwsupLO+oJglGm6lC0CvllFxEGkturcWKq6o3fyhYE=",
     "chunks/Hint-DzWqDMB2.js": "sha256-oX/bct/2jS5hgxlVAg6CGrbPK61xE+NeziXIbzzukVc=",
     "chunks/Icon-CkCATa2J.js": "sha256-gue1tKPTver/pg6gSkmqa5NDaxBMF0zbdm3tCFXZEXU=",
@@ -34,7 +34,7 @@
     "chunks/model.svelte-A0MofO8E.js": "sha256-KO713jSRgZxIMD5JSCBZTQtjAlT1IfZLMtB90AFcbx0=",
     "glyph.svg": "sha256-qqRIgQEeU+LAKChWZj/HcWQFjMieQOD04EkDmU6eIwE=",
     "icon.svg": "sha256-SbSAyR4prIUkwozxPbf5VCyQH+gS9mYGZIByD0NeZXU=",
-    "index.js": "sha256-ZEVKyepnBlABmDXs975F8QyxTySNliCwfMaT2tPTZbE=",
+    "index.js": "sha256-u9TriZu/MX5/4ooK/ZznCUtb8YelzkY2/6QPwauzAmU=",
     "widgets/continue-preview.svg": "sha256-ysFuvId4mqfnxGNxeWXoIAMdO9Vc8Evthpv9GrDR12o=",
     "widgets/continue.js": "sha256-nKMh7/IHZfUFYAsGAPJwZa0PLPi9mQBvYu/wHpiPYSs=",
     "widgets/new-episodes-preview.svg": "sha256-qgF7hoDFjvMXtZDG6gCkdSpLf/d2c3exCu8UZJQuFX0=",
@@ -89,5 +89,111 @@
       "module": "widgets/stations.js",
       "preview": "widgets/stations-preview.svg"
     }
-  ]
+  ],
+  "sprout": {
+    "tools": [
+      {
+        "name": "new_episodes",
+        "kind": "read",
+        "doing": "checking your shows",
+        "description": "List unplayed episodes from the shows the person follows, newest first. Use it for any question about new episodes, then play one with its id.",
+        "input": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "description": "How many episodes to list, default 8."
+            }
+          }
+        }
+      },
+      {
+        "name": "search",
+        "kind": "read",
+        "doing": "looking for something to play",
+        "description": "Find radio stations, podcast shows or audiobooks to play. Use category for a genre such as technology or rock, query for words such as lofi or a show name. Returns ids for the play tool.",
+        "input": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "station",
+                "podcast",
+                "audiobook"
+              ],
+              "description": "What to look for."
+            },
+            "query": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "Words to search for, such as lofi, jazz or a show name."
+            },
+            "category": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "A genre, such as technology, true crime, rock or news. Lists the most popular first."
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        }
+      },
+      {
+        "name": "play",
+        "kind": "ui",
+        "doing": "putting it on",
+        "description": "Start playing something now, using an id from the search or new_episodes tools. Set queue to new_episodes to line up the other new episodes behind it.",
+        "input": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "An id returned by search or new_episodes."
+            },
+            "queue": {
+              "type": "string",
+              "enum": [
+                "none",
+                "new_episodes"
+              ],
+              "description": "new_episodes also queues the other new episodes. Default none."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      {
+        "name": "control",
+        "kind": "ui",
+        "doing": "adjusting playback",
+        "description": "Pause, resume, skip to the next or previous item, or stop whatever Tend Player is playing right now.",
+        "input": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "pause",
+                "resume",
+                "next",
+                "previous",
+                "stop"
+              ],
+              "description": "What to do with the current playback."
+            }
+          },
+          "required": [
+            "action"
+          ]
+        }
+      }
+    ]
+  }
 }
