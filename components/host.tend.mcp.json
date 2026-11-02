@@ -2,19 +2,19 @@
   "id": "host.tend.mcp",
   "name": "Tend MCP",
   "description": "Lets AI assistants you approve read your panel and propose changes you confirm. Set it up and update it in Settings → MCP.",
-  "version": "0.1.44",
-  "release_tag": "mcp-runtime-0.1.44",
-  "sequence": 1000044,
-  "min_core_version": "0.11.10",
-  "max_core_version": "0.999999.999999",
+  "version": "0.1.45",
+  "release_tag": "mcp-runtime-0.1.45",
+  "sequence": 1000045,
+  "min_core_version": "2026.1.0",
+  "max_core_version": "2026.999999.999999",
   "envelopes": {
-    "linux/amd64": "e1cccca66f2dd0b3b4fce7d92667274f04b154723893ee803c08c40fbdd1debc",
-    "linux/arm64": "f3c59dfbb1f42edd91c78e7a64fc42fe2b898e0d258febf4dde79b42b49a690e"
+    "linux/amd64": "e392863b9880f39f5bb0e54fa23c05ea61d13a75638389ce9d94d0684ec00c63",
+    "linux/arm64": "6d99e91eb7c548fc2ca6fad6660455876ba167d0c394bdb37467c70e14f3eccb"
   },
-  "inputs_digest": "631e1a835fd1a53636973b90ecbe7af396687fd47cefc855e552fb61c5cfb69e",
-  "core_commit": "16c0c4fd1795161bb2b4b167e88fb14bfca87d05",
+  "inputs_digest": "db0a079a4d04e17898101aa5a520236b2574aae2e17d0ebae19cdf1a962e54e8",
+  "core_commit": "2388b8e5ea797f0a86e9f8be74f82f1400558aa4",
   "release_notes": [
-    "Runtime 0.1.44.",
-    "Needs Tend 0.11.10 or newer."
+    "Runtime 0.1.45.",
+    "Needs Tend 2026.1.0 or newer."
   ]
 }
